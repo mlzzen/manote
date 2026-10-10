@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 启动图标底色：墨绿。 -->
+    <color name="ic_launcher_background">#1B5E4A</color>
+
+    <!-- 窗口背景，与 Compose 浅色 surface 保持一致（规格 3.6 中性灰白背景）。 -->
+    <color name="window_background">#F6FAF7</color>
+</resources>

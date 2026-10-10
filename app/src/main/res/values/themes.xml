@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      仅作为 Activity 窗口的宿主主题（浅色）。真正的配色由 Compose 的 ManoteTheme 提供，
+      此处保持无 ActionBar 且背景与 Compose 的 surface 一致，避免启动瞬间闪白。
+    -->
+    <style name="Theme.Manote" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

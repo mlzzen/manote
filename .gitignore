@@ -1,0 +1,12 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild
+.cxx
+
+# 智能体工作文件（本地记忆、任务状态），不入版本库
+.workbuddy/

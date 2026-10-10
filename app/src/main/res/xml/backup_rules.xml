@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  API 30 及以下的全量备份规则（android:fullBackupContent）。
+  应用同时将 allowBackup 置为 false，此处再显式排除全部域，保证任何系统备份路径都不带走数据。
+-->
+<full-backup-content>
+    <exclude domain="root" />
+    <exclude domain="database" />
+    <exclude domain="sharedpref" />
+    <exclude domain="file" />
+    <exclude domain="external" />
+</full-backup-content>

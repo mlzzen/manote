@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式下的窗口背景，与 Compose 深色 surface 保持一致。 -->
+    <color name="window_background">#0F1412</color>
+</resources>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">麻记</string>
+
+    <!-- 通用动作 -->
+    <string name="action_back">返回</string>
+    <string name="action_record_session">记一场</string>
+
+    <!-- 目的地标签（首页顶栏使用 app_name） -->
+    <string name="nav_history">我的历史</string>
+    <string name="nav_friends">麻友</string>
+    <string name="nav_settings">设置</string>
+
+    <!--
+      P0 工程骨架的页面说明。此处只描述该页在后续阶段将承载的能力，
+      不显示任何演示数据，也不虚构金额或场次。
+    -->
+    <string name="home_skeleton_notice">本页将显示本人昵称、累计赢钱、累计输钱、净输赢与已记录场数，主体为最近场次列表。当前为工程骨架，数据层尚未接入，因此不显示任何金额。</string>
+    <string name="session_skeleton_notice">本页将提供四人选择与金额填写：自己自动关联本人，上家、对家、下家从麻友中选择或即时创建，底部实时校验四人合计为 0.00 元。当前为工程骨架，表单尚未实现。</string>
+    <string name="history_skeleton_notice">本页将按打完时间倒序展示场次列表并支持关键词搜索，点入详情可查看四人位置、快照昵称、排名与结清建议。当前为工程骨架，数据层尚未接入。</string>
+    <string name="friends_skeleton_notice">本页将提供麻友搜索、新增、编辑、归档与取消归档，并显示每位麻友的场数与净输赢。当前为工程骨架，数据层尚未接入。</string>
+    <string name="settings_skeleton_notice">本页将提供本人昵称编辑、JSON 全量备份恢复与单场 CSV 导出，主题跟随系统。当前为工程骨架，数据层尚未接入。</string>
+
+    <string name="home_entries_section_title">入口</string>
+</resources>
