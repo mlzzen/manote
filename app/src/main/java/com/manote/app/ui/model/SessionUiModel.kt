@@ -26,7 +26,7 @@ data class SessionRowUi(
     val playedAt: Long,
     /** 本人（seat 0）本场净额。 */
     val selfNetMinor: Long,
-    /** 其余三位的昵称快照，按 seat 升序。 */
+    /** 其余各位的昵称快照，按 seat 升序；本场只记录了部分位置时会少于三个（规格 1.3）。 */
     val opponentNames: List<String>,
     /**
      * 关键词搜索用的比对串：标题 + 四人当时的昵称快照，已统一转小写。
@@ -44,16 +44,25 @@ data class SessionDetailUi(
     val title: String,
     val note: String,
     val playedAt: Long,
-    /** 四个座位，按 seat 升序。 */
+    /** 已记录的座位，按 seat 升序。可能少于四个（规格 1.3）。 */
     val seats: List<SeatUi>,
-    /** 结清建议，最多三笔；空表示无需结清。 */
+    /** 已记录座位的净额合计，分。 */
+    val totalMinor: Long,
+    /**
+     * 已记录座位的合计是否为 0。
+     *
+     * 为 false 时 [transfers] 恒为空——结清算法假定合计为零才能撮合完，
+     * 否则会输出一笔算错的余额（规格 1.3）。
+     */
+    val balanced: Boolean,
+    /** 结清建议，最多三笔；空表示无需结清或本场不平账。 */
     val transfers: List<TransferUi>,
 )
 
 /**
  * 场次 → 列表行。
  *
- * 本人结果取 seat 0（规格 2.2：每场 seat=0 必为 SELF）。
+ * 本人结果取 seat 0（规格 2.2：每场的 seat 0 必为 SELF）。
  * 若库处于异常状态导致缺少 seat 0，净额按 0 展示而不是崩溃。
  *
  * 搜索串按规格 3.3 只含「标题 + 历史昵称（nameSnapshot）」，
@@ -83,6 +92,8 @@ fun SessionWithResults.toDetailUi(): SessionDetailUi {
     val ordered = results.sortedBy { it.seat }
     val nets = ordered.map { SeatNet(seat = it.seat, netMinor = it.netMinor) }
     val ranksBySeat = Ranking.rank(nets).associate { it.seat to it.rank }
+    val total = nets.sumOf { it.netMinor }
+    val balanced = total == 0L
     return SessionDetailUi(
         id = session.id,
         title = session.title,
@@ -96,8 +107,15 @@ fun SessionWithResults.toDetailUi(): SessionDetailUi {
                 rank = ranksBySeat[result.seat] ?: 0,
             )
         },
-        transfers = Settlement.suggest(nets).map {
-            TransferUi(fromSeat = it.fromSeat, toSeat = it.toSeat, amountMinor = it.amountMinor)
+        totalMinor = total,
+        balanced = balanced,
+        // 不平账时不给建议：撮合到最后一个赢家会剩下算不清的余额，宁可明确说「给不了」。
+        transfers = if (balanced) {
+            Settlement.suggest(nets).map {
+                TransferUi(fromSeat = it.fromSeat, toSeat = it.toSeat, amountMinor = it.amountMinor)
+            }
+        } else {
+            emptyList()
         },
     )
 }

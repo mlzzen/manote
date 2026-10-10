@@ -85,4 +85,15 @@ interface PlayerDao {
         archivedAt: Long?,
         updatedAt: Long,
     ): Int
+
+    /** 一次性读出全部档案，供 JSON 备份导出（规格 6.1 第 5 节字段）。 */
+    @Query("SELECT * FROM player ORDER BY createdAt ASC, id ASC")
+    suspend fun findAllOrdered(): List<PlayerEntity>
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(players: List<PlayerEntity>)
+
+    /** 全量覆盖导入时清空档案表；调用方必须先删 session_result（外键 RESTRICT）。 */
+    @Query("DELETE FROM player")
+    suspend fun deleteAll()
 }

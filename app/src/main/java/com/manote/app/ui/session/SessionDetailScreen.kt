@@ -1,5 +1,7 @@
 package com.manote.app.ui.session
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -60,12 +63,15 @@ import com.manote.app.ui.theme.manote
 import kotlinx.coroutines.launch
 
 /**
- * 四人详情（规格 3.3）。
+ * 场次详情（规格 3.3）。
  *
- * 展示四个位置、快照昵称、净输赢、排名与结清建议，本人结果突出显示。
- * 排名与结清都从当前四人结果实时计算（规格 2.5），不另存结果。
+ * 展示已记录的位置、快照昵称、净输赢、排名与结清建议，本人结果突出显示。
+ * 排名与结清都从当前结果实时计算（规格 2.5），不另存结果。
  *
- * 菜单提供「修改」与「删除」；CSV 导出属 P4，此处不放。
+ * 一场可能只记录了 1～4 个位置，且合计不一定为 0（规格 1.3）：
+ * 前者用一行文字说明，后者不给结清建议、只显示合计数。
+ *
+ * 菜单提供「修改」「导出 CSV」「删除」（规格 3.3）。
  */
 @Composable
 fun SessionDetailScreen(
@@ -76,7 +82,11 @@ fun SessionDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val viewModel = manoteViewModel(key = sessionId) { container, _ ->
-        SessionDetailViewModel(container.sessionRepository, sessionId)
+        SessionDetailViewModel(
+            sessionRepository = container.sessionRepository,
+            fileStore = container.backupFileStore,
+            sessionId = sessionId,
+        )
     }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -84,11 +94,23 @@ fun SessionDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // 系统「创建文件」入口。取消（uri 为 null）什么都不做。
+    val csvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(CSV_MIME_TYPE),
+    ) { uri ->
+        viewModel.onCsvTargetChosen(uri?.toString())
+    }
+
+    // CSV 文本准备好之后才拉选择器，文件名用打完时间与场次 ID 短串（规格 6.2）
+    LaunchedEffect(state.pendingCsv) {
+        state.pendingCsv?.let { csvLauncher.launch(it.fileName) }
+    }
+
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 SessionDetailEvent.Deleted -> onDeleted()
-                is SessionDetailEvent.Failed -> scope.launch {
+                is SessionDetailEvent.Notify -> scope.launch {
                     snackbarHostState.showSnackbar(context.getString(event.messageRes))
                 }
             }
@@ -100,8 +122,10 @@ fun SessionDetailScreen(
         loading = state.loading,
         detail = state.detail,
         deleting = state.deleting,
+        exporting = state.exporting,
         onNavigateBack = onNavigateBack,
         onEdit = { onEdit(sessionId) },
+        onExportCsv = viewModel::requestCsvExport,
         onRequestDelete = viewModel::requestDelete,
         snackbarHostState = snackbarHostState,
         modifier = modifier,
@@ -121,8 +145,10 @@ private fun SessionDetailContent(
     loading: Boolean,
     detail: SessionDetailUi?,
     deleting: Boolean,
+    exporting: Boolean,
     onNavigateBack: () -> Unit,
     onEdit: () -> Unit,
+    onExportCsv: () -> Unit,
     onRequestDelete: () -> Unit,
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
@@ -136,8 +162,9 @@ private fun SessionDetailContent(
             // 场次还在时才给菜单；已不存在的场次没有可操作的对象
             if (detail != null) {
                 SessionDetailMenu(
-                    deleting = deleting,
+                    busy = deleting || exporting,
                     onEdit = onEdit,
+                    onExportCsv = onExportCsv,
                     onRequestDelete = onRequestDelete,
                 )
             }
@@ -289,12 +316,27 @@ private fun SettlementCard(detail: SessionDetailUi) {
         )
         Spacer(modifier = Modifier.height(12.dp))
 
+        // 合计不为 0 时不给建议：撮合算不完，给出「剩下一点余额」的假结果比不给更糟（规格 1.3）
+        if (!detail.balanced) {
+            Text(
+                text = stringResource(
+                    R.string.detail_unbalanced_format,
+                    UiText.signedYuan(detail.totalMinor),
+                ),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.manote.draw,
+            )
+            PartialSeatsHint(seatCount = detail.seats.size)
+            return@ManoteCard
+        }
+
         if (detail.transfers.isEmpty()) {
             Text(
                 text = stringResource(R.string.detail_no_settlement),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
+            PartialSeatsHint(seatCount = detail.seats.size)
             return@ManoteCard
         }
 
@@ -307,7 +349,23 @@ private fun SettlementCard(detail: SessionDetailUi) {
                 )
             }
         }
+        PartialSeatsHint(seatCount = detail.seats.size)
     }
+}
+
+/**
+ * 本场只记录了部分位置时明确说明（规格 1.3）。
+ * 不写这一句，用户会以为另外几位本场净额为 0，而不是「没有记录」。
+ */
+@Composable
+private fun PartialSeatsHint(seatCount: Int) {
+    if (seatCount >= SessionRules.SEAT_COUNT) return
+    Spacer(modifier = Modifier.height(10.dp))
+    Text(
+        text = stringResource(R.string.detail_partial_seats_format, seatCount),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -334,13 +392,14 @@ private fun TransferRow(transfer: TransferUi, fromName: String, toName: String) 
 }
 
 /**
- * 详情顶栏的「更多」菜单（规格 3.3）。
- * 删除期间禁用，避免重复触发；修改则不受删除进行中的影响。
+ * 详情顶栏的「更多」菜单（规格 3.3：修改、CSV 导出、删除）。
+ * 删除或导出进行中一律禁用，避免重复触发。
  */
 @Composable
 private fun SessionDetailMenu(
-    deleting: Boolean,
+    busy: Boolean,
     onEdit: () -> Unit,
+    onExportCsv: () -> Unit,
     onRequestDelete: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -348,7 +407,7 @@ private fun SessionDetailMenu(
     Box {
         IconButton(
             onClick = { expanded = true },
-            enabled = !deleting,
+            enabled = !busy,
         ) {
             Icon(
                 imageVector = Icons.Filled.MoreVert,
@@ -368,6 +427,16 @@ private fun SessionDetailMenu(
                 onClick = {
                     expanded = false
                     onEdit()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(text = stringResource(R.string.detail_action_export_csv)) },
+                leadingIcon = {
+                    Icon(imageVector = Icons.Filled.Share, contentDescription = null)
+                },
+                onClick = {
+                    expanded = false
+                    onExportCsv()
                 },
             )
             DropdownMenuItem(
@@ -413,3 +482,6 @@ private fun DeleteSessionDialog(
         },
     )
 }
+
+/** CSV 的 MIME 类型（规格 6.2）。 */
+private const val CSV_MIME_TYPE = "text/csv"

@@ -5,7 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 输入校验（规格 2.1、2.2、5.1）。 */
+/** 输入校验（规格 1.3、2.1、2.2、5.1）。 */
 class SessionValidatorTest {
 
     private fun <T> successOrNull(result: ManoteResult<T>): T? =
@@ -80,32 +80,37 @@ class SessionValidatorTest {
     }
 
     @Test
-    fun seatNetsRequireAllFourSeats() {
-        assertEquals(
-            ManoteError.INVALID_SEAT_SET,
-            SessionValidator.validateSeatNets(mapOf(0 to 0L, 1 to 0L, 2 to 0L)),
-        )
-        assertEquals(
-            ManoteError.INVALID_SEAT_SET,
-            SessionValidator.validateSeatNets(mapOf(0 to 0L, 1 to 0L, 2 to 0L, 4 to 0L)),
-        )
+    fun seatSetAcceptsOneToFourSeatsIncludingSelf() {
+        // 规格 1.3：一场只记录 1～4 个位置都合法，不再要求四位置齐全
+        assertNull(SessionValidator.validateSeatNets(mapOf(0 to 0L)))
+        assertNull(SessionValidator.validateSeatNets(mapOf(0 to 3000L, 1 to -1000L)))
+        assertNull(SessionValidator.validateSeatNets(mapOf(0 to 0L, 2 to 0L)))
+        assertNull(SessionValidator.validateSeatNets(mapOf(0 to 0L, 1 to 0L, 2 to 0L)))
         assertNull(SessionValidator.validateSeatNets(mapOf(0 to 0L, 1 to 0L, 2 to 0L, 3 to 0L)))
     }
 
     @Test
-    fun seatNetsRejectUnbalancedTotalsWithoutAutoFixing() {
-        // T02：+30、-10、-10、0 合计 +10，必须拒绝
+    fun seatSetRejectsEmptyOutOfRangeOrMissingSelf() {
+        assertEquals(ManoteError.INVALID_SEAT_SET, SessionValidator.validateSeatNets(emptyMap()))
+        // 缺少 seat 0：本人必须记录
+        assertEquals(ManoteError.INVALID_SEAT_SET, SessionValidator.validateSeatNets(mapOf(1 to 0L, 2 to 0L)))
         assertEquals(
-            ManoteError.SUM_NOT_ZERO,
-            SessionValidator.validateSeatNets(mapOf(0 to 3000L, 1 to -1000L, 2 to -1000L, 3 to 0L)),
+            ManoteError.INVALID_SEAT_SET,
+            SessionValidator.validateSeatNets(mapOf(0 to 0L, 1 to 0L, 2 to 0L, 4 to 0L)),
         )
-        // T01/T03：合计为零才通过
-        assertNull(SessionValidator.validateSeatNets(mapOf(0 to 3000L, 1 to -1000L, 2 to -1000L, 3 to -1000L)))
-        assertNull(SessionValidator.validateSeatNets(mapOf(0 to 30L, 1 to -10L, 2 to -10L, 3 to -10L)))
     }
 
     @Test
-    fun seatNetsRejectOutOfRangeBeforeCheckingBalance() {
+    fun seatNetsAcceptUnbalancedTotals() {
+        // 规格 1.3：合计不为 0 不再拒绝，只由界面提示
+        assertNull(SessionValidator.validateSeatNets(mapOf(0 to 3000L, 1 to -1000L, 2 to -1000L, 3 to 0L)))
+        // 只记一部分人的输赢，合计自然不会是 0
+        assertNull(SessionValidator.validateSeatNets(mapOf(0 to 3000L)))
+        assertNull(SessionValidator.validateSeatNets(mapOf(0 to 3000L, 1 to -2000L)))
+    }
+
+    @Test
+    fun seatNetsRejectOutOfRange() {
         assertEquals(
             ManoteError.AMOUNT_OUT_OF_RANGE,
             SessionValidator.validateSeatNets(

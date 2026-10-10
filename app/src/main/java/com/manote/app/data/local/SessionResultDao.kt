@@ -45,6 +45,14 @@ interface SessionResultDao {
     @Query("SELECT COUNT(*) FROM session_result WHERE sessionId = :sessionId")
     suspend fun countBySession(sessionId: String): Int
 
+    /** 一次性读出全部结果，供 JSON 备份导出。 */
+    @Query("SELECT * FROM session_result ORDER BY sessionId ASC, seat ASC")
+    suspend fun findAllOrdered(): List<SessionResultEntity>
+
+    /** 全量覆盖导入时清空结果表；必须先于 session 与 player 清空。 */
+    @Query("DELETE FROM session_result")
+    suspend fun deleteAll()
+
     @Query("DELETE FROM session_result WHERE sessionId = :sessionId")
     suspend fun deleteBySession(sessionId: String): Int
 }

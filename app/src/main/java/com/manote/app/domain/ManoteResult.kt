@@ -17,7 +17,7 @@ enum class ManoteError {
     /** 打完时间晚于提交时的设备当前时间。 */
     PLAYED_AT_IN_FUTURE,
 
-    /** 座位不是 0、1、2、3 各一次。 */
+    /** 座位集合不合法：为空、越出 0～3，或缺少本人所在的 seat 0（规格 1.3）。 */
     INVALID_SEAT_SET,
 
     /** 一场中同一个 playerId 出现在多个座位。 */
@@ -34,9 +34,6 @@ enum class ManoteError {
 
     /** 单个净金额超出 ±1,000,000 分。 */
     AMOUNT_OUT_OF_RANGE,
-
-    /** 四人净金额合计不为 0 分。 */
-    SUM_NOT_ZERO,
 
     /** 已达到 1,000 场上限。 */
     SESSION_LIMIT_REACHED,

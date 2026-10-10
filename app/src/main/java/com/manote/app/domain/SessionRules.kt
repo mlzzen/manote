@@ -5,7 +5,12 @@ package com.manote.app.domain
  */
 object SessionRules {
 
-    /** 一条记录固定四个座位：0=自己、1=上家、2=对家、3=下家。 */
+    /**
+     * 座位编号的取值范围：0=自己、1=上家、2=对家、3=下家。
+     *
+     * 注意这是**编号空间**的大小，不是「每场必须记录几条结果」——
+     * 一场可以只记录其中 1～4 个位置（规格 1.3），seat 0 必须记录。
+     */
     const val SEAT_COUNT = 4
     const val SEAT_SELF = 0
 

@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import com.manote.app.R
+import com.manote.app.domain.SessionRules
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
 import com.manote.app.ui.components.ManotePrimaryButton
@@ -77,10 +78,13 @@ private fun SessionEditMode.viewModelKey(): String = when (this) {
 }
 
 /**
- * 记一场 / 修改本场（规格 3.2、3.3）。
+ * 记一场 / 修改本场（规格 1.3、3.2、3.3）。
  *
- * 一屏完成四人选择与金额填写：自己自动关联本人，上家/对家/下家从牌友中选择或即时创建；
- * 每个座位用「赢 / 输」切换加非负金额输入；底部实时显示四人合计。
+ * 一屏完成位置选择与金额填写：自己自动关联本人，上家/对家/下家从牌友中选择或即时创建；
+ * 每个已记录的位置用「赢 / 输」切换加非负金额输入；底部实时显示合计。
+ *
+ * 不要求选齐四位、也不要求每人都填金额：没选牌友的位置不记录（不显示输入框），
+ * 金额留空按 0 计；合计不为 0 时只给出提示色，保存按钮照常可用。
  * 提交前预览确认，保存期间禁用按钮，返回有改动时确认放弃。
  *
  * 修改模式复用同一套表单，但人员与位置只读、进入即预填（规格 3.3）。
@@ -92,12 +96,14 @@ fun SessionEditScreen(
     modifier: Modifier = Modifier,
     mode: SessionEditMode = SessionEditMode.Create,
     onUpdated: () -> Unit = {},
+    onInvalidated: () -> Unit = {},
 ) {
     val viewModel = manoteViewModel(key = mode.viewModelKey()) { container, extras ->
         SessionEditViewModel(
             playerRepository = container.playerRepository,
             sessionRepository = container.sessionRepository,
             savedState = extras.createSavedStateHandle(),
+            dataReset = container.dataReset,
             mode = mode,
         )
     }
@@ -119,6 +125,9 @@ fun SessionEditScreen(
                 // 新建：跳到场次详情；修改：该场次已在返回栈里，直接回上一页即可
                 is SessionEditEvent.Saved ->
                     if (mode is SessionEditMode.Edit) onUpdated() else onSaved(event.sessionId)
+
+                // 备份导入把整库换掉了，草稿已作废：直接离开本页（规格 2.3、T24）
+                SessionEditEvent.Invalidated -> onInvalidated()
 
                 is SessionEditEvent.Failed -> scope.launch {
                     snackbarHostState.showSnackbar(context.getString(event.messageRes))
@@ -353,6 +362,9 @@ private fun SeatEditor(
     onAmountChange: (String) -> Unit,
 ) {
     val selected = draft.playerId != null
+    // 没选牌友的位置本场不记录：不显示金额与赢输开关，
+    // 否则用户填完才发现被忽略（规格 1.3）
+    val recorded = selected || draft.isSelfSeat
 
     ManoteCard(contentPadding = PaddingValues(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -409,7 +421,11 @@ private fun SeatEditor(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = seatLabel(draft.seat),
+                    text = if (recorded) {
+                        seatLabel(draft.seat)
+                    } else {
+                        stringResource(R.string.session_seat_not_recorded, seatLabel(draft.seat))
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -425,8 +441,12 @@ private fun SeatEditor(
                 }
             }
 
-            WinLoseToggle(isWin = draft.isWin, onWinChange = onWinChange)
+            if (recorded) {
+                WinLoseToggle(isWin = draft.isWin, onWinChange = onWinChange)
+            }
         }
+
+        if (!recorded) return@ManoteCard
 
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -513,26 +533,33 @@ private fun ToggleHalf(
     }
 }
 
-/** 底部合计与保存。合计不为 0 时按钮保持禁用并给出原因，不做任何「凑平」。 */
+/**
+ * 底部合计与保存（规格 1.3）。
+ *
+ * 合计不为 0 时只用琥珀色提示，**不再禁用保存**：允许只记一部分人的输赢。
+ * 真正会挡住保存的只有「金额填错」这类笔误，以及没有可记录的位置。
+ */
 @Composable
 private fun SaveBar(state: SessionEditUiState, onSave: () -> Unit) {
     val total = state.totalMinor
-    val canSave = state.complete && total == 0L && !state.saving
+    val canSave = state.amountsValid && !state.saving
     val message: String
     val messageColor: Color
 
     when {
-        !state.complete -> {
+        !state.amountsValid -> {
             message = stringResource(R.string.session_total_incomplete)
             messageColor = MaterialTheme.colorScheme.error
         }
 
-        else -> if (total == 0L) {
+        total == 0L -> {
             message = stringResource(R.string.session_total_ok)
             messageColor = MaterialTheme.colorScheme.onSurfaceVariant
-        } else {
-            message = stringResource(R.string.session_total_error, UiText.signedYuan(total ?: 0L))
-            messageColor = MaterialTheme.colorScheme.error
+        }
+
+        else -> {
+            message = stringResource(R.string.session_total_warning, UiText.signedYuan(total ?: 0L))
+            messageColor = MaterialTheme.manote.draw
         }
     }
 
@@ -600,7 +627,8 @@ private fun SessionPreviewDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                state.seats.forEach { draft ->
+                // 只列出本场实际记录的位置；没选牌友的座位不入库，也就没必要在这里出现
+                state.seats.filter { it.playerId != null }.forEach { draft ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -627,6 +655,30 @@ private fun SessionPreviewDialog(
                     Text(
                         text = stringResource(R.string.session_all_zero_confirm),
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                // 合计不为 0 是可保存的（规格 1.3），但保存前再提醒一次，避免看漏
+                if (state.unbalanced) {
+                    Text(
+                        text = stringResource(
+                            R.string.session_preview_unbalanced,
+                            UiText.signedYuan(state.totalMinor ?: 0L),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.manote.draw,
+                    )
+                }
+
+                // 只记录了部分位置时说明清楚，免得以为另外几位本场是 0
+                if (state.recordedSeatCount < SessionRules.SEAT_COUNT) {
+                    Text(
+                        text = stringResource(
+                            R.string.session_preview_partial_format,
+                            state.recordedSeatCount,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

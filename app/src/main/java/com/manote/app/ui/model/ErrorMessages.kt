@@ -3,6 +3,7 @@ package com.manote.app.ui.model
 import androidx.annotation.StringRes
 import com.manote.app.R
 import com.manote.app.domain.AmountParseFailure
+import com.manote.app.domain.BackupRejectReason
 import com.manote.app.domain.ManoteError
 
 /**
@@ -23,7 +24,6 @@ fun ManoteError.messageRes(): Int = when (this) {
     ManoteError.NON_SELF_SEAT_NOT_FRIEND -> R.string.error_non_self_seat_not_friend
     ManoteError.FRIEND_ARCHIVED -> R.string.error_friend_archived
     ManoteError.AMOUNT_OUT_OF_RANGE -> R.string.error_amount_out_of_range
-    ManoteError.SUM_NOT_ZERO -> R.string.error_sum_not_zero
     ManoteError.SESSION_LIMIT_REACHED -> R.string.error_session_limit_reached
     ManoteError.FRIEND_LIMIT_REACHED -> R.string.error_friend_limit_reached
     ManoteError.SESSION_ID_ALREADY_EXISTS -> R.string.error_session_id_already_exists
@@ -42,4 +42,26 @@ fun AmountParseFailure.messageRes(): Int = when (this) {
     AmountParseFailure.INVALID_FORMAT -> R.string.amount_invalid
     AmountParseFailure.TOO_MANY_DECIMALS -> R.string.amount_too_many_decimals
     AmountParseFailure.OUT_OF_RANGE -> R.string.amount_out_of_range
+}
+
+/**
+ * 备份被拒绝的原因 → 提示文案。
+ *
+ * 与错误码一样用穷尽 `when`：新增拒绝原因会编译报错，不会出现「导入失败但说不出为什么」。
+ */
+@StringRes
+fun BackupRejectReason.messageRes(): Int = when (this) {
+    BackupRejectReason.UNSUPPORTED_VERSION -> R.string.backup_reject_unsupported_version
+    BackupRejectReason.TOO_LARGE -> R.string.backup_reject_too_large
+    BackupRejectReason.MALFORMED -> R.string.backup_reject_malformed
+    BackupRejectReason.INVALID_SELF -> R.string.backup_reject_invalid_self
+    BackupRejectReason.INVALID_ID -> R.string.backup_reject_invalid_id
+    BackupRejectReason.ORPHAN_REFERENCE -> R.string.backup_reject_orphan_reference
+    BackupRejectReason.INCOMPLETE_SEATS -> R.string.backup_reject_incomplete_seats
+    BackupRejectReason.KIND_MISMATCH -> R.string.backup_reject_kind_mismatch
+    BackupRejectReason.AMOUNT_OUT_OF_RANGE -> R.string.backup_reject_amount_out_of_range
+    BackupRejectReason.INVALID_TEXT -> R.string.backup_reject_invalid_text
+    BackupRejectReason.INVALID_TIME -> R.string.backup_reject_invalid_time
+    BackupRejectReason.INVALID_REVISION -> R.string.backup_reject_invalid_revision
+    BackupRejectReason.LIMIT_EXCEEDED -> R.string.backup_reject_limit_exceeded
 }

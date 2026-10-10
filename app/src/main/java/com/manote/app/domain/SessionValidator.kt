@@ -1,7 +1,7 @@
 package com.manote.app.domain
 
 /**
- * 纯输入的格式与取值校验（规格 2.1、2.2）。
+ * 纯输入的格式与取值校验（规格 1.3、2.1、2.2）。
  *
  * 这里只做与数据库无关的判断，因此同一份规则既能给 UI 做实时提示，
  * 也能在 Repository 事务内重新执行（规格 5.1：不用 UI 旧状态代替事务验证）。
@@ -42,17 +42,31 @@ object SessionValidator {
         if (playedAt > now) ManoteError.PLAYED_AT_IN_FUTURE else null
 
     /**
-     * 校验四个座位的净金额：座位必须恰为 0/1/2/3，各自在允许范围内，且合计严格为 0 分。
-     * 不做任何「凑平」处理（规格 2.1）。
+     * 校验座位集合（规格 1.3、5.1）：非空、都落在 0～3 之内，且必须包含 seat 0。
+     *
+     * **不再要求四个位置齐全**：一场可以只记录 1～4 个位置，
+     * 例如只知道自己和上家的输赢时，就不必为另外两位编造数字。
      */
-    fun validateSeatNets(netsBySeat: Map<Int, Long>): ManoteError? {
-        val expectedSeats = (0 until SessionRules.SEAT_COUNT).toSet()
-        if (netsBySeat.keys != expectedSeats) return ManoteError.INVALID_SEAT_SET
-        if (netsBySeat.values.any { !Money.isWithinRange(it) }) return ManoteError.AMOUNT_OUT_OF_RANGE
-        if (netsBySeat.values.sum() != 0L) return ManoteError.SUM_NOT_ZERO
+    fun validateSeatSet(seats: Set<Int>): ManoteError? {
+        val allowed = (0 until SessionRules.SEAT_COUNT).toSet()
+        if (seats.isEmpty()) return ManoteError.INVALID_SEAT_SET
+        if (!allowed.containsAll(seats)) return ManoteError.INVALID_SEAT_SET
+        if (SessionRules.SEAT_SELF !in seats) return ManoteError.INVALID_SEAT_SET
         return null
     }
 
-    /** 四人合计（分），用于底部实时提示。 */
+    /**
+     * 校验各已记录座位的净金额：座位集合合法，且每个金额都在允许范围内。
+     *
+     * **合计不再要求为 0**（规格 1.3）：可以只记一部分人的输赢，因此合计不为零是正常情况，
+     * 由界面提示而不阻拦保存。这里同样不做任何「凑平」处理。
+     */
+    fun validateSeatNets(netsBySeat: Map<Int, Long>): ManoteError? {
+        validateSeatSet(netsBySeat.keys)?.let { return it }
+        if (netsBySeat.values.any { !Money.isWithinRange(it) }) return ManoteError.AMOUNT_OUT_OF_RANGE
+        return null
+    }
+
+    /** 已记录座位的合计（分），用于底部实时提示。 */
     fun totalMinor(netsBySeat: Map<Int, Long>): Long = netsBySeat.values.sum()
 }

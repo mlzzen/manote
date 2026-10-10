@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -34,12 +35,14 @@ import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.ManoteSessionRow
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.model.SessionFilter
+import com.manote.app.ui.model.SessionMonthGroup
+import com.manote.app.ui.model.UiText
 import com.manote.app.ui.navigation.ManoteTab
 
 /**
  * 场次列表（规格 2.4、3.3）。
  *
- * 历史按 playedAt 倒序、同时间按 Session ID 稳定排序；
+ * 历史按 playedAt 倒序、同时间按 Session ID 稳定排序，并按自然月分组显示；
  * 支持标题或历史昵称关键词搜索，可叠加「全部 / 本月 / 上月」筛选。
  * 全部在内存里完成，不额外查询数据库。
  */
@@ -126,7 +129,7 @@ private fun SessionsContent(
                 return@Column
             }
 
-            if (state.visible.isEmpty()) {
+            if (state.monthGroups.isEmpty()) {
                 val searching = state.query.isNotBlank()
                 Box(
                     modifier = Modifier
@@ -158,15 +161,58 @@ private fun SessionsContent(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(items = state.visible, key = { it.id }) { row ->
-                        ManoteSessionRow(
-                            row = row,
-                            onClick = { onOpenSessionDetail(row.id) },
-                        )
+                    // 按月分组：每组先一个月份小标题，再是本组场次（规格 3.3）
+                    state.monthGroups.forEach { group ->
+                        item(key = "month-${group.yearMonth}") {
+                            SessionMonthHeader(group = group)
+                        }
+                        items(items = group.rows, key = { it.id }) { row ->
+                            ManoteSessionRow(
+                                row = row,
+                                onClick = { onOpenSessionDetail(row.id) },
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * 月份小标题：月份、本组场数、本人该月净额合计。
+ *
+ * 合计用符号与文字表达输赢，不只用颜色（规格 3.6）；
+ * 它是从 [SessionMonthGroup] 现场累加的，不另存一份月度账本（规格 2.4）。
+ */
+@Composable
+private fun SessionMonthHeader(group: SessionMonthGroup) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = group.label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = stringResource(R.string.sessions_month_count_format, group.sessionCount),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = stringResource(
+                R.string.sessions_month_self_format,
+                UiText.signedYuan(group.selfNetMinor),
+            ),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

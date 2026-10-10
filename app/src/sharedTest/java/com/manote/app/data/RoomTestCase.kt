@@ -4,6 +4,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.manote.app.data.local.ManoteDatabase
+import com.manote.app.data.repository.BackupRepository
+import com.manote.app.data.repository.DataResetSignal
 import com.manote.app.data.repository.PlayerRepository
 import com.manote.app.data.repository.SeatResultInput
 import com.manote.app.data.repository.SessionDraft
@@ -28,6 +30,8 @@ abstract class RoomTestCase {
     protected lateinit var database: ManoteDatabase
     protected lateinit var playerRepository: PlayerRepository
     protected lateinit var sessionRepository: SessionRepository
+    protected lateinit var backupRepository: BackupRepository
+    protected lateinit var dataResetSignal: DataResetSignal
 
     /** 可控时钟：测试通过修改它来构造「过去」「未来」时间。 */
     protected var nowMillis: Long = BASE_NOW
@@ -41,18 +45,26 @@ abstract class RoomTestCase {
             ManoteDatabase::class.java,
         ).allowMainThreadQueries().build()
 
-        // 两个仓库共享同一个写入闸门，与生产环境的装配方式一致。
+        // 三个仓库共享同一个写入闸门，与生产环境的装配方式一致。
         val writeSerializer = WriteSerializer()
 
         playerRepository = PlayerRepository(
             database = database,
             writeSerializer = writeSerializer,
             clock = { nowMillis },
-            idFactory = { "test-id-${++idCounter}" },
+            idFactory = { uuidFor(++idCounter) },
         )
         sessionRepository = SessionRepository(
             database = database,
             writeSerializer = writeSerializer,
+            clock = { nowMillis },
+        )
+        dataResetSignal = DataResetSignal()
+        backupRepository = BackupRepository(
+            database = database,
+            writeSerializer = writeSerializer,
+            dataResetSignal = dataResetSignal,
+            appVersion = TEST_APP_VERSION,
             clock = { nowMillis },
         )
     }
@@ -95,8 +107,19 @@ abstract class RoomTestCase {
     protected suspend fun sessionCount(): Int = database.sessionDao().count()
 }
 
-/** 所有测试共用的固定「当前时间」，让时间断言可复现。 */
+/**
+ * 所有测试共用的固定「当前时间」，让时间断言可复现。
+ */
 internal const val BASE_NOW = 1_700_000_000_000L
+
+/** 备份文件里写入的 appVersion；测试固定取值，避免断言依赖真实构建版本。 */
+internal const val TEST_APP_VERSION = "0.0.0-test"
+
+/**
+ * 确定性 UUID：既满足备份校验要求的规范形式（8-4-4-4-12），又让断言可复现。
+ * 生产环境的 idFactory 用的是随机 UUID。
+ */
+internal fun uuidFor(n: Int): String = "00000000-0000-4000-8000-" + n.toString().padStart(12, '0')
 
 /** 测试辅助：成功时取值，失败时抛出带错误码的断言错误。 */
 internal fun <T> ManoteResult<T>.value(): T = when (this) {

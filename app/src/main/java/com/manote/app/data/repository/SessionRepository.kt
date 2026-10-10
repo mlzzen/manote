@@ -50,10 +50,13 @@ data class SessionDetail(
 )
 
 /**
- * 场次事务（规格 2.3、5.1）。
+ * 场次事务（规格 1.3、2.3、5.1）。
  *
  * 新建、修改、删除都在单个 Room 事务内完成，并在事务内重新校验身份、重复、金额与时间，
  * 不信任 UI 的旧状态。全部写入经 [WriteSerializer] 串行化。
+ *
+ * 一场记录 1～4 个座位：只记录已选牌友的位置，seat 0 必为本人；
+ * 合计不为 0 属于正常情况，事务不再因此拒绝（规格 1.3）。
  */
 class SessionRepository(
     private val database: ManoteDatabase,
@@ -66,7 +69,7 @@ class SessionRepository(
     private val playerDao = database.playerDao()
 
     /**
-     * 新建一整场：一次事务写入 Session 与四条 SessionResult，全部成功才返回成功。
+     * 新建一整场：一次事务写入 Session 与**每个已记录座位**的一条 SessionResult，全部成功才返回成功。
      * 未提交的草稿不入库。
      */
     suspend fun createSession(draft: SessionDraft): ManoteResult<String> =
@@ -155,7 +158,7 @@ class SessionRepository(
 
     /**
      * 修改整场：使用原 Session ID 原子替换结果，不新增场次、不叠加金额。
-     * 人员、座位与昵称快照保持不变。
+     * 人员、座位与昵称快照保持不变（座位集合必须与保存时完全一致）。
      */
     suspend fun updateSession(edit: SessionEdit): ManoteResult<Long> =
         writeSerializer.withWriteLock {
@@ -181,15 +184,17 @@ class SessionRepository(
         }
 
         val existingResults = sessionResultDao.findBySession(edit.id)
-        val expectedSeats = (0 until SessionRules.SEAT_COUNT).toSet()
-        if (existingResults.size != SessionRules.SEAT_COUNT ||
-            existingResults.map { it.seat }.toSet() != expectedSeats
+        val existingSeats = existingResults.map { it.seat }.toSet()
+        // 已保存的场次至少有一条本人结果；不满足说明库已损坏，明确报错而不是修补。
+        if (existingResults.isEmpty() ||
+            existingSeats.size != existingResults.size ||
+            SessionValidator.validateSeatSet(existingSeats) != null
         ) {
-            // 已保存的场次必然有四条结果；不满足说明库已损坏，明确报错而不是修补。
             return ManoteResult.Failure(ManoteError.INTERNAL_STATE_CORRUPTED)
         }
 
-        if (edit.netMinorBySeat.keys != expectedSeats) {
+        // 人员与位置只读：提交的座位集合必须与保存时逐一对应（规格 2.3）。
+        if (edit.netMinorBySeat.keys != existingSeats) {
             return ManoteResult.Failure(ManoteError.INVALID_SEAT_SET)
         }
         SessionValidator.validateSeatNets(edit.netMinorBySeat)?.let { return ManoteResult.Failure(it) }
@@ -265,12 +270,15 @@ class SessionRepository(
     fun observeSessionsByPlayer(playerId: String): Flow<List<SessionWithResults>> =
         sessionDao.observeByPlayerWithResults(playerId)
 
-    /** 座位必须是 0、1、2、3 各一次，且四个 playerId 互不相同。 */
+    /**
+     * 座位必须是 0～3 中互不相同的一个集合（1～4 个、必含 seat 0），
+     * 且同一场里四个 playerId 互不相同。
+     */
     private fun validateSeatInputs(seats: List<SeatResultInput>): ManoteError? {
-        val expectedSeats = (0 until SessionRules.SEAT_COUNT).toSet()
-        if (seats.size != SessionRules.SEAT_COUNT) return ManoteError.INVALID_SEAT_SET
-        if (seats.map { it.seat }.toSet() != expectedSeats) return ManoteError.INVALID_SEAT_SET
-        if (seats.map { it.playerId }.toSet().size != SessionRules.SEAT_COUNT) {
+        val seatNumbers = seats.map { it.seat }
+        if (seatNumbers.toSet().size != seatNumbers.size) return ManoteError.INVALID_SEAT_SET
+        SessionValidator.validateSeatSet(seatNumbers.toSet())?.let { return it }
+        if (seats.map { it.playerId }.toSet().size != seats.size) {
             return ManoteError.DUPLICATE_PLAYER
         }
         return null

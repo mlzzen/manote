@@ -7,6 +7,7 @@ import com.manote.app.domain.Money
 import com.manote.app.domain.SessionRules
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Locale
 
@@ -62,6 +63,10 @@ object UiText {
         val date = toLocalDate(epochMillis)
         return String.format(Locale.US, "%02d.%02d", date.monthValue, date.dayOfMonth)
     }
+
+    /** `2026年10月`，用于场次列表的月份分组标题（规格 3.3）。 */
+    fun monthLabel(yearMonth: YearMonth): String =
+        String.format(Locale.US, "%d年%d月", yearMonth.year, yearMonth.monthValue)
 
     /**
      * 把 Material 日期选择器给出的 UTC 零点毫秒 + 时/分，合成为设备时区下的真实时间戳。

@@ -44,17 +44,63 @@ class SessionCreateTest : RoomTestCase() {
     }
 
     @Test
-    fun rejectsUnbalancedTotalsWithoutAutoFixing() = runBlocking {
-        // T02：+30、-10、-10、0 合计 +10 元，拒绝且不入库
+    fun acceptsUnbalancedTotalsAsRecorded() = runBlocking {
+        // 规格 1.3：合计不为 0 只提示，不阻拦保存，也不做任何凑平
         val players = givenSelfAndThreeFriends()
 
-        val error = sessionRepository.createSession(
+        val sessionId = sessionRepository.createSession(
             draftOf(players, listOf(3000L, -1000L, -1000L, 0L)),
-        ).error()
+        ).value()
 
-        assertEquals(ManoteError.SUM_NOT_ZERO, error)
-        assertEquals(0, sessionCount())
-        assertEquals(0, database.sessionResultDao().countBySession("session-1"))
+        assertEquals(1, sessionCount())
+        val results = resultsOf(sessionId)
+        assertEquals("金额按输入原样入库，不会被改动", listOf(3000L, -1000L, -1000L, 0L), results.map { it.netMinor })
+        assertEquals(1000L, results.sumOf { it.netMinor })
+    }
+
+    @Test
+    fun recordsOnlyTheSeatsThatWereFilledIn() = runBlocking {
+        // 规格 1.3：只知道自己和上家的输赢时，另外两位不必记录
+        val players = givenSelfAndThreeFriends()
+
+        val sessionId = sessionRepository.createSession(
+            SessionDraft(
+                id = "session-1",
+                playedAt = BASE_NOW - 1_000L,
+                title = "",
+                note = "",
+                seats = listOf(
+                    SeatResultInput(0, players[0], 3000L),
+                    SeatResultInput(1, players[1], -1000L),
+                ),
+            ),
+        ).value()
+
+        assertEquals(listOf(0, 1), resultsOf(sessionId).map { it.seat })
+        assertEquals(1, sessionCount())
+
+        // 没记录的位置不参与统计，也不会凭空出现 0 的场次
+        assertEquals(1, playerRepository.statistics(players[0]).sessionCount)
+        assertEquals(1, playerRepository.statistics(players[1]).sessionCount)
+        assertEquals(0, playerRepository.statistics(players[2]).sessionCount)
+    }
+
+    @Test
+    fun recordsASingleSelfSeatWhenNobodyElseIsFilledIn() = runBlocking {
+        val players = givenSelfAndThreeFriends()
+
+        val sessionId = sessionRepository.createSession(
+            SessionDraft(
+                id = "session-1",
+                playedAt = BASE_NOW - 1_000L,
+                title = "",
+                note = "",
+                seats = listOf(SeatResultInput(0, players[0], 1000L)),
+            ),
+        ).value()
+
+        assertEquals(listOf(0), resultsOf(sessionId).map { it.seat })
+        assertEquals(1000L, playerRepository.statistics(players[0]).netMinor)
     }
 
     @Test
@@ -97,21 +143,31 @@ class SessionCreateTest : RoomTestCase() {
     }
 
     @Test
-    fun rejectsIncompleteOrUnknownSeatSet() = runBlocking {
+    fun rejectsEmptySeatSetOrUnknownSeatOrMissingSelfSeat() = runBlocking {
         val players = givenSelfAndThreeFriends()
 
-        val missingSeat = SessionDraft(
+        // 缺少 seat 0：本人必须记录（规格 1.3）
+        val missingSelf = SessionDraft(
             id = "session-1",
             playedAt = BASE_NOW - 1_000L,
             title = "",
             note = "",
             seats = listOf(
-                SeatResultInput(0, players[0], 3000L),
                 SeatResultInput(1, players[1], -1000L),
                 SeatResultInput(2, players[2], -1000L),
             ),
         )
-        assertEquals(ManoteError.INVALID_SEAT_SET, sessionRepository.createSession(missingSeat).error())
+        assertEquals(ManoteError.INVALID_SEAT_SET, sessionRepository.createSession(missingSelf).error())
+
+        // 一条结果都没有
+        val noSeats = SessionDraft(
+            id = "session-1",
+            playedAt = BASE_NOW - 1_000L,
+            title = "",
+            note = "",
+            seats = emptyList(),
+        )
+        assertEquals(ManoteError.INVALID_SEAT_SET, sessionRepository.createSession(noSeats).error())
 
         val unknownSeat = SessionDraft(
             id = "session-1",
@@ -120,12 +176,24 @@ class SessionCreateTest : RoomTestCase() {
             note = "",
             seats = listOf(
                 SeatResultInput(0, players[0], 3000L),
-                SeatResultInput(1, players[1], -1000L),
-                SeatResultInput(2, players[2], -1000L),
                 SeatResultInput(9, players[3], -1000L),
             ),
         )
         assertEquals(ManoteError.INVALID_SEAT_SET, sessionRepository.createSession(unknownSeat).error())
+
+        // 同一个座位提交两次
+        val duplicateSeat = SessionDraft(
+            id = "session-1",
+            playedAt = BASE_NOW - 1_000L,
+            title = "",
+            note = "",
+            seats = listOf(
+                SeatResultInput(0, players[0], 3000L),
+                SeatResultInput(0, players[1], -1000L),
+            ),
+        )
+        assertEquals(ManoteError.INVALID_SEAT_SET, sessionRepository.createSession(duplicateSeat).error())
+
         assertEquals(0, sessionCount())
     }
 

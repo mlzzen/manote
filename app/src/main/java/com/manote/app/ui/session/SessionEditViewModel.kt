@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.manote.app.R
 import com.manote.app.data.local.PlayerKind
+import com.manote.app.data.repository.DataResetSignal
 import com.manote.app.data.repository.PlayerRepository
 import com.manote.app.data.repository.SeatResultInput
 import com.manote.app.data.repository.SessionDraft
@@ -43,13 +44,13 @@ sealed interface SessionEditMode {
 /** 单个座位的编辑状态。 */
 data class SeatDraft(
     val seat: Int,
-    /** seat=0 恒为本人；1～3 由用户从牌友中选择。 */
+    /** seat=0 恒为本人；1～3 由用户从牌友中选择。为空表示本场不记录这个位置。 */
     val playerId: String? = null,
     /** 显示用昵称；选择牌友或恢复草稿时填入。 */
     val nickname: String = "",
     /** 赢 / 输 切换。金额为 0 时不影响符号（规格 2.1）。 */
     val isWin: Boolean = true,
-    /** 非负金额文本，初始为空；不能把未填当成零。 */
+    /** 非负金额文本；留空按 0 计（规格 1.3）。 */
     val amountText: String = "",
 ) {
     val isSelfSeat: Boolean get() = seat == SessionRules.SEAT_SELF
@@ -72,14 +73,14 @@ data class SessionEditUiState(
     val playedAt: Long = 0L,
     val title: String = "",
     val note: String = "",
-    /** 各座位金额的符号化净额，仅包含解析成功的座位。 */
+    /** 各**已记录**座位（已选牌友）的符号化净额；金额留空按 0 计（规格 1.3）。 */
     val signedBySeat: Map<Int, Long> = emptyMap(),
-    /** 各座位金额的解析失败原因（字符串资源 id）。 */
+    /** 各座位金额的解析失败原因（字符串资源 id）。留空不算失败。 */
     val amountErrors: Map<Int, Int> = emptyMap(),
-    /** 四人合计（分）；只要有一个座位没填好就为 null。 */
+    /** 已记录座位的合计（分）；有金额解析失败时为 null。 */
     val totalMinor: Long? = null,
-    /** 四个座位都选了人且金额都填好了。 */
-    val complete: Boolean = false,
+    /** 所有已记录座位的金额都填写正确（留空视为 0）。 */
+    val amountsValid: Boolean = true,
     val saving: Boolean = false,
     val previewVisible: Boolean = false,
     /** 表单是否有改动，用于返回时确认放弃。 */
@@ -87,8 +88,20 @@ data class SessionEditUiState(
     /** 修改模式下原始场次读不出来（已被删除等情况），界面据此给出提示而不是当成空表单。 */
     val loadFailed: Boolean = false,
 ) {
-    /** 是否为四人全零。全零也允许保存，但需要额外确认（规格 2.1）。 */
-    val allZero: Boolean get() = complete && totalMinor == 0L && signedBySeat.values.all { it == 0L }
+    /** 本场实际记录的位置数（选了牌友的座位）。 */
+    val recordedSeatCount: Int get() = seats.count { it.playerId != null }
+
+    /** 是否为全零。全零也允许保存，但需要额外确认（规格 2.1）。 */
+    val allZero: Boolean
+        get() = amountsValid && signedBySeat.isNotEmpty() && signedBySeat.values.all { it == 0L }
+
+    /**
+     * 合计与 0.00 元不符。
+     *
+     * 这不是错误：只记一部分人的输赢时合计本来就不会是 0（规格 1.3），
+     * 界面据此给出提示色，但保存按钮保持可用。
+     */
+    val unbalanced: Boolean get() = totalMinor != null && totalMinor != 0L
 
     /** 修改模式下人员与位置只读（规格 3.3）；新建时可自由选人。 */
     val rosterLocked: Boolean get() = mode is SessionEditMode.Edit
@@ -106,19 +119,27 @@ sealed interface SessionEditEvent {
 
     /** 失败提示。 */
     data class Failed(@StringRes val messageRes: Int) : SessionEditEvent
+
+    /**
+     * 表单已作废：库被整体替换（导入备份）时发出（规格 2.3、T24）。
+     * 界面据此直接离开本页——草稿里的 playerId 属于导入前的数据，继续填下去也写不进去。
+     */
+    data object Invalidated : SessionEditEvent
 }
 
 /**
- * 记一场 / 修改本场 ViewModel（规格 3.2、3.3）。
+ * 记一场 / 修改本场 ViewModel（规格 1.3、3.2、3.3）。
  *
  * 新建：
  * - 草稿保存在 [SavedStateHandle] 中，旋转或进程重建后可恢复；
  * - 恢复时会重新校验档案是否仍存在、是否仍可选（已归档的会被清掉）
  * - 提交前先预览确认；保存期间禁用按钮；
- * - 同一次提交复用同一个 Session UUID，重试不会记出第二场（规格 2.3）。
+ * - 同一次提交复用同一个 Session UUID，重试不会记出第二场（规格 2.3）；
+ * - **不要求选齐四人，也不要求每人都填金额**：只记录选了牌友的位置，金额留空按 0 计；
+ *   合计不为 0 只在界面提示，不阻拦保存（规格 1.3）。
  *
  * 修改（规格 3.3）：
- * - 人员与位置只读，可编辑时间、标题、备注与四人金额，进入时全部预填；
+ * - 人员与位置只读，可编辑时间、标题、备注与已记录位置的金额，进入时全部预填；
  * - 保存走 `updateSession`，携带进入时的 revision，过期则拒绝覆盖并保留输入（T19）；
  * - 不做「恢复草稿后清空已归档牌友」这一步：已归档麻友的历史场次本来就允许修正（T13）。
  */
@@ -126,6 +147,7 @@ class SessionEditViewModel(
     private val playerRepository: PlayerRepository,
     private val sessionRepository: SessionRepository,
     private val savedState: SavedStateHandle,
+    private val dataReset: DataResetSignal,
     private val mode: SessionEditMode = SessionEditMode.Create,
     private val clock: () -> Long = System::currentTimeMillis,
     private val idFactory: () -> String = { UUID.randomUUID().toString() },
@@ -173,6 +195,10 @@ class SessionEditViewModel(
                 loadSessionForEdit(current.sessionId, overwriteFields = !hadDraft)
             }
         }
+        // 备份导入会把整库换掉：这份表单连同草稿全部作废（规格 2.3、T24）
+        viewModelScope.launch {
+            dataReset.events.collect { onDataReplaced() }
+        }
     }
 
     // ————————————————————— 表单编辑 —————————————————————
@@ -188,11 +214,12 @@ class SessionEditViewModel(
         updateSeat(seat) { it.copy(playerId = option.id, nickname = option.nickname) }
     }
 
-    /** 清空某个非本人座位。 */
+    /** 清空某个非本人座位：连同金额一起清掉，本场不再记录这个位置。 */
     fun clearSeat(seat: Int) {
         if (seat == SessionRules.SEAT_SELF) return
         if (_uiState.value.rosterLocked) return
-        updateSeat(seat) { it.copy(playerId = null, nickname = "") }
+        // 金额必须一并清掉：不记录的位置若留着金额，会被静默忽略，看起来像已经记上了
+        updateSeat(seat) { it.copy(playerId = null, nickname = "", amountText = "") }
     }
 
     fun setPlayedAt(epochMillis: Long) {
@@ -274,10 +301,14 @@ class SessionEditViewModel(
 
         val inputs = state.seats.mapNotNull { draft ->
             val playerId = draft.playerId ?: return@mapNotNull null
-            val netMinor = state.signedBySeat[draft.seat] ?: return@mapNotNull null
-            SeatResultInput(seat = draft.seat, playerId = playerId, netMinor = netMinor)
+            // 留空按 0 计（规格 1.3）：只记一部分人的输赢是正常用法
+            SeatResultInput(
+                seat = draft.seat,
+                playerId = playerId,
+                netMinor = state.signedBySeat[draft.seat] ?: 0L,
+            )
         }
-        if (inputs.size != SessionRules.SEAT_COUNT) {
+        if (inputs.isEmpty()) {
             _uiState.update { it.copy(previewVisible = false) }
             emit(SessionEditEvent.Failed(R.string.error_invalid_seat_set))
             return
@@ -343,16 +374,30 @@ class SessionEditViewModel(
         clearDraft()
     }
 
+    /**
+     * 整库被替换：草稿里保存的 playerId、场次 ID 都属于导入前的库，
+     * 留着只会让用户填完才发现写不进去，因此立即清空并让界面离开本页（规格 2.3、T24）。
+     */
+    private fun onDataReplaced() {
+        clearDraft()
+        emit(SessionEditEvent.Invalidated)
+    }
+
     // ————————————————————— 内部 —————————————————————
 
     private fun preflight(state: SessionEditUiState): Int? = when {
         state.loadFailed -> R.string.error_session_not_found
-        state.seats.any { it.playerId == null } || state.seats.any { it.amountText.isBlank() } ->
-            R.string.session_total_incomplete
 
-        !state.complete -> R.string.session_total_incomplete
-        state.totalMinor != 0L -> R.string.error_sum_not_zero
+        // 填错（而不是留空）必须拦住：这是笔误，不是「这一位先不记」
+        state.amountErrors.isNotEmpty() ->
+            state.amountErrors.entries.minByOrNull { it.key }?.value
+                ?: R.string.session_total_incomplete
+
+        state.signedBySeat.isEmpty() -> R.string.session_total_incomplete
+        SessionRules.SEAT_SELF !in state.signedBySeat -> R.string.error_invalid_seat_set
         state.playedAt > clock() -> R.string.error_played_at_in_future
+
+        // 合计不为 0 只提示，不阻拦保存（规格 1.3）
         else -> null
     }
 
@@ -368,29 +413,31 @@ class SessionEditViewModel(
         _uiState.update { state ->
             val signed = mutableMapOf<Int, Long>()
             val errors = mutableMapOf<Int, Int>()
-            var complete = true
 
             for (draft in state.seats) {
-                if (draft.playerId == null || draft.amountText.isBlank()) {
-                    complete = false
+                // 没选牌友的位置本场不记录，金额一并忽略（清空座位时也已经清掉了）
+                if (draft.playerId == null) continue
+
+                // 留空按 0 计（规格 1.3）：不必为每个人都填数字
+                val text = draft.amountText.trim()
+                if (text.isEmpty()) {
+                    signed[draft.seat] = 0L
                     continue
                 }
-                when (val parsed = AmountParser.parse(draft.amountText)) {
+
+                when (val parsed = AmountParser.parse(text)) {
                     is AmountParseResult.Success ->
                         signed[draft.seat] = SeatEntry.signedMinor(parsed.minor, draft.isWin)
 
-                    is AmountParseResult.Failure -> {
-                        errors[draft.seat] = parsed.reason.messageRes()
-                        complete = false
-                    }
+                    is AmountParseResult.Failure -> errors[draft.seat] = parsed.reason.messageRes()
                 }
             }
 
             state.copy(
                 signedBySeat = signed,
                 amountErrors = errors,
-                complete = complete,
-                totalMinor = if (complete) signed.values.sum() else null,
+                amountsValid = errors.isEmpty(),
+                totalMinor = if (errors.isEmpty()) signed.values.sum() else null,
                 dirty = state.isDirty(),
             )
         }
@@ -463,7 +510,7 @@ class SessionEditViewModel(
                             seats = (0 until SessionRules.SEAT_COUNT).map { seat ->
                                 val row = bySeat[seat]
                                 if (row == null) {
-                                    // 正常库里每场必有四条结果；缺行时留空，保存会被事务拒绝
+                                    // 本场没有记录这个位置（规格 1.3）：留空即可，不是错误
                                     SeatDraft(seat = seat)
                                 } else {
                                     SeatDraft(
@@ -599,6 +646,7 @@ class SessionEditViewModel(
             savedState.remove<String>(key(seatAmountKey(seat)))
         }
         baseline = null
+        expectedRevision = null
         _uiState.update { state ->
             SessionEditUiState(
                 mode = state.mode,

@@ -67,4 +67,15 @@ interface SessionDao {
             "ORDER BY s.playedAt DESC, s.id DESC",
     )
     fun observeByPlayerWithResults(playerId: String): Flow<List<SessionWithResults>>
+
+    /** 一次性读出全部场次，供 JSON 备份导出；顺序与界面一致（打完时间倒序）。 */
+    @Query("SELECT * FROM session ORDER BY playedAt DESC, id DESC")
+    suspend fun findAllOrdered(): List<SessionEntity>
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(sessions: List<SessionEntity>)
+
+    /** 全量覆盖导入时清空场次表；调用方必须先删 session_result（外键 CASCADE 之外仍按顺序写）。 */
+    @Query("DELETE FROM session")
+    suspend fun deleteAll()
 }

@@ -62,6 +62,8 @@ fun ManoteNavHost(
             SettingsScreen(
                 onSelectTab = navController::switchTab,
                 onRecordSession = { navController.navigateTo(ManoteRoutes.SESSION_NEW) },
+                // 规格 6.1：导入成功后清除旧页面草稿、回到首页，统计从新库刷新
+                onImportCompleted = { navController.popBackTo(ManoteRoutes.HOME) },
             )
         }
 
@@ -74,6 +76,8 @@ fun ManoteNavHost(
                         popUpTo(ManoteRoutes.SESSION_NEW) { inclusive = true }
                     }
                 },
+                // 表单被导入整库作废时直接回首页（规格 2.3、T24）
+                onInvalidated = { navController.popBackTo(ManoteRoutes.HOME) },
             )
         }
 
@@ -105,6 +109,8 @@ fun ManoteNavHost(
                 onSaved = { navController.navigateUp() },
                 // 修改成功后退回详情页；详情页订阅数据库，会自动显示新金额与名次
                 onUpdated = { navController.navigateUp() },
+                // 表单被导入整库作废时直接回首页（规格 2.3、T24）
+                onInvalidated = { navController.popBackTo(ManoteRoutes.HOME) },
             )
         }
 

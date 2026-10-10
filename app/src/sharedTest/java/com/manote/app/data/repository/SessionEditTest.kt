@@ -5,13 +5,14 @@ import com.manote.app.data.RoomTestCase
 import com.manote.app.data.error
 import com.manote.app.data.value
 import com.manote.app.domain.ManoteError
+import com.manote.app.domain.Money
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** 修改与删除整场（规格 2.3、5.1；验收用例 T10–T13、T18、T19）。 */
+/** 修改与删除整场（规格 1.3、2.3、5.1；验收用例 T10–T13、T18、T19）。 */
 class SessionEditTest : RoomTestCase() {
 
     /** 建一场基础数据：自己 +30、上家 -10、对家 -10、下家 -10。 */
@@ -75,21 +76,81 @@ class SessionEditTest : RoomTestCase() {
     }
 
     @Test
-    fun editRejectsUnbalancedAmountsAndLeavesOriginalIntact() = runBlocking {
-        // 事务原子性：校验失败时原场与结果都不应被改动
+    fun editAcceptsUnbalancedAmountsAndReplacesResults() = runBlocking {
+        // 规格 1.3：合计不为 0 也能保存；原场原子替换、不叠加
+        val players = givenSavedSession()
+
+        sessionRepository.updateSession(
+            editOf(listOf(6000L, -2000L, -2000L, -1000L)),
+        ).value()
+
+        assertEquals(1, sessionCount())
+        val detail = sessionRepository.getSessionDetail("session-1").value()
+        assertEquals(listOf(6000L, -2000L, -2000L, -1000L), detail.results.map { it.netMinor })
+        assertEquals(2L, detail.session.revision)
+        // 统计按新值重算，而不是把差额累加上去
+        assertEquals(6000L, playerRepository.statistics(players[0]).netMinor)
+        assertEquals(-1000L, playerRepository.statistics(players[3]).netMinor)
+    }
+
+    @Test
+    fun editRejectsOutOfRangeAmountsAndLeavesOriginalIntact() = runBlocking {
+        // 事务原子性：真校验失败时原场与结果都不应被改动
         givenSavedSession()
         val before = sessionRepository.getSessionDetail("session-1").value()
 
         val error = sessionRepository.updateSession(
-            editOf(listOf(6000L, -2000L, -2000L, -1000L)),
+            editOf(listOf(Money.MAX_NET_MINOR + 1L, -1000L, -1000L, 0L)),
         ).error()
 
-        assertEquals(ManoteError.SUM_NOT_ZERO, error)
+        assertEquals(ManoteError.AMOUNT_OUT_OF_RANGE, error)
 
         val after = sessionRepository.getSessionDetail("session-1").value()
         assertEquals(before.session, after.session)
         assertEquals(before.results, after.results)
         assertEquals(1, sessionCount())
+    }
+
+    @Test
+    fun editRequiresExactlyTheRecordedSeatSet() = runBlocking {
+        // 只记录了本人与上家的场次（规格 1.3）
+        val players = givenSelfAndThreeFriends()
+        sessionRepository.createSession(
+            SessionDraft(
+                id = "session-1",
+                playedAt = BASE_NOW - 60_000L,
+                title = "周五晚局",
+                note = "",
+                seats = listOf(
+                    SeatResultInput(0, players[0], 3000L),
+                    SeatResultInput(1, players[1], -3000L),
+                ),
+            ),
+        ).value()
+
+        sessionRepository.updateSession(
+            editOf(listOf(5000L, -5000L, 0L, 0L)).copy(
+                netMinorBySeat = mapOf(0 to 5000L, 1 to -5000L),
+            ),
+        ).value()
+        assertEquals(listOf(5000L, -5000L), resultsOf("session-1").map { it.netMinor })
+
+        // 人员与位置只读：提交的座位集合必须与保存时逐一对应
+        val tooMany = sessionRepository.updateSession(
+            editOf(listOf(5000L, -3000L, -2000L, 0L), expectedRevision = 2L),
+        ).error()
+        assertEquals(ManoteError.INVALID_SEAT_SET, tooMany)
+
+        val tooFew = sessionRepository.updateSession(
+            editOf(listOf(5000L, 0L, 0L, 0L), expectedRevision = 2L).copy(
+                netMinorBySeat = mapOf(0 to 5000L),
+            ),
+        ).error()
+        assertEquals(ManoteError.INVALID_SEAT_SET, tooFew)
+
+        // 两次非法提交都没有改动库
+        assertEquals(2L, sessionRepository.getSessionDetail("session-1").value().session.revision)
+        assertEquals(listOf(5000L, -5000L), resultsOf("session-1").map { it.netMinor })
     }
 
     @Test
