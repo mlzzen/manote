@@ -10,3 +10,7 @@ captures/
 
 # 智能体工作文件（本地记忆、任务状态），不入版本库
 .workbuddy/
+
+# 内部文档（产品规格与开发交接记录），仅本地保留，不公开发布
+/MAHJONG_APP_PLAN.md
+/docs/IMPLEMENTATION_STATUS.md
