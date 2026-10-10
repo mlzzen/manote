@@ -52,4 +52,19 @@ interface SessionDao {
     @Transaction
     @Query("SELECT * FROM session WHERE id = :id")
     fun observeByIdWithResults(id: String): Flow<List<SessionWithResults>>
+
+    /**
+     * 订阅某位玩家参与过的全部场次及其四人结果，按打完时间倒序（规格 3.4 逐场统计）。
+     *
+     * 连同该场全部四条结果一起取出，界面据此同时显示「麻友本场结果」与「本人本场结果」，
+     * 不需要为每一场再查一次。
+     */
+    @Transaction
+    @Query(
+        "SELECT s.* FROM session s " +
+            "INNER JOIN session_result sr ON sr.sessionId = s.id " +
+            "WHERE sr.playerId = :playerId " +
+            "ORDER BY s.playedAt DESC, s.id DESC",
+    )
+    fun observeByPlayerWithResults(playerId: String): Flow<List<SessionWithResults>>
 }

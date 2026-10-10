@@ -8,6 +8,11 @@
     <string name="action_confirm">确定</string>
     <string name="action_view_all">查看全部</string>
     <string name="action_record_session">记一场</string>
+    <string name="action_more">更多</string>
+    <string name="action_edit">编辑</string>
+    <string name="action_save">保存</string>
+    <string name="action_archive">归档</string>
+    <string name="action_unarchive">取消归档</string>
 
     <!-- 复用文本 -->
     <string name="common_amount_unit">元</string>
@@ -50,6 +55,9 @@
     <string name="sessions_filter_last_month">上月</string>
     <string name="sessions_empty_title">这里还没有场次</string>
     <string name="sessions_empty_desc">换个筛选条件看看，或者直接记一场新的。</string>
+    <string name="sessions_search_hint">搜索标题或当时的牌友昵称</string>
+    <string name="sessions_search_empty_title">没有匹配的场次</string>
+    <string name="sessions_search_empty_desc">换个关键词，或清空搜索看看全部场次。</string>
 
     <!-- 四人详情 -->
     <string name="detail_title">场次详情</string>
@@ -61,6 +69,11 @@
     <string name="detail_note_label">备注</string>
     <string name="detail_missing_title">该场次已不存在</string>
     <string name="detail_missing_desc">它可能已经被删除。</string>
+    <string name="detail_action_edit">修改</string>
+    <string name="detail_action_delete">删除</string>
+    <string name="detail_delete_title">删除这一场？</string>
+    <string name="detail_delete_message">本场四人的结果会一并移除，本人与牌友的统计会立即重新计算；牌友档案会保留。删除后无法恢复。</string>
+    <string name="detail_delete_confirm">删除</string>
 
     <!-- 记一场 -->
     <string name="session_played_at">打完时间</string>
@@ -85,6 +98,12 @@
     <string name="session_discard_confirm">放弃</string>
     <string name="session_discard_stay">继续填写</string>
 
+    <!-- 修改整场（复用记一场表单） -->
+    <string name="session_edit_title">修改本场</string>
+    <string name="session_edit_roster_locked">本场的人员与位置不可更改；可以修改时间、标题、备注和四人金额。</string>
+    <string name="session_edit_save">保存修改</string>
+    <string name="session_edit_stale">这一场已被改动或删除，请返回后重新打开。</string>
+
     <!-- 牌友选择器 -->
     <string name="friend_picker_title">选择牌友</string>
     <string name="friend_picker_search_hint">搜索昵称或备注</string>
@@ -97,13 +116,40 @@
     <string name="friend_duplicate_hint">已有同名档案；继续创建会作为另一位牌友单独统计。</string>
     <string name="friend_selected_elsewhere">已在其它位置</string>
     <string name="friend_action_create">创建</string>
+    <string name="friend_id_short_format">ID %1$s</string>
 
     <!-- 牌友页 -->
     <string name="friends_count_format">%1$d 位牌友</string>
+    <string name="friends_count_with_archived_format">%1$d 位牌友（含已归档 %2$d 位）</string>
     <string name="friends_empty_title">还没有牌友</string>
     <string name="friends_empty_desc">记一场时可以直接新建，也可以先在这里建好。</string>
     <string name="friends_add">新增牌友</string>
     <string name="friends_search_hint">搜索昵称或备注</string>
+    <string name="friends_include_archived">包含已归档</string>
+    <string name="friends_archived_badge">已归档</string>
+    <string name="friends_stat_format">%1$d 场</string>
+    <string name="friends_no_sessions">还没记录过</string>
+    <string name="friends_search_empty_title">没有匹配的牌友</string>
+    <string name="friends_search_empty_desc">换个关键词试试，或勾选「包含已归档」。</string>
+
+    <!-- 牌友详情 -->
+    <string name="friend_detail_title">牌友详情</string>
+    <string name="friend_detail_missing_title">该牌友已不存在</string>
+    <string name="friend_detail_missing_desc">它可能已经被删除。</string>
+    <string name="friend_detail_archived_note">已归档：不能再用于新场次，历史场次与统计都会保留，随时可以取消归档。</string>
+    <string name="friend_detail_stats_title">累计战绩</string>
+    <string name="friend_stat_win_amount">累计赢钱</string>
+    <string name="friend_stat_loss_amount">累计输钱</string>
+    <string name="friend_stat_net">净输赢</string>
+    <string name="friend_stat_sessions">场数</string>
+    <string name="friend_detail_sessions_title">逐场记录</string>
+    <string name="friend_detail_no_sessions">这位牌友还没有参与过场次。</string>
+    <string name="friend_session_self_label">我</string>
+    <string name="friend_edit_title">编辑牌友</string>
+    <string name="friend_archive_title">归档这位牌友？</string>
+    <string name="friend_archive_message">归档后不能再用于新场次；历史场次、逐场记录与统计都会保留，随时可以取消归档。</string>
+    <string name="friend_unarchive_title">取消归档？</string>
+    <string name="friend_unarchive_message">取消归档后，这位牌友可以重新用于新场次。</string>
 
     <!-- 我的 -->
     <string name="settings_profile_title">本人档案</string>
@@ -112,6 +158,9 @@
     <string name="settings_about_body">本应用离线运行，不联网、不读取通讯录与相册。JSON 备份恢复与 CSV 导出将在后续阶段提供。</string>
     <string name="settings_data_title">数据</string>
     <string name="settings_data_pending">备份与导出尚未实现</string>
+    <string name="settings_rename_action">修改昵称</string>
+    <string name="settings_rename_title">修改本人昵称</string>
+    <string name="settings_rename_hint">1～12 个字；历史场次里保存的是当时的昵称，不会被改写。</string>
 
     <!-- 金额解析失败提示 -->
     <string name="amount_empty">请填写金额</string>

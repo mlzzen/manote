@@ -40,6 +40,19 @@ interface PlayerDao {
     @Query("SELECT * FROM player WHERE kind = 'FRIEND' AND archivedAt IS NULL ORDER BY updatedAt DESC, id ASC")
     fun observeActiveFriends(): Flow<List<PlayerEntity>>
 
+    /**
+     * 订阅全部麻友（含已归档），供牌友页的「包含已归档」开关使用（规格 3.4）。
+     *
+     * 排序与 [observeActiveFriends] 一致：updatedAt 倒序、同时间按 ID 稳定排序。
+     * 不混入 SELF。是否显示已归档由界面在内存里过滤，避免为开关切换反复重建查询。
+     */
+    @Query("SELECT * FROM player WHERE kind = 'FRIEND' ORDER BY updatedAt DESC, id ASC")
+    fun observeAllFriends(): Flow<List<PlayerEntity>>
+
+    /** 订阅单个档案，供麻友详情实时刷新（改名、归档后立即反映）。 */
+    @Query("SELECT * FROM player WHERE id = :id")
+    fun observeById(id: String): Flow<PlayerEntity?>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(player: PlayerEntity)
 

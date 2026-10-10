@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.manote.app.R
 import com.manote.app.ui.components.ManotePrimaryButton
 import com.manote.app.ui.components.PlayerAvatar
+import com.manote.app.ui.model.UiText
 import kotlinx.coroutines.delay
 
 /**
@@ -72,6 +73,14 @@ fun FriendPickerSheet(
                     it.note.contains(query, ignoreCase = true)
             }
         }
+    }
+
+    // 同名档案同时出现时补一个 ID 短串，否则两行看起来一模一样（规格 3.4）
+    val ambiguousNames = remember(options) {
+        options.groupingBy { it.nickname }
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
     }
 
     ModalBottomSheet(
@@ -116,6 +125,7 @@ fun FriendPickerSheet(
                             FriendOptionRow(
                                 option = option,
                                 forSeat = forSeat,
+                                showId = option.nickname in ambiguousNames,
                                 onPick = onPick,
                             )
                         }
@@ -152,9 +162,20 @@ private fun PickerHint(text: String) {
 private fun FriendOptionRow(
     option: FriendOptionUi,
     forSeat: Int,
+    showId: Boolean,
     onPick: (FriendOptionUi) -> Unit,
 ) {
     val takenByOtherSeat = option.takenBySeat != null && option.takenBySeat != forSeat
+    val subtitle = if (takenByOtherSeat) {
+        stringResource(R.string.friend_selected_elsewhere)
+    } else {
+        // 备注 + （同名时）ID 短串，两者都没有就不占这一行
+        listOfNotNull(
+            option.note.takeIf { it.isNotBlank() },
+            stringResource(R.string.friend_id_short_format, UiText.shortId(option.id))
+                .takeIf { showId },
+        ).joinToString(" · ")
+    }
 
     Row(
         modifier = Modifier
@@ -191,17 +212,15 @@ private fun FriendOptionRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = if (takenByOtherSeat) {
-                    stringResource(R.string.friend_selected_elsewhere)
-                } else {
-                    option.note
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

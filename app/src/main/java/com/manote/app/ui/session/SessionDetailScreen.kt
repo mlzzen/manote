@@ -13,14 +13,31 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,18 +57,22 @@ import com.manote.app.ui.model.TransferUi
 import com.manote.app.ui.model.UiText
 import com.manote.app.ui.model.seatLabel
 import com.manote.app.ui.theme.manote
+import kotlinx.coroutines.launch
 
 /**
  * 四人详情（规格 3.3）。
  *
  * 展示四个位置、快照昵称、净输赢、排名与结清建议，本人结果突出显示。
  * 排名与结清都从当前四人结果实时计算（规格 2.5），不另存结果。
- * 修改、CSV 导出与删除属 P3/P4，本页不放置对应入口。
+ *
+ * 菜单提供「修改」与「删除」；CSV 导出属 P4，此处不放。
  */
 @Composable
 fun SessionDetailScreen(
     sessionId: String,
     onNavigateBack: () -> Unit,
+    onEdit: (String) -> Unit,
+    onDeleted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel = manoteViewModel(key = sessionId) { container, _ ->
@@ -59,13 +80,39 @@ fun SessionDetailScreen(
     }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                SessionDetailEvent.Deleted -> onDeleted()
+                is SessionDetailEvent.Failed -> scope.launch {
+                    snackbarHostState.showSnackbar(context.getString(event.messageRes))
+                }
+            }
+        }
+    }
+
     SessionDetailContent(
         title = state.detail?.title ?: stringResource(R.string.detail_title),
         loading = state.loading,
         detail = state.detail,
+        deleting = state.deleting,
         onNavigateBack = onNavigateBack,
+        onEdit = { onEdit(sessionId) },
+        onRequestDelete = viewModel::requestDelete,
+        snackbarHostState = snackbarHostState,
         modifier = modifier,
     )
+
+    if (state.confirmDeleteVisible) {
+        DeleteSessionDialog(
+            onDismiss = viewModel::dismissDelete,
+            onConfirm = viewModel::deleteConfirmed,
+        )
+    }
 }
 
 @Composable
@@ -73,13 +120,28 @@ private fun SessionDetailContent(
     title: String,
     loading: Boolean,
     detail: SessionDetailUi?,
+    deleting: Boolean,
     onNavigateBack: () -> Unit,
+    onEdit: () -> Unit,
+    onRequestDelete: () -> Unit,
+    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
     ManoteScaffold(
         title = title,
         onNavigateBack = onNavigateBack,
         modifier = modifier,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        actions = {
+            // 场次还在时才给菜单；已不存在的场次没有可操作的对象
+            if (detail != null) {
+                SessionDetailMenu(
+                    deleting = deleting,
+                    onEdit = onEdit,
+                    onRequestDelete = onRequestDelete,
+                )
+            }
+        },
     ) { innerPadding ->
         if (detail == null) {
             // 首帧还没读到时不要误报「已不存在」，只有确认读完了才提示
@@ -269,4 +331,85 @@ private fun TransferRow(transfer: TransferUi, fromName: String, toName: String) 
         Spacer(modifier = Modifier.width(8.dp))
         SignedAmount(netMinor = transfer.amountMinor, style = MaterialTheme.typography.titleSmall)
     }
+}
+
+/**
+ * 详情顶栏的「更多」菜单（规格 3.3）。
+ * 删除期间禁用，避免重复触发；修改则不受删除进行中的影响。
+ */
+@Composable
+private fun SessionDetailMenu(
+    deleting: Boolean,
+    onEdit: () -> Unit,
+    onRequestDelete: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            enabled = !deleting,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.action_more),
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(text = stringResource(R.string.detail_action_edit)) },
+                leadingIcon = {
+                    Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
+                },
+                onClick = {
+                    expanded = false
+                    onEdit()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(text = stringResource(R.string.detail_action_delete)) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                },
+                onClick = {
+                    expanded = false
+                    onRequestDelete()
+                },
+            )
+        }
+    }
+}
+
+/** 删除二次确认：明确说明结果会一并移除、档案保留、不可撤销（规格 3.3、T11）。 */
+@Composable
+private fun DeleteSessionDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.detail_delete_title)) },
+        text = { Text(text = stringResource(R.string.detail_delete_message)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = stringResource(R.string.detail_delete_confirm),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.action_cancel))
+            }
+        },
+    )
 }

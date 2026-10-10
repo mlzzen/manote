@@ -258,6 +258,13 @@ class SessionRepository(
     fun observeSessionDetail(sessionId: String): Flow<SessionWithResults?> =
         sessionDao.observeByIdWithResults(sessionId).map { it.firstOrNull() }
 
+    /**
+     * 订阅某位玩家参与过的全部场次（规格 3.4 逐场统计）。
+     * 麻友详情页据此同时显示麻友与本人各自的本场结果。
+     */
+    fun observeSessionsByPlayer(playerId: String): Flow<List<SessionWithResults>> =
+        sessionDao.observeByPlayerWithResults(playerId)
+
     /** 座位必须是 0、1、2、3 各一次，且四个 playerId 互不相同。 */
     private fun validateSeatInputs(seats: List<SeatResultInput>): ManoteError? {
         val expectedSeats = (0 until SessionRules.SEAT_COUNT).toSet()

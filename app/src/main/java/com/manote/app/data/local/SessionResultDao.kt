@@ -29,6 +29,19 @@ interface SessionResultDao {
     @Query("SELECT netMinor FROM session_result WHERE playerId = :playerId")
     fun observeNetMinorsByPlayer(playerId: String): Flow<List<Long>>
 
+    /**
+     * 订阅全部玩家的场数与净输赢（规格 3.4：牌友列表每行显示场数、净输赢）。
+     *
+     * 一次聚合查出全部玩家，避免列表里对每位麻友各查一次造成 N+1。
+     * 结果是纯派生数据，与 [observeNetMinorsByPlayer] 同源，不会出现两处对不上的情况。
+     */
+    @Query(
+        "SELECT playerId AS playerId, COUNT(*) AS sessionCount, " +
+            "COALESCE(SUM(netMinor), 0) AS netMinor " +
+            "FROM session_result GROUP BY playerId",
+    )
+    fun observeAggregates(): Flow<List<PlayerAggregate>>
+
     @Query("SELECT COUNT(*) FROM session_result WHERE sessionId = :sessionId")
     suspend fun countBySession(sessionId: String): Int
 

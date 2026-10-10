@@ -17,16 +17,17 @@ import kotlinx.coroutines.flow.stateIn
 data class SessionsUiState(
     val loading: Boolean = true,
     val filter: SessionFilter = SessionFilter.ALL,
-    /** 当前筛选下要展示的场次。 */
+    val query: String = "",
+    /** 当前筛选与搜索下要展示的场次。 */
     val visible: List<SessionRowUi> = emptyList(),
-    /** 库里是否存在任何场次，用于区分「还没有记录」与「筛选后为空」。 */
+    /** 库里是否存在任何场次，用于区分「还没有记录」与「筛选/搜索后为空」。 */
     val hasAny: Boolean = false,
 )
 
 /**
  * 场次列表 ViewModel。
  *
- * 订阅全部场次，筛选只在内存里做，不额外发起查询；
+ * 订阅全部场次，月份筛选与关键词搜索都只在内存里做，不额外发起查询；
  * 时间以注入的 [clock] 为准，便于测试「本月 / 上月」。
  */
 class SessionsViewModel(
@@ -35,24 +36,38 @@ class SessionsViewModel(
 ) : ViewModel() {
 
     private val filter = MutableStateFlow(SessionFilter.ALL)
+    private val query = MutableStateFlow("")
 
-    val uiState: StateFlow<SessionsUiState> =
-        combine(sessionRepository.observeSessions(), filter) { sessions, currentFilter ->
-            val rows = sessions.map { it.toRowUi() }
-            SessionsUiState(
-                loading = false,
+    val uiState: StateFlow<SessionsUiState> = combine(
+        sessionRepository.observeSessions(),
+        filter,
+        query,
+    ) { sessions, currentFilter, keyword ->
+        val rows = sessions.map { it.toRowUi() }
+        SessionsUiState(
+            loading = false,
+            filter = currentFilter,
+            query = keyword,
+            visible = SessionFiltering.apply(
+                rows = rows,
                 filter = currentFilter,
-                visible = SessionFiltering.apply(rows, currentFilter, clock()),
-                hasAny = rows.isNotEmpty(),
-            )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            initialValue = SessionsUiState(),
+                nowMillis = clock(),
+                query = keyword,
+            ),
+            hasAny = rows.isNotEmpty(),
         )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+        initialValue = SessionsUiState(),
+    )
 
     fun setFilter(value: SessionFilter) {
         filter.value = value
+    }
+
+    fun setQuery(value: String) {
+        query.value = value
     }
 
     private companion object {

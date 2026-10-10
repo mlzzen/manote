@@ -28,6 +28,11 @@ data class SessionRowUi(
     val selfNetMinor: Long,
     /** 其余三位的昵称快照，按 seat 升序。 */
     val opponentNames: List<String>,
+    /**
+     * 关键词搜索用的比对串：标题 + 四人当时的昵称快照，已统一转小写。
+     * 预先算好，搜索时只做一次 `contains`，不必在每次按键时重新拼字符串。
+     */
+    val searchHaystack: String,
 )
 
 /** 一笔结清建议的展示数据。 */
@@ -50,6 +55,9 @@ data class SessionDetailUi(
  *
  * 本人结果取 seat 0（规格 2.2：每场 seat=0 必为 SELF）。
  * 若库处于异常状态导致缺少 seat 0，净额按 0 展示而不是崩溃。
+ *
+ * 搜索串按规格 3.3 只含「标题 + 历史昵称（nameSnapshot）」，
+ * 不把备注纳入，否则「搜索标题」会被备注里的词意外命中。
  */
 fun SessionWithResults.toRowUi(): SessionRowUi {
     val ordered = results.sortedBy { it.seat }
@@ -61,8 +69,14 @@ fun SessionWithResults.toRowUi(): SessionRowUi {
         playedAt = session.playedAt,
         selfNetMinor = self?.netMinor ?: 0L,
         opponentNames = ordered.filter { it.seat != SessionRules.SEAT_SELF }.map { it.nameSnapshot },
+        searchHaystack = (listOf(session.title) + ordered.map { it.nameSnapshot })
+            .joinToString(SEARCH_HAYSTACK_SEPARATOR)
+            .lowercase(),
     )
 }
+
+/** 用换行分隔，避免「标题结尾 + 昵称开头」拼出一个并不存在的词而被误命中。 */
+private const val SEARCH_HAYSTACK_SEPARATOR = "\n"
 
 /** 场次 → 四人详情。排名与结清都在这里一次算好，Composable 只负责渲染。 */
 fun SessionWithResults.toDetailUi(): SessionDetailUi {

@@ -21,6 +21,8 @@ class ManoteRoutesTest {
             ManoteRoutes.SETTINGS,
             ManoteRoutes.SESSION_NEW,
             ManoteRoutes.SESSION_DETAIL,
+            ManoteRoutes.SESSION_EDIT,
+            ManoteRoutes.FRIEND_DETAIL,
         )
 
         assertEquals("登记表必须覆盖全部目的地", expected, ManoteRoutes.all.toSet())
@@ -55,6 +57,44 @@ class ManoteRoutesTest {
         val suffix = ManoteRoutes.SESSION_DETAIL.substringAfter("}")
         assertTrue("具体路由应以模板前缀开头", built.startsWith(prefix))
         assertTrue("具体路由应以模板后缀结尾", built.endsWith(suffix))
+    }
+
+    @Test
+    fun sessionEdit_buildsConcreteRouteMatchingTemplate() {
+        val id = "0f8fad5b-d9cb-469f-a165-70867728950e"
+        val built = ManoteRoutes.sessionEdit(id)
+
+        assertEquals("session/$id/edit", built)
+        val prefix = ManoteRoutes.SESSION_EDIT.substringBefore("{")
+        val suffix = ManoteRoutes.SESSION_EDIT.substringAfter("}")
+        assertTrue("具体路由应以模板前缀开头", built.startsWith(prefix))
+        assertTrue("具体路由应以模板后缀结尾", built.endsWith(suffix))
+
+        // 修改路由不能被详情模板吃掉：详情模板只有一段，而修改路由在它之后还有 /edit
+        assertTrue(
+            "修改路由与详情路由不相等",
+            ManoteRoutes.sessionEdit(id) != ManoteRoutes.sessionDetail(id),
+        )
+    }
+
+    @Test
+    fun friendDetail_buildsConcreteRouteMatchingTemplate() {
+        val id = "0f8fad5b-d9cb-469f-a165-70867728950e"
+        val built = ManoteRoutes.friendDetail(id)
+
+        assertEquals("friend/$id", built)
+        val prefix = ManoteRoutes.FRIEND_DETAIL.substringBefore("{")
+        val suffix = ManoteRoutes.FRIEND_DETAIL.substringAfter("}")
+        assertTrue("具体路由应以模板前缀开头", built.startsWith(prefix))
+        assertTrue("具体路由应以模板后缀结尾", built.endsWith(suffix))
+    }
+
+    @Test
+    fun placeholderNamesAreUniquePerRoute() {
+        // 两条路由用了不同的参数名，避免 Argument 复用时互相覆盖
+        assertEquals("sessionId", ManoteRoutes.ARG_SESSION_ID)
+        assertEquals("playerId", ManoteRoutes.ARG_PLAYER_ID)
+        assertTrue("参数名不能相同", ManoteRoutes.ARG_SESSION_ID != ManoteRoutes.ARG_PLAYER_ID)
     }
 
     @Test

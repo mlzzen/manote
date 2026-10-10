@@ -21,13 +21,20 @@ class SessionFilteringTest {
             .toInstant()
             .toEpochMilli()
 
-    private fun row(id: String, playedAt: Long) = SessionRowUi(
+    private fun row(
+        id: String,
+        playedAt: Long,
+        title: String = "麻将对局",
+        names: List<String> = emptyList(),
+    ) = SessionRowUi(
         id = id,
-        title = "麻将对局",
+        title = title,
         note = "",
         playedAt = playedAt,
         selfNetMinor = 0L,
-        opponentNames = emptyList(),
+        opponentNames = names,
+        // 与 SessionWithResults.toRowUi() 的拼法保持一致
+        searchHaystack = (listOf(title) + names).joinToString("\n").lowercase(),
     )
 
     private val now = at(2026, 10, 10)
@@ -91,5 +98,59 @@ class SessionFilteringTest {
         SessionFilter.entries.forEach { filter ->
             assertEquals(emptyList<SessionRowUi>(), SessionFiltering.apply(emptyList(), filter, now, zone))
         }
+    }
+
+    // ————————————————————— 关键词搜索（规格 3.3） —————————————————————
+
+    private val friday = row("fri", at(2026, 10, 5), title = "周五夜战", names = listOf("老王", "小李", "小陈"))
+    private val unit = row("unit", at(2026, 10, 3), title = "单位牌局", names = listOf("老王", "小张", "小陈"))
+    private val searchable = listOf(friday, unit)
+
+    @Test
+    fun search_matchesTitle() {
+        assertEquals(listOf("fri"), SessionFiltering.search(searchable, "周五").map { it.id })
+    }
+
+    @Test
+    fun search_matchesHistoricalNicknameSnapshot() {
+        // 「老王」两场都在，两场都应命中
+        assertEquals(listOf("fri", "unit"), SessionFiltering.search(searchable, "老王").map { it.id })
+        assertEquals(listOf("fri"), SessionFiltering.search(searchable, "小李").map { it.id })
+    }
+
+    @Test
+    fun search_isCaseInsensitiveAndTrimsQuery() {
+        val abc = row("abc", at(2026, 10, 5), title = "Night Game", names = listOf("Alice"))
+        assertEquals(listOf("abc"), SessionFiltering.search(listOf(abc), "  alice  ").map { it.id })
+        assertEquals(listOf("abc"), SessionFiltering.search(listOf(abc), "NIGHT").map { it.id })
+    }
+
+    @Test
+    fun blankQuery_keepsEverything() {
+        assertEquals(searchable, SessionFiltering.search(searchable, ""))
+        assertEquals(searchable, SessionFiltering.search(searchable, "   "))
+    }
+
+    @Test
+    fun search_doesNotMatchNote() {
+        // 规格 3.3 只按标题与历史昵称搜索，备注不参与，避免标题搜索被备注里的词意外命中
+        val withNote = searchable.first().copy(note = "喝了很多茶")
+        assertEquals(emptyList<SessionRowUi>(), SessionFiltering.search(listOf(withNote), "喝茶"))
+    }
+
+    @Test
+    fun search_doesNotJoinTitleAndNicknameIntoPhantomWord() {
+        // 标题「周五夜战」+ 昵称「老王」，直接拼接会出现「战老」这个并不存在的词
+        assertEquals(emptyList<SessionRowUi>(), SessionFiltering.search(searchable, "战老"))
+    }
+
+    @Test
+    fun filterAndSearchCombine() {
+        val september = row("sep", at(2026, 9, 28), title = "周五夜战", names = listOf("老王"))
+        val rows = listOf(friday, unit, september)
+
+        val result = SessionFiltering.apply(rows, SessionFilter.THIS_MONTH, now, zone, query = "周五")
+
+        assertEquals("本月 + 关键词同时生效", listOf("fri"), result.map { it.id })
     }
 }

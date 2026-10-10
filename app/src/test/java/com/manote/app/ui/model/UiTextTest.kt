@@ -95,4 +95,16 @@ class UiTextTest {
 
         assertEquals("2026.11.01 00:30", UiText.dateTime(combined))
     }
+
+    @Test
+    fun shortId_takesFirstEightCharacters() {
+        assertEquals("3f9a1c2b", UiText.shortId("3f9a1c2b-7d4e-4a11-9f00-1b2c3d4e5f60"))
+    }
+
+    @Test
+    fun shortId_toleratesShortAndEmptyIds() {
+        // 极端情况下也不能抛异常：短串原样返回，空串返回空串
+        assertEquals("abc", UiText.shortId("abc"))
+        assertEquals("", UiText.shortId(""))
+    }
 }

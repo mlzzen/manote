@@ -31,6 +31,9 @@ import com.manote.app.ui.theme.manote
 /**
  * 内容卡片：白底、大圆角、一圈很淡的描边。
  * 描边比阴影更贴合参考稿，也能在深色主题下有稳定边界。
+ *
+ * 传了 [onClick] 时整张卡可点击（规格 3.6：点击区域至少 48dp，
+ * 卡片内边距加内容高度必然超过这个下限）。
  */
 @Composable
 fun ManoteCard(
@@ -38,10 +41,13 @@ fun ManoteCard(
     containerColor: Color = MaterialTheme.colorScheme.surface,
     borderColor: Color = MaterialTheme.colorScheme.outlineVariant,
     contentPadding: PaddingValues = PaddingValues(16.dp),
+    onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = MaterialTheme.shapes.large,
         color = containerColor,
         border = BorderStroke(1.dp, borderColor),

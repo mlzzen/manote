@@ -9,9 +9,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.manote.app.ui.friends.FriendDetailScreen
 import com.manote.app.ui.friends.FriendsScreen
 import com.manote.app.ui.home.HomeScreen
 import com.manote.app.ui.session.SessionDetailScreen
+import com.manote.app.ui.session.SessionEditMode
 import com.manote.app.ui.session.SessionEditScreen
 import com.manote.app.ui.sessions.SessionsScreen
 import com.manote.app.ui.settings.SettingsScreen
@@ -52,6 +54,7 @@ fun ManoteNavHost(
             FriendsScreen(
                 onSelectTab = navController::switchTab,
                 onRecordSession = { navController.navigateTo(ManoteRoutes.SESSION_NEW) },
+                onOpenFriend = { navController.navigateTo(ManoteRoutes.friendDetail(it)) },
             )
         }
 
@@ -83,6 +86,38 @@ fun ManoteNavHost(
             SessionDetailScreen(
                 sessionId = entry.arguments?.getString(ManoteRoutes.ARG_SESSION_ID).orEmpty(),
                 onNavigateBack = { navController.navigateUp() },
+                onEdit = { navController.navigateTo(ManoteRoutes.sessionEdit(it)) },
+                // 规格 3.3：删除当前详情后回首页
+                onDeleted = { navController.popBackTo(ManoteRoutes.HOME) },
+            )
+        }
+
+        composable(
+            route = ManoteRoutes.SESSION_EDIT,
+            arguments = listOf(
+                navArgument(ManoteRoutes.ARG_SESSION_ID) { type = NavType.StringType },
+            ),
+        ) { entry ->
+            val sessionId = entry.arguments?.getString(ManoteRoutes.ARG_SESSION_ID).orEmpty()
+            SessionEditScreen(
+                mode = SessionEditMode.Edit(sessionId),
+                onNavigateBack = { navController.navigateUp() },
+                onSaved = { navController.navigateUp() },
+                // 修改成功后退回详情页；详情页订阅数据库，会自动显示新金额与名次
+                onUpdated = { navController.navigateUp() },
+            )
+        }
+
+        composable(
+            route = ManoteRoutes.FRIEND_DETAIL,
+            arguments = listOf(
+                navArgument(ManoteRoutes.ARG_PLAYER_ID) { type = NavType.StringType },
+            ),
+        ) { entry ->
+            FriendDetailScreen(
+                playerId = entry.arguments?.getString(ManoteRoutes.ARG_PLAYER_ID).orEmpty(),
+                onNavigateBack = { navController.navigateUp() },
+                onOpenSessionDetail = { navController.navigateTo(ManoteRoutes.sessionDetail(it)) },
             )
         }
     }
@@ -101,5 +136,18 @@ private fun NavHostController.switchTab(tab: ManoteTab) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+/**
+ * 回到某个页签并清掉中间栈。
+ *
+ * 场次被删除后用它回首页（规格 3.3）：详情页留在栈里只会显示「已不存在」，
+ * 不如直接把整条链路弹掉，返回键也就不会退回到一个已经不存在的东西上。
+ */
+private fun NavHostController.popBackTo(route: String) {
+    navigate(route) {
+        popUpTo(route) { inclusive = false }
+        launchSingleTop = true
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -58,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import com.manote.app.R
 import com.manote.app.ui.components.ManoteCard
+import com.manote.app.ui.components.ManoteEmptyState
 import com.manote.app.ui.components.ManotePrimaryButton
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.PlayerAvatar
@@ -68,24 +70,35 @@ import com.manote.app.ui.model.seatLabel
 import com.manote.app.ui.theme.manote
 import kotlinx.coroutines.launch
 
+/** 两种用途各用一个 ViewModel key，避免共用同一份草稿。 */
+private fun SessionEditMode.viewModelKey(): String = when (this) {
+    SessionEditMode.Create -> "session_form_create"
+    is SessionEditMode.Edit -> "session_form_edit_$sessionId"
+}
+
 /**
- * 记一场（规格 3.2）。
+ * 记一场 / 修改本场（规格 3.2、3.3）。
  *
  * 一屏完成四人选择与金额填写：自己自动关联本人，上家/对家/下家从牌友中选择或即时创建；
  * 每个座位用「赢 / 输」切换加非负金额输入；底部实时显示四人合计。
  * 提交前预览确认，保存期间禁用按钮，返回有改动时确认放弃。
+ *
+ * 修改模式复用同一套表单，但人员与位置只读、进入即预填（规格 3.3）。
  */
 @Composable
 fun SessionEditScreen(
     onNavigateBack: () -> Unit,
     onSaved: (String) -> Unit,
     modifier: Modifier = Modifier,
+    mode: SessionEditMode = SessionEditMode.Create,
+    onUpdated: () -> Unit = {},
 ) {
-    val viewModel = manoteViewModel { container, extras ->
+    val viewModel = manoteViewModel(key = mode.viewModelKey()) { container, extras ->
         SessionEditViewModel(
             playerRepository = container.playerRepository,
             sessionRepository = container.sessionRepository,
             savedState = extras.createSavedStateHandle(),
+            mode = mode,
         )
     }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -103,7 +116,10 @@ fun SessionEditScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is SessionEditEvent.Saved -> onSaved(event.sessionId)
+                // 新建：跳到场次详情；修改：该场次已在返回栈里，直接回上一页即可
+                is SessionEditEvent.Saved ->
+                    if (mode is SessionEditMode.Edit) onUpdated() else onSaved(event.sessionId)
+
                 is SessionEditEvent.Failed -> scope.launch {
                     snackbarHostState.showSnackbar(context.getString(event.messageRes))
                 }
@@ -118,17 +134,38 @@ fun SessionEditScreen(
     BackHandler(enabled = state.dirty) { showDiscardDialog = true }
 
     ManoteScaffold(
-        title = stringResource(R.string.action_record_session),
+        title = stringResource(
+            if (state.isEditing) R.string.session_edit_title else R.string.action_record_session,
+        ),
         onNavigateBack = requestLeave,
         modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
-            SaveBar(
-                state = state,
-                onSave = viewModel::requestSave,
-            )
+            // 原场次都读不出来时不给保存按钮，避免点了才报错
+            if (!state.loadFailed) {
+                SaveBar(
+                    state = state,
+                    onSave = viewModel::requestSave,
+                )
+            }
         },
     ) { innerPadding ->
+        if (state.loadFailed) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center,
+            ) {
+                ManoteEmptyState(
+                    icon = Icons.Filled.Warning,
+                    title = stringResource(R.string.detail_missing_title),
+                    description = stringResource(R.string.session_edit_stale),
+                )
+            }
+            return@ManoteScaffold
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -137,6 +174,10 @@ fun SessionEditScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (state.rosterLocked) {
+                RosterLockedNotice()
+            }
+
             PlayedAtRow(
                 playedAt = state.playedAt,
                 onClick = { showPlayedAtPicker = true },
@@ -146,6 +187,7 @@ fun SessionEditScreen(
                 SeatEditor(
                     draft = draft,
                     errorRes = state.amountErrors[draft.seat],
+                    rosterLocked = state.rosterLocked,
                     onPick = { pickingSeat = draft.seat },
                     onClear = { viewModel.clearSeat(draft.seat) },
                     onWinChange = { viewModel.setSeatWin(draft.seat, it) },
@@ -237,6 +279,30 @@ fun SessionEditScreen(
     }
 }
 
+/** 修改模式的说明条：明确告诉用户人员与位置改不了（规格 3.3）。 */
+@Composable
+private fun RosterLockedNotice() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Row(modifier = Modifier.padding(14.dp)) {
+            Icon(
+                imageVector = Icons.Filled.Warning,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = stringResource(R.string.session_edit_roster_locked),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
 @Composable
 private fun PlayedAtRow(playedAt: Long, onClick: () -> Unit) {
     ManoteCard(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
@@ -280,6 +346,7 @@ private fun PlayedAtRow(playedAt: Long, onClick: () -> Unit) {
 private fun SeatEditor(
     draft: SeatDraft,
     errorRes: Int?,
+    rosterLocked: Boolean,
     onPick: () -> Unit,
     onClear: () -> Unit,
     onWinChange: (Boolean) -> Unit,
@@ -322,10 +389,12 @@ private fun SeatEditor(
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            // 修改模式人员只读，因此这里不再挂点击事件
+            val clickable = !draft.isSelfSeat && !rosterLocked
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .then(if (draft.isSelfSeat) Modifier else Modifier.clickable(onClick = onPick)),
+                    .then(if (clickable) Modifier.clickable(onClick = onPick) else Modifier),
             ) {
                 Text(
                     text = if (selected) draft.nickname else stringResource(R.string.session_pick_friend),
@@ -346,7 +415,7 @@ private fun SeatEditor(
                 )
             }
 
-            if (!draft.isSelfSeat && selected) {
+            if (!draft.isSelfSeat && selected && !rosterLocked) {
                 IconButton(onClick = onClear) {
                     Icon(
                         imageVector = Icons.Filled.Close,
@@ -503,7 +572,11 @@ private fun SaveBar(state: SessionEditUiState, onSave: () -> Unit) {
             Spacer(modifier = Modifier.height(10.dp))
             ManotePrimaryButton(
                 text = stringResource(
-                    if (state.saving) R.string.session_saving else R.string.session_save,
+                    when {
+                        state.saving -> R.string.session_saving
+                        state.isEditing -> R.string.session_edit_save
+                        else -> R.string.session_save
+                    },
                 ),
                 onClick = onSave,
                 enabled = canSave,

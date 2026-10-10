@@ -449,6 +449,7 @@ private fun HomeContentPreview() {
                         playedAt = 1_791_000_000_000L,
                         selfNetMinor = -200L,
                         opponentNames = listOf("次小", "次建米", "麻米建"),
+                        searchHaystack = "麻将对局\n次小\n次建米\n麻米建",
                     ),
                     SessionRowUi(
                         id = "2",
@@ -457,6 +458,7 @@ private fun HomeContentPreview() {
                         playedAt = 1_790_000_000_000L,
                         selfNetMinor = 2_600L,
                         opponentNames = listOf("阿强", "小美"),
+                        searchHaystack = "麻将对局\n阿强\n小美",
                     ),
                 ),
             ),

@@ -2,6 +2,7 @@ package com.manote.app.data.repository
 
 import androidx.room.withTransaction
 import com.manote.app.data.local.ManoteDatabase
+import com.manote.app.data.local.PlayerAggregate
 import com.manote.app.data.local.PlayerEntity
 import com.manote.app.data.local.PlayerKind
 import com.manote.app.domain.ManoteError
@@ -189,8 +190,20 @@ class PlayerRepository(
     /** 订阅唯一 SELF，供首页与「我的」显示本人昵称；重启或改昵称后自动刷新。 */
     fun observeSelf(): Flow<PlayerEntity?> = playerDao.observeSelf()
 
-    /** 订阅未归档麻友，供记一场的麻友选择器与牌友页使用。 */
+    /** 订阅未归档麻友，供记一场的麻友选择器使用。 */
     fun observeActiveFriends(): Flow<List<PlayerEntity>> = playerDao.observeActiveFriends()
+
+    /** 订阅全部麻友（含已归档），供牌友页的「包含已归档」开关使用（规格 3.4）。 */
+    fun observeAllFriends(): Flow<List<PlayerEntity>> = playerDao.observeAllFriends()
+
+    /** 订阅单个档案，供麻友详情实时刷新；档案不存在时发出 null。 */
+    fun observeById(playerId: String): Flow<PlayerEntity?> = playerDao.observeById(playerId)
+
+    /**
+     * 订阅全部玩家在 `session_result` 上的聚合（场数、净输赢），供牌友列表一次取齐。
+     * 派生自同一份结果数据，与 [observeStatistics] 口径一致。
+     */
+    fun observeAggregates(): Flow<List<PlayerAggregate>> = sessionResultDao.observeAggregates()
 
     /**
      * 同名麻友查询（规格 2.2）。返回空列表表示没有同名档案。

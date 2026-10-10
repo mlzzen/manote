@@ -14,7 +14,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,10 +37,11 @@ import com.manote.app.ui.model.SessionFilter
 import com.manote.app.ui.navigation.ManoteTab
 
 /**
- * 场次列表（规格 2.4：历史按 playedAt 倒序、同时间按 Session ID 稳定排序）。
+ * 场次列表（规格 2.4、3.3）。
  *
- * 全部 / 本月 / 上月 只在内存里筛选，不额外查询数据库。
- * 搜索、修改与删除属 P3，本页暂不提供，避免放置点了没有反应的入口。
+ * 历史按 playedAt 倒序、同时间按 Session ID 稳定排序；
+ * 支持标题或历史昵称关键词搜索，可叠加「全部 / 本月 / 上月」筛选。
+ * 全部在内存里完成，不额外查询数据库。
  */
 @Composable
 fun SessionsScreen(
@@ -53,6 +58,7 @@ fun SessionsScreen(
     SessionsContent(
         state = state,
         onSelectFilter = viewModel::setFilter,
+        onQueryChange = viewModel::setQuery,
         onSelectTab = onSelectTab,
         onRecordSession = onRecordSession,
         onOpenSessionDetail = onOpenSessionDetail,
@@ -64,6 +70,7 @@ fun SessionsScreen(
 private fun SessionsContent(
     state: SessionsUiState,
     onSelectFilter: (SessionFilter) -> Unit,
+    onQueryChange: (String) -> Unit,
     onSelectTab: (ManoteTab) -> Unit,
     onRecordSession: () -> Unit,
     onOpenSessionDetail: (String) -> Unit,
@@ -85,18 +92,30 @@ private fun SessionsContent(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                SessionFilter.entries.forEach { filter ->
-                    ManoteFilterChip(
-                        label = stringResource(filter.labelRes()),
-                        selected = state.filter == filter,
-                        onClick = { onSelectFilter(filter) },
-                    )
+                OutlinedTextField(
+                    value = state.query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text(text = stringResource(R.string.sessions_search_hint)) },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Filled.Search, contentDescription = null)
+                    },
+                    shape = MaterialTheme.shapes.small,
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SessionFilter.entries.forEach { filter ->
+                        ManoteFilterChip(
+                            label = stringResource(filter.labelRes()),
+                            selected = state.filter == filter,
+                            onClick = { onSelectFilter(filter) },
+                        )
+                    }
                 }
             }
 
@@ -108,6 +127,7 @@ private fun SessionsContent(
             }
 
             if (state.visible.isEmpty()) {
+                val searching = state.query.isNotBlank()
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -117,17 +137,17 @@ private fun SessionsContent(
                     ManoteEmptyState(
                         icon = Icons.AutoMirrored.Filled.List,
                         title = stringResource(
-                            if (state.hasAny) {
-                                R.string.friend_picker_empty
-                            } else {
-                                R.string.sessions_empty_title
+                            when {
+                                searching -> R.string.sessions_search_empty_title
+                                state.hasAny -> R.string.sessions_empty_title
+                                else -> R.string.sessions_empty_title
                             },
                         ),
                         description = stringResource(
-                            if (state.hasAny) {
-                                R.string.sessions_empty_desc
-                            } else {
-                                R.string.home_empty_desc
+                            when {
+                                searching -> R.string.sessions_search_empty_desc
+                                state.hasAny -> R.string.sessions_empty_desc
+                                else -> R.string.home_empty_desc
                             },
                         ),
                     )

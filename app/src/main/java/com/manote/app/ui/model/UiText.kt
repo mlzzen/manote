@@ -83,6 +83,14 @@ object UiText {
         Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
 
     /**
+     * UUID 短串（前 8 位），用于区分同名麻友（规格 3.4）。
+     * 只做展示与辨识，不作为标识使用——关联始终用完整 ID。
+     */
+    fun shortId(id: String): String = id.take(SHORT_ID_LENGTH)
+
+    private const val SHORT_ID_LENGTH = 8
+
+    /**
      * 百分比取整（四舍五入），例如 1/10 → 10。
      * 用整数运算而非 Double，避免不必要的浮点中转。
      */
