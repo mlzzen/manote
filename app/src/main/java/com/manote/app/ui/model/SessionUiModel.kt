@@ -1,0 +1,89 @@
+package com.manote.app.ui.model
+
+import com.manote.app.data.local.SessionWithResults
+import com.manote.app.domain.Ranking
+import com.manote.app.domain.SeatNet
+import com.manote.app.domain.SessionRules
+import com.manote.app.domain.Settlement
+
+/** 某个座位在界面上的展示数据。 */
+data class SeatUi(
+    /** 0=自己、1=上家、2=对家、3=下家。 */
+    val seat: Int,
+    /** 保存时的昵称快照。 */
+    val nickname: String,
+    /** 本场净额，分。 */
+    val netMinor: Long,
+    /** 本场名次（竞赛排名）。 */
+    val rank: Int,
+)
+
+/** 首页「最近场次」与场次列表共用的一行数据。 */
+data class SessionRowUi(
+    val id: String,
+    val title: String,
+    val note: String,
+    val playedAt: Long,
+    /** 本人（seat 0）本场净额。 */
+    val selfNetMinor: Long,
+    /** 其余三位的昵称快照，按 seat 升序。 */
+    val opponentNames: List<String>,
+)
+
+/** 一笔结清建议的展示数据。 */
+data class TransferUi(val fromSeat: Int, val toSeat: Int, val amountMinor: Long)
+
+/** 四人详情页的展示数据。 */
+data class SessionDetailUi(
+    val id: String,
+    val title: String,
+    val note: String,
+    val playedAt: Long,
+    /** 四个座位，按 seat 升序。 */
+    val seats: List<SeatUi>,
+    /** 结清建议，最多三笔；空表示无需结清。 */
+    val transfers: List<TransferUi>,
+)
+
+/**
+ * 场次 → 列表行。
+ *
+ * 本人结果取 seat 0（规格 2.2：每场 seat=0 必为 SELF）。
+ * 若库处于异常状态导致缺少 seat 0，净额按 0 展示而不是崩溃。
+ */
+fun SessionWithResults.toRowUi(): SessionRowUi {
+    val ordered = results.sortedBy { it.seat }
+    val self = ordered.firstOrNull { it.seat == SessionRules.SEAT_SELF }
+    return SessionRowUi(
+        id = session.id,
+        title = session.title,
+        note = session.note,
+        playedAt = session.playedAt,
+        selfNetMinor = self?.netMinor ?: 0L,
+        opponentNames = ordered.filter { it.seat != SessionRules.SEAT_SELF }.map { it.nameSnapshot },
+    )
+}
+
+/** 场次 → 四人详情。排名与结清都在这里一次算好，Composable 只负责渲染。 */
+fun SessionWithResults.toDetailUi(): SessionDetailUi {
+    val ordered = results.sortedBy { it.seat }
+    val nets = ordered.map { SeatNet(seat = it.seat, netMinor = it.netMinor) }
+    val ranksBySeat = Ranking.rank(nets).associate { it.seat to it.rank }
+    return SessionDetailUi(
+        id = session.id,
+        title = session.title,
+        note = session.note,
+        playedAt = session.playedAt,
+        seats = ordered.map { result ->
+            SeatUi(
+                seat = result.seat,
+                nickname = result.nameSnapshot,
+                netMinor = result.netMinor,
+                rank = ranksBySeat[result.seat] ?: 0,
+            )
+        },
+        transfers = Settlement.suggest(nets).map {
+            TransferUi(fromSeat = it.fromSeat, toSeat = it.toSeat, amountMinor = it.amountMinor)
+        },
+    )
+}

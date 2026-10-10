@@ -1,107 +1,146 @@
 package com.manote.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 
 /**
- * 浅色配色：中性灰白背景 + 墨绿主要操作 + 红色错误。
+ * 浅色配色：暖米白画布 + 深墨绿主要操作 + 砖红错误。
+ *
+ * 卡片用纯白而非画布色，让「一张张卡片」在米白底上形成层级（参考稿的主要观感来源）。
  */
 private val ManoteLightColorScheme = lightColorScheme(
-    primary = InkGreen,
+    primary = BrandLight,
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFA9F2D5),
-    onPrimaryContainer = Color(0xFF00201A),
-    inversePrimary = InkGreenLight,
-    secondary = Color(0xFF4B635A),
+    primaryContainer = BrandContainerLight,
+    onPrimaryContainer = OnBrandContainerLight,
+    inversePrimary = BrandInkLight,
+    secondary = LossLight,
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFCDE9DC),
-    onSecondaryContainer = Color(0xFF082017),
-    tertiary = Color(0xFF43617B),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFC7E7FF),
-    onTertiaryContainer = Color(0xFF001E31),
-    error = ErrorRedLight,
+    secondaryContainer = LossContainerLight,
+    onSecondaryContainer = OnLossContainerLight,
+    tertiary = GoldLight,
+    onTertiary = OnGoldLight,
+    tertiaryContainer = DrawContainerLight,
+    onTertiaryContainer = OnDrawContainerLight,
+    error = WinLight,
     onError = Color(0xFFFFFFFF),
-    errorContainer = Color(0xFFFFDAD6),
-    onErrorContainer = Color(0xFF410002),
-    background = NeutralBackgroundLight,
-    onBackground = Color(0xFF181C1B),
-    surface = NeutralBackgroundLight,
-    onSurface = Color(0xFF181C1B),
-    surfaceVariant = Color(0xFFDBE5DE),
-    onSurfaceVariant = Color(0xFF404944),
-    surfaceTint = InkGreen,
-    inverseSurface = Color(0xFF2D3130),
-    inverseOnSurface = Color(0xFFEFF1EF),
-    outline = Color(0xFF707974),
-    outlineVariant = Color(0xFFBFC9C3),
+    errorContainer = WinContainerLight,
+    onErrorContainer = OnWinContainerLight,
+    background = CanvasLight,
+    onBackground = TextPrimaryLight,
+    surface = SurfaceLight,
+    onSurface = TextPrimaryLight,
+    surfaceVariant = ChipLight,
+    onSurfaceVariant = TextSecondaryLight,
+    surfaceTint = BrandLight,
+    inverseSurface = BrandInkLight,
+    inverseOnSurface = Color(0xFFEFF3EF),
+    outline = OutlineLight,
+    outlineVariant = BorderLight,
     scrim = Color(0xFF000000),
-    surfaceBright = NeutralBackgroundLight,
-    surfaceDim = Color(0xFFD6DBD8),
-    surfaceContainer = Color(0xFFEAEFEB),
-    surfaceContainerHigh = Color(0xFFE4E9E6),
-    surfaceContainerHighest = Color(0xFFDEE4E0),
-    surfaceContainerLow = Color(0xFFF0F4F1),
-    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceBright = SurfaceLight,
+    surfaceDim = CanvasDimLight,
+    surfaceContainerLowest = SurfaceLight,
+    surfaceContainerLow = SurfaceAltLight,
+    surfaceContainer = Color(0xFFF6F1E5),
+    surfaceContainerHigh = Color(0xFFF2EDE0),
+    surfaceContainerHighest = Color(0xFFEDE7D9),
 )
 
-/**
- * 深色配色：保持同一套语义角色，墨绿转为浅色调以保证对比度。
- */
+/** 深色配色：同一套语义角色，绿与红提亮以保证对比度。 */
 private val ManoteDarkColorScheme = darkColorScheme(
-    primary = InkGreenLight,
-    onPrimary = Color(0xFF00382B),
-    primaryContainer = InkGreenDark,
-    onPrimaryContainer = Color(0xFFA9F2D5),
-    inversePrimary = InkGreen,
-    secondary = Color(0xFFB1CCC0),
-    onSecondary = Color(0xFF1D352C),
-    secondaryContainer = Color(0xFF344C42),
-    onSecondaryContainer = Color(0xFFCDE9DC),
-    tertiary = Color(0xFFABCAE7),
-    onTertiary = Color(0xFF113349),
-    tertiaryContainer = Color(0xFF2A4A61),
-    onTertiaryContainer = Color(0xFFC7E7FF),
-    error = ErrorRedDark,
-    onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A),
-    onErrorContainer = Color(0xFFFFDAD6),
-    background = NeutralBackgroundDark,
-    onBackground = Color(0xFFDFE4E0),
-    surface = NeutralBackgroundDark,
-    onSurface = Color(0xFFDFE4E0),
-    surfaceVariant = Color(0xFF404944),
-    onSurfaceVariant = Color(0xFFBFC9C3),
-    surfaceTint = InkGreenLight,
-    inverseSurface = Color(0xFFDFE4E0),
-    inverseOnSurface = Color(0xFF2C312F),
-    outline = Color(0xFF8A938E),
-    outlineVariant = Color(0xFF404944),
+    primary = BrandDark,
+    onPrimary = Color(0xFF04301F),
+    primaryContainer = BrandContainerDark,
+    onPrimaryContainer = OnBrandContainerDark,
+    inversePrimary = BrandInkDark,
+    secondary = LossDark,
+    onSecondary = Color(0xFF04301F),
+    secondaryContainer = LossContainerDark,
+    onSecondaryContainer = OnLossContainerDark,
+    tertiary = GoldDark,
+    onTertiary = OnGoldDark,
+    tertiaryContainer = DrawContainerDark,
+    onTertiaryContainer = OnDrawContainerDark,
+    error = WinDark,
+    onError = Color(0xFF3F0B04),
+    errorContainer = WinContainerDark,
+    onErrorContainer = OnWinContainerDark,
+    background = CanvasDark,
+    onBackground = TextPrimaryDark,
+    surface = SurfaceDark,
+    onSurface = TextPrimaryDark,
+    surfaceVariant = ChipDark,
+    onSurfaceVariant = TextSecondaryDark,
+    surfaceTint = BrandDark,
+    inverseSurface = Color(0xFFE8ECE8),
+    inverseOnSurface = Color(0xFF232B26),
+    outline = OutlineDark,
+    outlineVariant = BorderDark,
     scrim = Color(0xFF000000),
-    surfaceBright = Color(0xFF353A38),
-    surfaceDim = NeutralBackgroundDark,
-    surfaceContainer = Color(0xFF1B201E),
-    surfaceContainerHigh = Color(0xFF262B29),
-    surfaceContainerHighest = Color(0xFF313634),
-    surfaceContainerLow = Color(0xFF181D1B),
-    surfaceContainerLowest = Color(0xFF0A0F0D),
+    surfaceBright = SurfaceAltDark,
+    surfaceDim = CanvasDimDark,
+    surfaceContainerLowest = CanvasDimDark,
+    surfaceContainerLow = Color(0xFF171D1A),
+    surfaceContainer = SurfaceDark,
+    surfaceContainerHigh = SurfaceAltDark,
+    surfaceContainerHighest = Color(0xFF2A332E),
 )
 
+/** 圆角：卡片与胶囊整体偏圆润。 */
+private val ManoteShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(28.dp),
+)
+
+/** 字体：在 Material 3 默认排版上把标题类加粗，让区块标题与数字更醒目。 */
+private val ManoteTypography: Typography = Typography().run {
+    copy(
+        headlineLarge = headlineLarge.copy(fontWeight = FontWeight.Bold),
+        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.Bold),
+        headlineSmall = headlineSmall.copy(fontWeight = FontWeight.Bold),
+        titleLarge = titleLarge.copy(fontWeight = FontWeight.Bold),
+        titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        titleSmall = titleSmall.copy(fontWeight = FontWeight.SemiBold),
+    )
+}
+
 /**
- * 应用主题。规格 3.5 要求主题跟随系统，因此不使用动态取色，
- * 也不提供应用内明暗切换开关。
+ * 应用主题。规格 3.5 要求主题跟随系统，因此不使用动态取色，也不提供应用内明暗开关。
  */
 @Composable
 fun ManoteTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) ManoteDarkColorScheme else ManoteLightColorScheme,
-        content = content,
-    )
+    CompositionLocalProvider(
+        LocalManoteExtendedColors provides if (darkTheme) DarkExtendedColors else LightExtendedColors,
+    ) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) ManoteDarkColorScheme else ManoteLightColorScheme,
+            shapes = ManoteShapes,
+            typography = ManoteTypography,
+            content = content,
+        )
+    }
 }
+
+/** 取本应用特有的语义色，例如 `MaterialTheme.manote.win`。 */
+val MaterialTheme.manote: ManoteExtendedColors
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalManoteExtendedColors.current

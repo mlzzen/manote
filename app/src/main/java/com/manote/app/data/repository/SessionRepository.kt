@@ -6,10 +6,13 @@ import com.manote.app.data.local.ManoteDatabase
 import com.manote.app.data.local.PlayerKind
 import com.manote.app.data.local.SessionEntity
 import com.manote.app.data.local.SessionResultEntity
+import com.manote.app.data.local.SessionWithResults
 import com.manote.app.domain.ManoteError
 import com.manote.app.domain.ManoteResult
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.SessionValidator
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * 新建场次时对某个座位的输入。
@@ -241,6 +244,19 @@ class SessionRepository(
             SessionDetail(session = session, results = sessionResultDao.findBySession(sessionId)),
         )
     }
+
+    /**
+     * 订阅全部场次及其结果，按 playedAt 倒序、同时间按 ID 稳定排序（规格 2.4）。
+     * 首页统计、最近场次与场次列表共用这一条查询。
+     */
+    fun observeSessions(): Flow<List<SessionWithResults>> = sessionDao.observeAllWithResults()
+
+    /**
+     * 订阅单个场次及其结果；场次不存在（已被删除）时发出 null，
+     * 供四人详情页显示「该场次已不存在」而不是崩溃。
+     */
+    fun observeSessionDetail(sessionId: String): Flow<SessionWithResults?> =
+        sessionDao.observeByIdWithResults(sessionId).map { it.firstOrNull() }
 
     /** 座位必须是 0、1、2、3 各一次，且四个 playerId 互不相同。 */
     private fun validateSeatInputs(seats: List<SeatResultInput>): ManoteError? {

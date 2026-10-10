@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PlayerDao {
@@ -23,6 +24,21 @@ interface PlayerDao {
 
     @Query("SELECT * FROM player WHERE id IN (:ids)")
     suspend fun findByIds(ids: List<String>): List<PlayerEntity>
+
+    /**
+     * 同名麻友查询（规格 2.2：创建同名麻友时提示已有档案）。
+     * 仅作提示，不阻止创建；统计仍按 ID 分开。
+     */
+    @Query("SELECT * FROM player WHERE kind = 'FRIEND' AND nickname = :nickname ORDER BY createdAt ASC, id ASC")
+    suspend fun findFriendsByNickname(nickname: String): List<PlayerEntity>
+
+    /** 订阅唯一 SELF，供首页与「我的」显示本人昵称。 */
+    @Query("SELECT * FROM player WHERE kind = 'SELF' ORDER BY createdAt ASC, id ASC LIMIT 1")
+    fun observeSelf(): Flow<PlayerEntity?>
+
+    /** 订阅未归档麻友，新建场次只能从这些档案中选择（规格 2.2）。 */
+    @Query("SELECT * FROM player WHERE kind = 'FRIEND' AND archivedAt IS NULL ORDER BY updatedAt DESC, id ASC")
+    fun observeActiveFriends(): Flow<List<PlayerEntity>>
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(player: PlayerEntity)

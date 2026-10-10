@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SessionDao {
@@ -37,4 +39,17 @@ interface SessionDao {
 
     @Query("DELETE FROM session WHERE id = :id")
     suspend fun deleteById(id: String): Int
+
+    /**
+     * 订阅全部场次及其四条结果，按打完时间倒序、同时间按 Session ID 稳定排序（规格 2.4）。
+     * 首页统计与场次列表共用这一条查询，保证两处数字来自同一份快照。
+     */
+    @Transaction
+    @Query("SELECT * FROM session ORDER BY playedAt DESC, id DESC")
+    fun observeAllWithResults(): Flow<List<SessionWithResults>>
+
+    /** 订阅某个场次及其结果，供四人详情使用。 */
+    @Transaction
+    @Query("SELECT * FROM session WHERE id = :id")
+    fun observeByIdWithResults(id: String): Flow<List<SessionWithResults>>
 }

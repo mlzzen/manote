@@ -9,6 +9,8 @@ import com.manote.app.domain.ManoteResult
 import com.manote.app.domain.PlayerStatistics
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.SessionValidator
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 /**
@@ -183,4 +185,24 @@ class PlayerRepository(
      */
     suspend fun statistics(playerId: String): PlayerStatistics =
         PlayerStatistics.of(sessionResultDao.findNetMinorsByPlayer(playerId))
+
+    /** 订阅唯一 SELF，供首页与「我的」显示本人昵称；重启或改昵称后自动刷新。 */
+    fun observeSelf(): Flow<PlayerEntity?> = playerDao.observeSelf()
+
+    /** 订阅未归档麻友，供记一场的麻友选择器与牌友页使用。 */
+    fun observeActiveFriends(): Flow<List<PlayerEntity>> = playerDao.observeActiveFriends()
+
+    /**
+     * 同名麻友查询（规格 2.2）。返回空列表表示没有同名档案。
+     * 仅用于提示，是否继续创建由用户决定。
+     */
+    suspend fun findFriendsByNickname(nickname: String): List<PlayerEntity> =
+        playerDao.findFriendsByNickname(nickname)
+
+    /**
+     * 订阅某位玩家的跨场统计。
+     * 与 [statistics] 使用同一份 `session_result` 数据，只是改为订阅式以便界面实时刷新。
+     */
+    fun observeStatistics(playerId: String): Flow<PlayerStatistics> =
+        sessionResultDao.observeNetMinorsByPlayer(playerId).map(PlayerStatistics::of)
 }

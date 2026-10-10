@@ -4,22 +4,140 @@
 
     <!-- 通用动作 -->
     <string name="action_back">返回</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_confirm">确定</string>
+    <string name="action_view_all">查看全部</string>
     <string name="action_record_session">记一场</string>
 
-    <!-- 目的地标签（首页顶栏使用 app_name） -->
-    <string name="nav_history">我的历史</string>
-    <string name="nav_friends">麻友</string>
-    <string name="nav_settings">设置</string>
+    <!-- 复用文本 -->
+    <string name="common_amount_unit">元</string>
+    <string name="common_unavailable">—</string>
 
-    <!--
-      P0 工程骨架的页面说明。此处只描述该页在后续阶段将承载的能力，
-      不显示任何演示数据，也不虚构金额或场次。
-    -->
-    <string name="home_skeleton_notice">本页将显示本人昵称、累计赢钱、累计输钱、净输赢与已记录场数，主体为最近场次列表。当前为工程骨架，数据层尚未接入，因此不显示任何金额。</string>
-    <string name="session_skeleton_notice">本页将提供四人选择与金额填写：自己自动关联本人，上家、对家、下家从麻友中选择或即时创建，底部实时校验四人合计为 0.00 元。当前为工程骨架，表单尚未实现。</string>
-    <string name="history_skeleton_notice">本页将按打完时间倒序展示场次列表并支持关键词搜索，点入详情可查看四人位置、快照昵称、排名与结清建议。当前为工程骨架，数据层尚未接入。</string>
-    <string name="friends_skeleton_notice">本页将提供麻友搜索、新增、编辑、归档与取消归档，并显示每位麻友的场数与净输赢。当前为工程骨架，数据层尚未接入。</string>
-    <string name="settings_skeleton_notice">本页将提供本人昵称编辑、JSON 全量备份恢复与单场 CSV 导出，主题跟随系统。当前为工程骨架，数据层尚未接入。</string>
+    <!-- 底部导航 -->
+    <string name="nav_home">首页</string>
+    <string name="nav_sessions">场次</string>
+    <string name="nav_friends">牌友</string>
+    <string name="nav_settings">我的</string>
 
-    <string name="home_entries_section_title">入口</string>
+    <!-- 座位 -->
+    <string name="seat_self">自己</string>
+    <string name="seat_upper">上家</string>
+    <string name="seat_opposite">对家</string>
+    <string name="seat_lower">下家</string>
+
+    <!-- 输赢 -->
+    <string name="result_win">赢</string>
+    <string name="result_loss">输</string>
+    <string name="result_draw">持平</string>
+
+    <!-- 首页 -->
+    <string name="home_mahjong_glyph">中</string>
+    <string name="home_subtitle_format">%1$s · 已记录 %2$d 场</string>
+    <string name="home_overview_title">战绩概览</string>
+    <string name="home_overview_total_format">%1$d 场</string>
+    <string name="home_overview_total_label">总牌局</string>
+    <string name="home_overview_empty">还没有可统计的场次</string>
+    <string name="home_stat_net">净胜</string>
+    <string name="home_stat_win_rate">胜率</string>
+    <string name="home_stat_net_wins">净胜场</string>
+    <string name="home_recent_title">最近场次</string>
+    <string name="home_empty_title">暂无记录</string>
+    <string name="home_empty_desc">打完一场后点下面的按钮记下来，统计会立刻出现在这里。</string>
+
+    <!-- 场次列表 -->
+    <string name="sessions_filter_all">全部</string>
+    <string name="sessions_filter_this_month">本月</string>
+    <string name="sessions_filter_last_month">上月</string>
+    <string name="sessions_empty_title">这里还没有场次</string>
+    <string name="sessions_empty_desc">换个筛选条件看看，或者直接记一场新的。</string>
+
+    <!-- 四人详情 -->
+    <string name="detail_title">场次详情</string>
+    <string name="detail_rank_format">第 %1$d 名</string>
+    <string name="detail_settlement_title">结清建议</string>
+    <string name="detail_settlement_hint">只是算术建议，不代表已经付款。</string>
+    <string name="detail_no_settlement">无需结清</string>
+    <string name="detail_transfer_format">%1$s 付给 %2$s</string>
+    <string name="detail_note_label">备注</string>
+    <string name="detail_missing_title">该场次已不存在</string>
+    <string name="detail_missing_desc">它可能已经被删除。</string>
+
+    <!-- 记一场 -->
+    <string name="session_played_at">打完时间</string>
+    <string name="session_time_pick_title">选择打完时间</string>
+    <string name="session_amount_hint">金额</string>
+    <string name="session_pick_friend">点此选择牌友</string>
+    <string name="session_title_label">标题</string>
+    <string name="session_title_hint">留空则为「麻将对局」</string>
+    <string name="session_note_label">备注</string>
+    <string name="session_note_hint">可选，最多 100 字</string>
+    <string name="session_total_label">四人合计</string>
+    <string name="session_total_ok">合计 0.00 元，可以保存。</string>
+    <string name="session_total_error">合计 %1$s 元，应为 0.00 元，请检查金额。</string>
+    <string name="session_total_incomplete">还有金额或牌友没有填完。</string>
+    <string name="session_save">保存整场结果</string>
+    <string name="session_saving">正在保存…</string>
+    <string name="session_preview_title">确认本场结果</string>
+    <string name="session_preview_continue">确认保存</string>
+    <string name="session_all_zero_confirm">本场四人均为 0.00 元，是否记录？</string>
+    <string name="session_discard_title">放弃这一场？</string>
+    <string name="session_discard_message">已填写的金额和牌友不会保存。</string>
+    <string name="session_discard_confirm">放弃</string>
+    <string name="session_discard_stay">继续填写</string>
+
+    <!-- 牌友选择器 -->
+    <string name="friend_picker_title">选择牌友</string>
+    <string name="friend_picker_search_hint">搜索昵称或备注</string>
+    <string name="friend_picker_empty">没有匹配的牌友</string>
+    <string name="friend_picker_none">还没有牌友，先新建一位。</string>
+    <string name="friend_create_title">新建牌友</string>
+    <string name="friend_nickname_label">昵称</string>
+    <string name="friend_note_label">备注</string>
+    <string name="friend_note_hint">可选，用于区分同名牌友</string>
+    <string name="friend_duplicate_hint">已有同名档案；继续创建会作为另一位牌友单独统计。</string>
+    <string name="friend_selected_elsewhere">已在其它位置</string>
+    <string name="friend_action_create">创建</string>
+
+    <!-- 牌友页 -->
+    <string name="friends_count_format">%1$d 位牌友</string>
+    <string name="friends_empty_title">还没有牌友</string>
+    <string name="friends_empty_desc">记一场时可以直接新建，也可以先在这里建好。</string>
+    <string name="friends_add">新增牌友</string>
+    <string name="friends_search_hint">搜索昵称或备注</string>
+
+    <!-- 我的 -->
+    <string name="settings_profile_title">本人档案</string>
+    <string name="settings_version_format">版本 %1$s</string>
+    <string name="settings_about_title">关于</string>
+    <string name="settings_about_body">本应用离线运行，不联网、不读取通讯录与相册。JSON 备份恢复与 CSV 导出将在后续阶段提供。</string>
+    <string name="settings_data_title">数据</string>
+    <string name="settings_data_pending">备份与导出尚未实现</string>
+
+    <!-- 金额解析失败提示 -->
+    <string name="amount_empty">请填写金额</string>
+    <string name="amount_invalid">金额格式不正确</string>
+    <string name="amount_too_many_decimals">金额小数点后最多两位</string>
+    <string name="amount_out_of_range">金额超出 ±10,000.00 元</string>
+
+    <!-- 业务错误码提示 -->
+    <string name="error_invalid_nickname">昵称需要 1～12 个字</string>
+    <string name="error_invalid_note">备注最多 100 个字</string>
+    <string name="error_invalid_title">标题最多 30 个字</string>
+    <string name="error_played_at_in_future">打完时间不能晚于现在</string>
+    <string name="error_invalid_seat_set">座位不完整，请重新填写</string>
+    <string name="error_duplicate_player">同一场不能重复选择同一个人</string>
+    <string name="error_seat_zero_not_self">自己必须坐在本人位置</string>
+    <string name="error_non_self_seat_not_friend">上家、对家、下家必须是牌友</string>
+    <string name="error_friend_archived">该牌友已归档，不能用于新场次</string>
+    <string name="error_amount_out_of_range">单人金额需在 ±10,000.00 元以内</string>
+    <string name="error_sum_not_zero">四人合计必须为 0.00 元</string>
+    <string name="error_session_limit_reached">已达到 1000 场上限</string>
+    <string name="error_friend_limit_reached">已达到 5000 位牌友上限</string>
+    <string name="error_session_id_already_exists">这一场已经保存过了</string>
+    <string name="error_session_not_found">场次不存在或已被删除</string>
+    <string name="error_session_revision_conflict">这一场已被修改，请重新加载后再编辑</string>
+    <string name="error_player_not_found">档案不存在</string>
+    <string name="error_player_is_self">本人档案不能这样操作</string>
+    <string name="error_player_kind_mismatch">档案类型不符</string>
+    <string name="error_internal_state_corrupted">数据状态异常，操作已停止</string>
 </resources>

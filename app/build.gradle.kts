@@ -41,6 +41,8 @@ android {
 
     buildFeatures {
         compose = true
+        // 「我的」页需要展示版本号，直接读生成的 BuildConfig。
+        buildConfig = true
     }
 
     testOptions {
@@ -82,6 +84,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))
