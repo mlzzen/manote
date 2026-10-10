@@ -9,15 +9,13 @@ import com.manote.app.ui.model.SessionRowUi
 import com.manote.app.ui.model.toRowUi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** 首页状态。统计与最近场次都来自同一次订阅，两处数字不会互相对不上。 */
 data class HomeUiState(
     val loading: Boolean = true,
-    /** 本人昵称；档案尚未就绪时为 null。 */
-    val selfNickname: String? = null,
     val statistics: PlayerStatistics = PlayerStatistics.EMPTY,
     val recentSessions: List<SessionRowUi> = emptyList(),
 )
@@ -34,23 +32,20 @@ class HomeViewModel(
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> =
-        combine(
-            playerRepository.observeSelf(),
-            sessionRepository.observeSessions(),
-        ) { self, sessions ->
-            val rows = sessions.map { it.toRowUi() }
-            HomeUiState(
-                loading = false,
-                selfNickname = self?.nickname,
-                // seat=0 恒为 SELF，因此 seat 0 的净额序列就是本人的跨场净额序列
-                statistics = PlayerStatistics.of(rows.map { it.selfNetMinor }),
-                recentSessions = rows.take(RECENT_LIMIT),
+        sessionRepository.observeSessions()
+            .map { sessions ->
+                val rows = sessions.map { it.toRowUi() }
+                HomeUiState(
+                    loading = false,
+                    // seat=0 恒为 SELF，因此 seat 0 的净额序列就是本人的跨场净额序列
+                    statistics = PlayerStatistics.of(rows.map { it.selfNetMinor }),
+                    recentSessions = rows.take(RECENT_LIMIT),
+                )
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = HomeUiState(),
             )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            initialValue = HomeUiState(),
-        )
 
     init {
         // 幂等兜底：Application 启动时已尝试创建，这里再确认一次，

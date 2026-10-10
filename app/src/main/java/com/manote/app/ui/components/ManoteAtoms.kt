@@ -68,30 +68,6 @@ fun PlayerAvatar(
     }
 }
 
-/** 麻将牌：竖圆角方块 + 一个牌面字符，用于头图卡的装饰。 */
-@Composable
-fun MahjongTile(
-    glyph: String,
-    modifier: Modifier = Modifier,
-    faceColor: Color,
-    glyphColor: Color,
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(faceColor),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = glyph,
-            color = glyphColor,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
-    }
-}
-
 /**
  * 输赢标签。同时给出文字（赢 / 输 / 持平）与颜色，
  * 颜色只是辅助，不是唯一线索（规格 2.1、3.6）。

@@ -17,9 +17,8 @@ import androidx.compose.ui.graphics.Color
 
 // ——————————————————————————————— 浅色 ———————————————————————————————
 
-/** 品牌墨绿：头图卡、主按钮、选中态。比「输」的绿更深更暗，避免两种绿混淆。 */
+/** 品牌墨绿：比「输」的绿更深更暗，避免两种绿混淆。 */
 internal val BrandInkLight = Color(0xFF14352A)
-internal val BrandInkAltLight = Color(0xFF22513C)
 
 /** 浅色底上可见的主操作绿。 */
 internal val BrandLight = Color(0xFF1F5E45)
@@ -62,7 +61,6 @@ internal val TextTertiaryLight = Color(0xFFA6ACA4)
 // ——————————————————————————————— 深色 ———————————————————————————————
 
 internal val BrandInkDark = Color(0xFF1B4131)
-internal val BrandInkAltDark = Color(0xFF255442)
 
 internal val BrandDark = Color(0xFF7CCFA6)
 internal val BrandContainerDark = Color(0xFF1F4433)
@@ -125,11 +123,6 @@ data class ManoteExtendedColors(
     /** 金黄点缀。 */
     val gold: Color,
     val onGold: Color,
-    /** 头图卡渐变。 */
-    val headerStart: Color,
-    val headerEnd: Color,
-    val onHeader: Color,
-    val onHeaderMuted: Color,
 )
 
 internal val LightExtendedColors = ManoteExtendedColors(
@@ -150,10 +143,6 @@ internal val LightExtendedColors = ManoteExtendedColors(
     onDrawBadge = OnDrawContainerLight,
     gold = GoldLight,
     onGold = OnGoldLight,
-    headerStart = BrandInkLight,
-    headerEnd = BrandInkAltLight,
-    onHeader = Color(0xFFF2F7F3),
-    onHeaderMuted = Color(0xFFA8BFB2),
 )
 
 internal val DarkExtendedColors = ManoteExtendedColors(
@@ -174,10 +163,6 @@ internal val DarkExtendedColors = ManoteExtendedColors(
     onDrawBadge = OnDrawContainerDark,
     gold = GoldDark,
     onGold = OnGoldDark,
-    headerStart = BrandInkDark,
-    headerEnd = BrandInkAltDark,
-    onHeader = Color(0xFFEFF5F1),
-    onHeaderMuted = Color(0xFFA6C0B2),
 )
 
 internal val LocalManoteExtendedColors = staticCompositionLocalOf { LightExtendedColors }

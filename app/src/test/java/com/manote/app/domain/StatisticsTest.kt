@@ -66,4 +66,34 @@ class StatisticsTest {
     fun emptyHistoryYieldsZeros() {
         assertEquals(PlayerStatistics.EMPTY, PlayerStatistics.of(emptyList()))
     }
+
+    @Test
+    fun averageNetDividesNetBySessionCount() {
+        // 两场：赢 30 元、输 10 元 → 净 20 元，场均 10 元
+        val statistics = PlayerStatistics.of(listOf(3000L, -1000L))
+
+        assertEquals(1000L, statistics.averageNetMinor)
+    }
+
+    @Test
+    fun averageNetIsZeroWithoutSessions() {
+        // 没有场次时不做除法，返回 0 而不是崩溃
+        assertEquals(0L, PlayerStatistics.of(emptyList()).averageNetMinor)
+    }
+
+    @Test
+    fun averageNetRoundsHalfAwayFromZero() {
+        // 105 分 ÷ 2 场 = 52.5 分，进位到 53；负数同理，向远离零的方向进位
+        assertEquals(53L, PlayerStatistics.of(listOf(105L, 0L)).averageNetMinor)
+        assertEquals(-53L, PlayerStatistics.of(listOf(-105L, 0L)).averageNetMinor)
+    }
+
+    @Test
+    fun averageNetIgnoresSessionCountOfZeroDraws() {
+        // 全是持平：净额为 0，场均也是 0，不会被场数放大
+        val statistics = PlayerStatistics.of(listOf(0L, 0L, 0L))
+
+        assertEquals(0L, statistics.netMinor)
+        assertEquals(0L, statistics.averageNetMinor)
+    }
 }

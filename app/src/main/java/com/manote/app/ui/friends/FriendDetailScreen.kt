@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,7 +64,7 @@ import kotlinx.coroutines.launch
 /**
  * 麻友详情（规格 3.4）。
  *
- * 展示当前昵称、备注、累计赢钱、累计输钱、净输赢、场数；
+ * 展示当前昵称、备注、累计赢钱、累计输钱、净输赢、场均与场数；
  * 逐场列出日期、这位麻友所在位置，以及他与本人各自的本场结果，点按进入完整四人详情。
  * 菜单提供编辑与归档/取消归档。
  */
@@ -238,7 +239,7 @@ private fun FriendProfileCard(detail: FriendDetailUi) {
     }
 }
 
-/** 累计赢钱 / 累计输钱 / 净输赢 / 场数。全部实时来自 `session_result`。 */
+/** 累计赢钱 / 累计输钱 / 净输赢 / 场均 / 场数。全部实时来自 `session_result`。 */
 @Composable
 private fun FriendStatisticsCard(detail: FriendDetailUi) {
     val colors = MaterialTheme.manote
@@ -273,13 +274,20 @@ private fun FriendStatisticsCard(detail: FriendDetailUi) {
             Statistic(
                 label = stringResource(R.string.friend_stat_net),
                 value = UiText.signedYuan(statistics.netMinor),
-                valueColor = when {
-                    statistics.netMinor > 0L -> colors.win
-                    statistics.netMinor < 0L -> colors.loss
-                    else -> MaterialTheme.colorScheme.onSurface
-                },
+                valueColor = signedColor(statistics.netMinor),
                 modifier = Modifier.weight(1f),
             )
+            Statistic(
+                label = stringResource(R.string.stat_average),
+                value = UiText.signedYuan(statistics.averageNetMinor),
+                valueColor = signedColor(statistics.averageNetMinor),
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
             Statistic(
                 label = stringResource(R.string.friend_stat_sessions),
                 value = statistics.sessionCount.toString(),
@@ -290,11 +298,22 @@ private fun FriendStatisticsCard(detail: FriendDetailUi) {
     }
 }
 
+/** 金额的正负配色：赢红、输绿、持平的走中性色，与首页概览口径一致。 */
+@Composable
+private fun signedColor(minor: Long): Color {
+    val colors = MaterialTheme.manote
+    return when {
+        minor > 0L -> colors.win
+        minor < 0L -> colors.loss
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+}
+
 @Composable
 private fun Statistic(
     label: String,
     value: String,
-    valueColor: androidx.compose.ui.graphics.Color,
+    valueColor: Color,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {

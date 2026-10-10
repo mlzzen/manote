@@ -1,10 +1,7 @@
 package com.manote.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,10 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.manote.app.ui.theme.manote
 
 /**
  * 内容卡片：白底、大圆角、一圈很淡的描边。
@@ -54,24 +49,6 @@ fun ManoteCard(
     ) {
         Column(modifier = Modifier.padding(contentPadding), content = content)
     }
-}
-
-/** 深墨绿渐变头图卡，用于首页承载昵称与场数。 */
-@Composable
-fun ManoteHeaderCard(
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(18.dp),
-    content: @Composable BoxScope.() -> Unit,
-) {
-    val colors = MaterialTheme.manote
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .background(Brush.linearGradient(listOf(colors.headerStart, colors.headerEnd)))
-            .padding(contentPadding),
-        content = content,
-    )
 }
 
 /** 区块标题，右侧可放一个动作入口。 */

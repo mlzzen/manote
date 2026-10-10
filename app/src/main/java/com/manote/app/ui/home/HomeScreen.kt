@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -35,18 +33,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
 import com.manote.app.domain.PlayerStatistics
 import com.manote.app.ui.manoteViewModel
-import com.manote.app.ui.components.MahjongTile
 import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
-import com.manote.app.ui.components.ManoteHeaderCard
 import com.manote.app.ui.components.ManotePrimaryButton
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.ManoteSectionHeader
 import com.manote.app.ui.components.ManoteSessionRow
 import com.manote.app.ui.components.ManoteTextAction
-import com.manote.app.ui.components.PlayerAvatar
-import com.manote.app.ui.components.SignedAmount
 import com.manote.app.ui.model.SessionRowUi
 import com.manote.app.ui.model.UiText
 import com.manote.app.ui.navigation.ManoteTab
@@ -56,7 +50,7 @@ import com.manote.app.ui.theme.manote
 /**
  * 首页（规格 3.1）。
  *
- * 显示本人昵称、累计赢钱、累计输钱、净输赢与已记录场数，主体为最近场次与「记一场」。
+ * 显示累计赢钱、累计输钱、净输赢与已记录场数，主体为最近场次与「记一场」。
  * 所有数字都来自 `session_result` 的实时汇总（规格 2.4），没有记录时显示 0.00 元。
  *
  * 规格明确「首版不实现图表」，因此参考稿里的趋势折线图不在这里实现；
@@ -110,11 +104,6 @@ private fun HomeContent(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ProfileHeader(
-                nickname = state.selfNickname,
-                sessionCount = state.statistics.sessionCount,
-            )
-
             OverviewCard(statistics = state.statistics, loading = state.loading)
 
             ManoteSectionHeader(
@@ -153,53 +142,7 @@ private fun HomeContent(
     }
 }
 
-/** 深墨绿头图卡：昵称 + 「麻记 · 已记录 N 场」。 */
-@Composable
-private fun ProfileHeader(
-    nickname: String?,
-    sessionCount: Int,
-) {
-    val colors = MaterialTheme.manote
-    ManoteHeaderCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            PlayerAvatar(
-                name = nickname.orEmpty(),
-                size = 52.dp,
-                containerColor = colors.onHeader.copy(alpha = 0.16f),
-                contentColor = colors.onHeader,
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = nickname.orEmpty(),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = colors.onHeader,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = stringResource(
-                        R.string.home_subtitle_format,
-                        stringResource(R.string.app_name),
-                        sessionCount,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onHeaderMuted,
-                    maxLines = 1,
-                )
-            }
-            MahjongTile(
-                glyph = stringResource(R.string.home_mahjong_glyph),
-                modifier = Modifier.size(width = 34.dp, height = 46.dp),
-                faceColor = colors.onHeader.copy(alpha = 0.14f),
-                glyphColor = colors.onHeader,
-            )
-        }
-    }
-}
-
-/** 战绩概览：胜 / 负 / 平 三色格 + 占比条 + 净胜、胜率、净胜场。 */
+/** 战绩概览：胜 / 负 / 平 三色格 + 占比条 + 净胜、场均、胜率、净胜场。 */
 @Composable
 private fun OverviewCard(statistics: PlayerStatistics, loading: Boolean) {
     val colors = MaterialTheme.manote
@@ -266,13 +209,20 @@ private fun OverviewCard(statistics: PlayerStatistics, loading: Boolean) {
             Metric(
                 label = stringResource(R.string.home_stat_net),
                 value = UiText.signedYuan(statistics.netMinor),
-                valueColor = when {
-                    statistics.netMinor > 0L -> colors.win
-                    statistics.netMinor < 0L -> colors.loss
-                    else -> MaterialTheme.colorScheme.onSurface
-                },
+                valueColor = signedColor(statistics.netMinor),
                 modifier = Modifier.weight(1f),
             )
+            Metric(
+                label = stringResource(R.string.stat_average),
+                value = UiText.signedYuan(statistics.averageNetMinor),
+                valueColor = signedColor(statistics.averageNetMinor),
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
             Metric(
                 label = stringResource(R.string.home_stat_win_rate),
                 value = "${UiText.percent(statistics.winCount, statistics.sessionCount)}%",
@@ -286,6 +236,17 @@ private fun OverviewCard(statistics: PlayerStatistics, loading: Boolean) {
                 modifier = Modifier.weight(1f),
             )
         }
+    }
+}
+
+/** 金额的正负配色：赢红、输绿、持平的走中性色，与列表和详情的口径一致。 */
+@Composable
+private fun signedColor(minor: Long): Color {
+    val colors = MaterialTheme.manote
+    return when {
+        minor > 0L -> colors.win
+        minor < 0L -> colors.loss
+        else -> MaterialTheme.colorScheme.onSurface
     }
 }
 
@@ -432,7 +393,6 @@ private fun HomeContentPreview() {
         HomeContent(
             state = HomeUiState(
                 loading = false,
-                selfNickname = "菠萝",
                 statistics = PlayerStatistics(
                     sessionCount = 10,
                     winCount = 1,
@@ -474,7 +434,7 @@ private fun HomeContentPreview() {
 private fun HomeContentEmptyPreview() {
     ManoteTheme(darkTheme = false) {
         HomeContent(
-            state = HomeUiState(loading = false, selfNickname = "我"),
+            state = HomeUiState(loading = false),
             onSelectTab = {},
             onRecordSession = {},
             onOpenSessionDetail = {},

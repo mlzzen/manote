@@ -22,6 +22,14 @@ data class PlayerStatistics(
     /** 净输赢 = 累计赢钱 - 累计输钱。 */
     val netMinor: Long get() = winMinor - lossMinor
 
+    /**
+     * 场均净输赢 = 净输赢 ÷ 场数，四舍五入到分。
+     *
+     * 没有场次时为 0，避免除零；全程整数运算，不经过浮点（规格 2.1）。
+     */
+    val averageNetMinor: Long
+        get() = if (sessionCount == 0) 0L else divideRounded(netMinor, sessionCount.toLong())
+
     companion object {
 
         val EMPTY = PlayerStatistics(0, 0, 0, 0, 0L, 0L)
@@ -60,5 +68,19 @@ data class PlayerStatistics(
                 lossMinor = lossMinor,
             )
         }
+    }
+}
+
+/**
+ * 整数除法，四舍五入（.5 向远离零的方向进位），不经过浮点。
+ *
+ * 负数必须单独走一遍，否则 `(value + divisor / 2) / divisor` 会把 -1.5 读成 -1。
+ */
+private fun divideRounded(value: Long, divisor: Long): Long {
+    val half = divisor / 2
+    return if (value >= 0L) {
+        (value + half) / divisor
+    } else {
+        -((-value + half) / divisor)
     }
 }
