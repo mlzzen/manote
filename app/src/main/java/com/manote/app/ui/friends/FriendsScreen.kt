@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,9 +51,11 @@ import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.components.SignedAmount
 import com.manote.app.ui.manoteViewModel
+import com.manote.app.ui.model.FriendBadge
 import com.manote.app.ui.model.FriendRowUi
 import com.manote.app.ui.navigation.ManoteTab
 import com.manote.app.ui.session.CreateFriendDialog
+import com.manote.app.ui.theme.manote
 import kotlinx.coroutines.launch
 
 /**
@@ -60,8 +63,9 @@ import kotlinx.coroutines.launch
  *
  * 搜索昵称/备注，默认只显示未归档，可切换「包含已归档」。
  * 每行显示昵称、备注摘要、场数与净输赢；数字都来自 `session_result` 的实时聚合。
- * 同桌满 [com.manote.app.domain.Rivalry.MIN_COMMON_SESSIONS] 场且整体赢得更多的那位，
- * 会被标上「最苦主」。
+ * 同场满 [com.manote.app.domain.Rivalry.MIN_COMMON_SESSIONS] 场时，行上会挂出
+ * 「最苦主」（我在他面前场均最低）、「福星」（我在他面前场均最高）、
+ * 「牌王」（他自己的场均最高）三个标签，可同时满足多个。
  * 点按一行进入麻友详情，编辑与归档在那里；新增入口在顶栏右上角。
  */
 @Composable
@@ -164,10 +168,10 @@ fun FriendsScreen(
                 }
 
                 // 打了标就要说清楚标是怎么来的，否则「最苦主」三个字只会让人莫名其妙
-                if (state.visible.any { it.isWorstRival }) {
+                if (state.visible.any { it.badges.isNotEmpty() }) {
                     Text(
                         text = stringResource(
-                            R.string.friends_worst_rival_hint,
+                            R.string.friends_badge_hint,
                             Rivalry.MIN_COMMON_SESSIONS,
                         ),
                         style = MaterialTheme.typography.bodySmall,
@@ -285,17 +289,12 @@ private fun FriendRow(friend: FriendRowUi, onClick: () -> Unit) {
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
-                    if (friend.isWorstRival) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = stringResource(R.string.friends_worst_rival_badge),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier
-                                .clip(MaterialTheme.shapes.small)
-                                .background(MaterialTheme.colorScheme.tertiaryContainer)
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                        )
+                    // 按枚举声明顺序渲染，标签的先后不会随 Set 的实现方式变化
+                    FriendBadge.entries.forEach { badge ->
+                        if (badge in friend.badges) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            FriendBadgeChip(badge = badge)
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
@@ -335,3 +334,59 @@ private fun friendSubtitle(friend: FriendRowUi): String {
         friend.note + " · " + count
     }
 }
+
+/**
+ * 标签小胶囊。
+ *
+ * 文案本身就是含义（最苦主 / 福星 / 牌王），颜色只负责让它在名单里跳出来，
+ * 与全应用「不靠颜色单独表达信息」的做法一致。
+ * 配色各挑一个语义：最苦主用中性的米黄、福星用金黄（好事）、牌王用品牌墨绿的浅底。
+ */
+@Composable
+private fun FriendBadgeChip(badge: FriendBadge) {
+    val colors = MaterialTheme.manote
+    val background: Color
+    val content: Color
+    when (badge) {
+        FriendBadge.WORST_RIVAL -> {
+            background = MaterialTheme.colorScheme.tertiaryContainer
+            content = MaterialTheme.colorScheme.onTertiaryContainer
+        }
+
+        FriendBadge.LUCKY_STAR -> {
+            background = colors.gold
+            content = colors.onGold
+        }
+
+        FriendBadge.TABLE_KING -> {
+            background = MaterialTheme.colorScheme.primaryContainer
+            content = MaterialTheme.colorScheme.onPrimaryContainer
+        }
+    }
+
+    Text(
+        text = badge.label(),
+        style = MaterialTheme.typography.labelSmall,
+        color = content,
+        maxLines = 1,
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(background)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+/**
+ * 标签 → 文案。
+ *
+ * 只有 @Composable 里才能调 stringResource，因此不能直接给枚举加一个属性；
+ * 这里用穷尽 `when`，将来加标签时编译期就会提醒补文案。
+ */
+@Composable
+private fun FriendBadge.label(): String = stringResource(
+    when (this) {
+        FriendBadge.WORST_RIVAL -> R.string.friends_worst_rival_badge
+        FriendBadge.LUCKY_STAR -> R.string.friends_lucky_badge
+        FriendBadge.TABLE_KING -> R.string.friends_table_king_badge
+    },
+)

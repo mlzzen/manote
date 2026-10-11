@@ -131,8 +131,12 @@ data class TimeSlotStatistics(
  * 整数除法，四舍五入（.5 向远离零的方向进位），不经过浮点。
  *
  * 负数必须单独走一遍，否则 `(value + divisor / 2) / divisor` 会把 -1.5 读成 -1。
+ *
+ * 放在这里给整个 domain 用：[PlayerStatistics.averageNetMinor] 与
+ * [RivalryRecord.myAverageMinor] 都是「合计 ÷ 场数」，两处必须用同一套取整规则，
+ * 否则同一种「场均」在两个页面上会有分毫之差。
  */
-private fun divideRounded(value: Long, divisor: Long): Long {
+internal fun divideRounded(value: Long, divisor: Long): Long {
     val half = divisor / 2
     return if (value >= 0L) {
         (value + half) / divisor

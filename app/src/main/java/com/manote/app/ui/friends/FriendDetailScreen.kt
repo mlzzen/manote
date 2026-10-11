@@ -298,6 +298,21 @@ private fun FriendStatisticsCard(detail: FriendDetailUi) {
                 valueColor = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
+            Statistic(
+                label = stringResource(R.string.friend_stat_together_average),
+                value = detail.myAverageTogetherMinor
+                    ?.let { UiText.signedYuan(it) }
+                    ?: stringResource(R.string.common_unavailable),
+                valueColor = detail.myAverageTogetherMinor
+                    ?.let { signedColor(it) }
+                    ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                // 场均是「同场的那几场」算出来的，把场数一并写出来，
+                // 否则 3 场的 -50 和 30 场的 -50 看起来一样可信
+                caption = detail.commonSessionCount
+                    .takeIf { it > 0 }
+                    ?.let { stringResource(R.string.friend_stat_together_sessions_format, it) },
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
@@ -374,6 +389,8 @@ private fun Statistic(
     value: String,
     valueColor: Color,
     modifier: Modifier = Modifier,
+    /** 数值下方的一行小字，例如「同场 5 场」。 */
+    caption: String? = null,
 ) {
     Column(modifier = modifier) {
         Text(
@@ -389,6 +406,15 @@ private fun Statistic(
             color = valueColor,
             maxLines = 1,
         )
+        if (caption != null) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = caption,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
     }
 }
 

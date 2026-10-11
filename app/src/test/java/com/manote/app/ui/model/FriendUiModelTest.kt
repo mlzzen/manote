@@ -8,6 +8,7 @@ import com.manote.app.data.local.SessionResultEntity
 import com.manote.app.data.local.SessionWithResults
 import com.manote.app.domain.PlayerStatistics
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -146,6 +147,10 @@ class FriendUiModelTest {
         assertEquals(listOf(500L, -2_000L), detail.sessions.map { it.netMinor })
         assertEquals(listOf(-800L, 2_000L), detail.sessions.map { it.selfNetMinor })
         assertEquals("周日夜战", detail.sessions.first().title)
+
+        // 同场时我的场均：两场我的净额分别是 -800 与 +2_000，合计 +1_200 → 场均 +600
+        assertEquals(2, detail.commonSessionCount)
+        assertEquals(600L, detail.myAverageTogetherMinor)
     }
 
     @Test
@@ -176,6 +181,9 @@ class FriendUiModelTest {
         val detail = friend.toDetailUi(PlayerStatistics.EMPTY, sessions)
 
         assertEquals(listOf("s-2"), detail.sessions.map { it.sessionId })
+        // 同场账只算他真的在场的那些场：他缺席的那一场我的 +1_000 不计入
+        assertEquals(1, detail.commonSessionCount)
+        assertEquals(-500L, detail.myAverageTogetherMinor)
     }
 
     @Test
@@ -185,6 +193,9 @@ class FriendUiModelTest {
         assertEquals(emptyList<FriendSessionRowUi>(), detail.sessions)
         assertEquals(0, detail.statistics.sessionCount)
         assertEquals(0L, detail.statistics.netMinor)
+        // 一场都没打过：没有同场账可言，界面据此显示占位符而不是 ¥0.00
+        assertNull(detail.myAverageTogetherMinor)
+        assertEquals(0, detail.commonSessionCount)
     }
 
     @Test

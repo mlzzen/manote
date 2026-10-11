@@ -168,7 +168,9 @@
     <string name="friends_include_archived">包含已归档</string>
     <string name="friends_archived_badge">已归档</string>
     <string name="friends_worst_rival_badge">最苦主</string>
-    <string name="friends_worst_rival_hint">同桌满 %1$d 场且他整体赢得更多时，这里会标出「最苦主」。</string>
+    <string name="friends_lucky_badge">福星</string>
+    <string name="friends_table_king_badge">牌王</string>
+    <string name="friends_badge_hint">同场满 %1$d 场时：我在他面前场均最低的标「最苦主」，最高的标「福星」，他自己场均最高的标「牌王」。</string>
     <string name="friends_stat_format">%1$d 场</string>
     <string name="friends_no_sessions">还没记录过</string>
     <string name="friends_search_empty_title">没有匹配的牌友</string>
@@ -186,6 +188,8 @@
     <string name="friend_stat_loss_amount">累计输钱</string>
     <string name="friend_stat_net">净输赢</string>
     <string name="friend_stat_sessions">场数</string>
+    <string name="friend_stat_together_average">同场时我的场均</string>
+    <string name="friend_stat_together_sessions_format">同场 %1$d 场</string>
     <string name="friend_detail_sessions_title">逐场记录</string>
     <string name="friend_detail_no_sessions">这位牌友还没有参与过场次。</string>
     <string name="friend_session_self_label">我</string>
