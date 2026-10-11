@@ -1,6 +1,7 @@
 package com.manote.app.data.repository
 
 import com.manote.app.domain.BackupRejectReason
+import com.manote.app.domain.SessionDuration
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -23,6 +24,29 @@ class BackupCodecTest {
         val decoded = BackupCodec.decode(BackupCodec.encode(original))
 
         assertEquals(original, decoded)
+    }
+
+    @Test
+    fun durationIsWrittenToTheFile() {
+        val text = BackupCodec.encode(sampleFile())
+
+        assertTrue("时长要随场次一起导出", text.contains("\"durationMinutes\": 270"))
+    }
+
+    @Test
+    fun oldBackupWithoutDurationFallsBackToTheDefault() {
+        // 加时长之前导出的备份（协议版本仍是 3）没有这个字段。
+        // 它必须能被导入，且补上默认的 4 小时——这正是「不填按 4 小时算」这条规则本身。
+        val text = BackupCodec.encode(sampleFile())
+            .replace("\"durationMinutes\": 270,", "")
+
+        val decoded = BackupCodec.decode(text)
+
+        assertNotNull("旧备份必须仍然可读", decoded)
+        assertEquals(
+            SessionDuration.DEFAULT_MINUTES,
+            decoded!!.sessions.single().durationMinutes,
+        )
     }
 
     @Test
@@ -184,7 +208,16 @@ class BackupCodecTest {
             BackupPlayer(UUID_FRIEND, "FRIEND", "老王", "常来", null, 3L, 4L),
         ),
         sessions = listOf(
-            BackupSession(UUID_SESSION, "周五晚局", 10L, "备注", 1L, 12L, 1L),
+            BackupSession(
+                id = UUID_SESSION,
+                title = "周五晚局",
+                playedAt = 10L,
+                durationMinutes = 270,
+                note = "备注",
+                createdAt = 1L,
+                updatedAt = 12L,
+                revision = 1L,
+            ),
         ),
         sessionResults = listOf(
             BackupSessionResult(UUID_SESSION, 0, UUID_SELF, "我", 3000L),

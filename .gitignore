@@ -13,10 +13,16 @@ captures/
 
 # 发布签名材料。这两样一旦泄露，任何人都能冒充本人发布可覆盖安装的「新版」，
 # 绝对不要提交到版本库——CI 通过 GitHub Secrets 注入。
-keystore/
+keystore/*
 keystore.properties
 *.jks
 *.keystore
+
+# 例外：调试签名库要提交进版本库。
+# 每台机器默认的 debug 密钥都是各自生成的，换台电脑签名就不一致，
+# 彼此的 debug 包装不上、也覆盖不了已装的正式包；统一用仓库里这一把就没这问题。
+# 它只用于本地调试，口令即公开的 android，与发布密钥毫无关系。
+!keystore/manote-debug.jks
 
 # 内部文档（产品规格与开发交接记录），仅本地保留，不公开发布
 /MAHJONG_APP_PLAN.md

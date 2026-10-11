@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * 打完时间 → 早场 / 下午场 / 晚场。
+ * 结束时间 → 早场 / 下午场 / 晚场。
  *
  * 边界与跨零点是最容易写错的地方，这里逐个钉死；
  * 时区必须与列表显示时间一致，因此也要有一条跨时区的用例。

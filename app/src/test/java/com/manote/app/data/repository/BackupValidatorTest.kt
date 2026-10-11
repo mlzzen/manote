@@ -1,6 +1,7 @@
 package com.manote.app.data.repository
 
 import com.manote.app.domain.BackupRejectReason
+import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.SessionRules
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -357,6 +358,34 @@ class BackupValidatorTest {
         assertEquals(BackupRejectReason.INVALID_REVISION, rejectionOf(file))
     }
 
+    // ————————————————————— 时长 —————————————————————
+
+    @Test
+    fun invalidDurationIsRejected() {
+        // 0 小时、超过 24 小时、以及比 0.1 小时粒度更细的值都不接受
+        listOf(0, 24, 1446, 31).forEach { minutes ->
+            val file = validFile().let { base ->
+                base.copy(sessions = base.sessions.map { it.copy(durationMinutes = minutes) })
+            }
+            assertEquals(
+                "$minutes 分钟应当被拒绝",
+                BackupRejectReason.INVALID_DURATION,
+                rejectionOf(file),
+            )
+        }
+    }
+
+    @Test
+    fun durationAtTheBoundariesIsAccepted() {
+        listOf(SessionDuration.MIN_MINUTES, SessionDuration.DEFAULT_MINUTES, SessionDuration.MAX_MINUTES)
+            .forEach { minutes ->
+                val file = validFile().let { base ->
+                    base.copy(sessions = base.sessions.map { it.copy(durationMinutes = minutes) })
+                }
+                assertNull("$minutes 分钟应当通过", rejectionOf(file))
+            }
+    }
+
     // ————————————————————— 上限 —————————————————————
 
     @Test
@@ -435,10 +464,12 @@ class BackupValidatorTest {
         createdAt: Long = T - 60_000L,
         playedAt: Long = T - 40_000L,
         updatedAt: Long = T - 30_000L,
+        durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
     ) = BackupSession(
         id = id,
         title = title,
         playedAt = playedAt,
+        durationMinutes = durationMinutes,
         note = note,
         createdAt = createdAt,
         updatedAt = updatedAt,

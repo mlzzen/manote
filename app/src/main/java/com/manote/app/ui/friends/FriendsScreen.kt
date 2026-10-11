@@ -10,15 +10,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
@@ -41,10 +42,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
+import com.manote.app.domain.Rivalry
 import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
-import com.manote.app.ui.components.ManotePrimaryButton
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.components.SignedAmount
@@ -59,7 +60,9 @@ import kotlinx.coroutines.launch
  *
  * 搜索昵称/备注，默认只显示未归档，可切换「包含已归档」。
  * 每行显示昵称、备注摘要、场数与净输赢；数字都来自 `session_result` 的实时聚合。
- * 点按一行进入麻友详情，编辑与归档在那里。
+ * 同桌满 [com.manote.app.domain.Rivalry.MIN_COMMON_SESSIONS] 场且整体赢得更多的那位，
+ * 会被标上「最苦主」。
+ * 点按一行进入麻友详情，编辑与归档在那里；新增入口在顶栏右上角。
  */
 @Composable
 fun FriendsScreen(
@@ -69,7 +72,7 @@ fun FriendsScreen(
     modifier: Modifier = Modifier,
 ) {
     val viewModel = manoteViewModel { container, _ ->
-        FriendsViewModel(container.playerRepository)
+        FriendsViewModel(container.playerRepository, container.sessionRepository)
     }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -93,6 +96,14 @@ fun FriendsScreen(
         title = stringResource(R.string.nav_friends),
         modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        actions = {
+            IconButton(onClick = { showCreateDialog = true }) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(R.string.friends_add),
+                )
+            }
+        },
         bottomBar = {
             ManoteBottomBar(
                 current = ManoteTab.FRIENDS,
@@ -151,11 +162,23 @@ fun FriendsScreen(
                         onCheckedChange = viewModel::setIncludeArchived,
                     )
                 }
+
+                // 打了标就要说清楚标是怎么来的，否则「最苦主」三个字只会让人莫名其妙
+                if (state.visible.any { it.isWorstRival }) {
+                    Text(
+                        text = stringResource(
+                            R.string.friends_worst_rival_hint,
+                            Rivalry.MIN_COMMON_SESSIONS,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // 首帧还没读到时留白占位，避免闪一下空态、也避免底部按钮跳位
+            // 首帧还没读到时留白占位，避免闪一下空态
             when {
                 state.loading -> Spacer(
                     modifier = Modifier
@@ -204,18 +227,6 @@ fun FriendsScreen(
                         FriendRow(friend = friend, onClick = { onOpenFriend(friend.id) })
                     }
                 }
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                ManotePrimaryButton(
-                    text = stringResource(R.string.friends_add),
-                    onClick = { showCreateDialog = true },
-                )
             }
         }
     }
@@ -271,6 +282,18 @@ private fun FriendRow(friend: FriendRowUi, onClick: () -> Unit) {
                             modifier = Modifier
                                 .clip(MaterialTheme.shapes.small)
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                    if (friend.isWorstRival) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.friends_worst_rival_badge),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier
+                                .clip(MaterialTheme.shapes.small)
+                                .background(MaterialTheme.colorScheme.tertiaryContainer)
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }

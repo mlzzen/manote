@@ -52,6 +52,20 @@
     <string name="home_slot_title">分时段战绩</string>
     <string name="home_slot_count">场数</string>
     <string name="home_slot_count_format">%1$d 场</string>
+    <string name="home_trend_title">累计净额曲线</string>
+    <string name="home_trend_empty">记满两场就能看到走势。</string>
+    <string name="home_trend_note">纵轴以 0 线为界：线在 0 线之上是累计赢钱，之下是累计输钱。</string>
+    <string name="home_streak_title">连输 / 连赢</string>
+    <string name="home_streak_current_win">当前连胜</string>
+    <string name="home_streak_current_loss">当前连输</string>
+    <string name="home_streak_longest_win">最长连胜</string>
+    <string name="home_streak_longest_loss">最长连输</string>
+    <string name="home_streak_best_day">最佳单日</string>
+    <string name="home_streak_worst_day">最差单日</string>
+    <string name="home_streak_count_format">%1$d 场</string>
+    <string name="trend_latest">最新累计</string>
+    <string name="trend_highest">区间最高</string>
+    <string name="trend_lowest">区间最低</string>
     <string name="home_recent_title">最近场次</string>
     <string name="home_empty_title">暂无记录</string>
     <string name="home_empty_desc">打完一场后点下面的按钮记下来，统计会立刻出现在这里。</string>
@@ -78,6 +92,7 @@
     <string name="detail_unbalanced_format">本场合计 %1$s 元，与 0.00 元不符，无法给出结清建议。</string>
     <string name="detail_partial_seats_format">本场只记录了 %1$d 个位置，其余位置没有记录。</string>
     <string name="detail_note_label">备注</string>
+    <string name="detail_duration_format">%1$s 小时</string>
     <string name="detail_missing_title">该场次已不存在</string>
     <string name="detail_missing_desc">它可能已经被删除。</string>
     <string name="detail_action_edit">修改</string>
@@ -87,8 +102,8 @@
     <string name="detail_delete_confirm">删除</string>
 
     <!-- 记一场 -->
-    <string name="session_played_at">打完时间</string>
-    <string name="session_time_pick_title">选择打完时间</string>
+    <string name="session_played_at">结束时间</string>
+    <string name="session_time_pick_title">选择结束时间</string>
     <!-- 滚轮选择器的单位后缀，直接拼在数字后面 -->
     <string name="session_time_unit_year">年</string>
     <string name="session_time_unit_month">月</string>
@@ -100,6 +115,11 @@
     <string name="session_seat_not_recorded">%1$s · 不记录本场</string>
     <string name="session_title_label">标题</string>
     <string name="session_title_hint">留空则为「麻将对局」</string>
+    <string name="session_duration_label">时长</string>
+    <string name="session_duration_hint">留空按 4 小时计</string>
+    <string name="session_duration_unit">小时</string>
+    <!-- 时长合法时显示：14:30 – 18:30（下午场） -->
+    <string name="session_duration_slot_hint">%1$s（%2$s）</string>
     <string name="session_note_label">备注</string>
     <string name="session_note_hint">可选，最多 100 字</string>
     <string name="session_total_label">合计</string>
@@ -147,6 +167,8 @@
     <string name="friends_search_hint">搜索昵称或备注</string>
     <string name="friends_include_archived">包含已归档</string>
     <string name="friends_archived_badge">已归档</string>
+    <string name="friends_worst_rival_badge">最苦主</string>
+    <string name="friends_worst_rival_hint">同桌满 %1$d 场且他整体赢得更多时，这里会标出「最苦主」。</string>
     <string name="friends_stat_format">%1$d 场</string>
     <string name="friends_no_sessions">还没记录过</string>
     <string name="friends_search_empty_title">没有匹配的牌友</string>
@@ -158,6 +180,8 @@
     <string name="friend_detail_missing_desc">它可能已经被删除。</string>
     <string name="friend_detail_archived_note">已归档：不能再用于新场次，历史场次与统计都会保留，随时可以取消归档。</string>
     <string name="friend_detail_stats_title">累计战绩</string>
+    <string name="friend_detail_trend_title">净额走势</string>
+    <string name="friend_detail_trend_empty">记满两场就能看到走势。</string>
     <string name="friend_stat_win_amount">累计赢钱</string>
     <string name="friend_stat_loss_amount">累计输钱</string>
     <string name="friend_stat_net">净输赢</string>
@@ -209,6 +233,7 @@
     <string name="backup_reject_amount_out_of_range">备份里存在超出范围的金额</string>
     <string name="backup_reject_invalid_text">备份里有超出长度限制的文字</string>
     <string name="backup_reject_invalid_time">备份里的时间先后关系不合法</string>
+    <string name="backup_reject_invalid_duration">备份里存在不合法的场次时长</string>
     <string name="backup_reject_invalid_revision">备份里的版本号不合法</string>
     <string name="backup_reject_limit_exceeded">备份超过 1000 场或 5000 位牌友的上限</string>
 
@@ -223,11 +248,18 @@
     <string name="amount_too_many_decimals">金额小数点后最多两位</string>
     <string name="amount_out_of_range">金额超出 ±10,000.00 元</string>
 
+    <!-- 时长解析失败提示 -->
+    <string name="duration_empty">请填写时长</string>
+    <string name="duration_invalid">时长格式不正确</string>
+    <string name="duration_too_many_decimals">时长小数点后最多一位</string>
+    <string name="duration_out_of_range">时长需在 0.5～24 小时之间</string>
+
     <!-- 业务错误码提示 -->
     <string name="error_invalid_nickname">昵称需要 1～12 个字</string>
     <string name="error_invalid_note">备注最多 100 个字</string>
     <string name="error_invalid_title">标题最多 30 个字</string>
-    <string name="error_played_at_in_future">打完时间不能晚于现在</string>
+    <string name="error_played_at_in_future">结束时间不能晚于现在</string>
+    <string name="error_invalid_duration">时长需在 0.5～24 小时之间，最多一位小数</string>
     <string name="error_invalid_seat_set">座位不完整或重复，请重新填写</string>
     <string name="error_duplicate_player">同一场不能重复选择同一个人</string>
     <string name="error_seat_zero_not_self">自己必须坐在本人位置</string>

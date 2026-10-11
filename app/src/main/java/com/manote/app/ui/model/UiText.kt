@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.manote.app.R
 import com.manote.app.domain.Money
+import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.TimeSlot
 import java.time.Instant
@@ -71,6 +72,21 @@ object UiText {
         return String.format(Locale.US, "%02d.%02d", date.monthValue, date.dayOfMonth)
     }
 
+    /** `14:30`，用于只关心一天中哪个时刻的场合（例如推算出的开始时间）。 */
+    fun timeOfDay(epochMillis: Long, zoneId: ZoneId = ZoneId.systemDefault()): String {
+        val time = Instant.ofEpochMilli(epochMillis).atZone(zoneId)
+        return String.format(Locale.US, "%02d:%02d", time.hour, time.minute)
+    }
+
+    /**
+     * `10.05`，用于已经有 [LocalDate] 的场合（例如最佳 / 最差单日）。
+     *
+     * 与按时间戳格式化的那个重载同源同格式；已经算出日期的地方不必再折回时间戳，
+     * 也就不会因为在两个时区之间来回换算而偏移一天。
+     */
+    fun monthDay(date: LocalDate): String =
+        String.format(Locale.US, "%02d.%02d", date.monthValue, date.dayOfMonth)
+
     /** `2026年10月`，用于场次列表的月份分组标题（规格 3.3）。 */
     fun monthLabel(yearMonth: YearMonth): String =
         String.format(Locale.US, "%d年%d月", yearMonth.year, yearMonth.monthValue)
@@ -130,3 +146,37 @@ fun timeSlotLabel(slot: TimeSlot): String = stringResource(
         TimeSlot.EVENING -> R.string.time_slot_evening
     },
 )
+
+/**
+ * 场次的时间区间，例如 `14:00 – 18:30`。
+ *
+ * 跨零点时把日期补上（`10.05 20:00 – 10.06 01:00`）——只写钟点的话，
+ * 「20:00 – 01:00」会被读成一段倒退的时间。同一天里则只给钟点，保持紧凑。
+ */
+@Composable
+fun sessionClockRange(startedAt: Long, playedAt: Long): String {
+    val sameDay = UiText.toLocalDate(startedAt) == UiText.toLocalDate(playedAt)
+    val start = if (sameDay) {
+        UiText.timeOfDay(startedAt)
+    } else {
+        UiText.monthDay(startedAt) + " " + UiText.timeOfDay(startedAt)
+    }
+    val end = if (sameDay) {
+        UiText.timeOfDay(playedAt)
+    } else {
+        UiText.monthDay(playedAt) + " " + UiText.timeOfDay(playedAt)
+    }
+    return "$start – $end"
+}
+
+/**
+ * 时间区间加时长，例如 `14:00 – 18:30 · 4 小时`。
+ *
+ * 详情页与记一场的确认框共用：时段是按这一场的中点判定的，光看结束时间会显得自相矛盾，
+ * 两处都把区间写出来，用户才看得出「为什么这一场算下午场」。
+ */
+@Composable
+fun sessionTimeRange(startedAt: Long, playedAt: Long, durationMinutes: Int): String {
+    val duration = stringResource(R.string.detail_duration_format, SessionDuration.formatHours(durationMinutes))
+    return sessionClockRange(startedAt, playedAt) + " · " + duration
+}

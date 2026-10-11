@@ -60,6 +60,7 @@ import com.manote.app.ui.model.SessionDetailUi
 import com.manote.app.ui.model.TransferUi
 import com.manote.app.ui.model.UiText
 import com.manote.app.ui.model.seatLabel
+import com.manote.app.ui.model.sessionTimeRange
 import com.manote.app.ui.theme.manote
 import kotlinx.coroutines.launch
 
@@ -102,7 +103,7 @@ fun SessionDetailScreen(
         viewModel.onCsvTargetChosen(uri?.toString())
     }
 
-    // CSV 文本准备好之后才拉选择器，文件名用打完时间与场次 ID 短串（规格 6.2）
+    // CSV 文本准备好之后才拉选择器，文件名用结束时间与场次 ID 短串（规格 6.2）
     LaunchedEffect(state.pendingCsv) {
         state.pendingCsv?.let { csvLauncher.launch(it.fileName) }
     }
@@ -212,6 +213,18 @@ private fun SessionDetailContent(
                     Spacer(modifier = Modifier.width(8.dp))
                     TimeSlotTag(slot = detail.timeSlot)
                 }
+                // 时段按这一场的中点判定，这里就把开始 – 结束一并写出来：
+                // 否则「18:30 结束、却标着下午场」看起来像算错了
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = sessionTimeRange(
+                        startedAt = detail.startedAt,
+                        playedAt = detail.playedAt,
+                        durationMinutes = detail.durationMinutes,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 // 「麻将对局」是占位默认名：顶栏已经回落成「场次详情」，这里再重复一句没有意义
                 if (!SessionRules.isPlaceholderTitle(detail.title)) {
                     Spacer(modifier = Modifier.height(4.dp))

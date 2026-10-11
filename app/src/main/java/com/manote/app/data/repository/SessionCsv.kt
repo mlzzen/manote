@@ -1,6 +1,7 @@
 package com.manote.app.data.repository
 
 import com.manote.app.domain.Money
+import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.SessionRules
 import java.time.Instant
 import java.time.ZoneId
@@ -9,7 +10,7 @@ import java.time.format.DateTimeFormatter
 /**
  * 单场 CSV 导出（规格 6.2）。仅查看，不支持导入。
  *
- * 格式固定：UTF-8 BOM + CRLF，一行表头加一行整场结果，16 列。
+ * 格式固定：UTF-8 BOM + CRLF，一行表头加一行整场结果，17 列。
  * 一场只记录部分位置时（规格 1.3），未记录位置的三列为空。
  * 金额从「分」精确转成两位小数的元后**按数值原样输出**；
  * 其余文本列做两层处理：
@@ -30,7 +31,7 @@ object SessionCsv {
 
     /** 固定表头，顺序即列顺序（规格 6.2）。 */
     val HEADERS: List<String> = listOf(
-        "对局ID", "标题", "打完时间",
+        "对局ID", "标题", "结束时间", "时长(小时)",
         "自己ID", "自己昵称", "自己净金额(元)",
         "上家ID", "上家昵称", "上家净金额(元)",
         "对家ID", "对家昵称", "对家净金额(元)",
@@ -45,7 +46,7 @@ object SessionCsv {
      * 生成整份 CSV 文本。
      *
      * 一场可能只记录了 1～4 个位置（规格 1.3）：未记录的位置三列全部留空，
-     * 表头与列数仍然固定为 16 列。**不填 0.00**——凭空写 0 会造出一个并不存在的持平结果。
+     * 表头与列数仍然固定为 17 列。**不填 0.00**——凭空写 0 会造出一个并不存在的持平结果。
      *
      * 连 seat 0 都没有说明库已损坏，这时返回 null，由调用方给出失败提示，
      * 而不是导出一份连本人都没有的文件。
@@ -59,6 +60,8 @@ object SessionCsv {
             add(textCell(session.id))
             add(textCell(session.title))
             add(textCell(formatTime(session.playedAt, zoneId)))
+            // 时长是数值列，不加防公式前缀；开始时间可由「结束时间 − 时长」推出，不必再占一列
+            add(SessionDuration.formatHours(session.durationMinutes))
             (0 until SessionRules.SEAT_COUNT).forEach { seat ->
                 val result = bySeat[seat]
                 if (result == null) {
@@ -84,7 +87,7 @@ object SessionCsv {
     }
 
     /**
-     * 文件名用打完时间与 Session ID 短串，**不含昵称与标题**
+     * 文件名用结束时间与 Session ID 短串，**不含昵称与标题**
      * （避免把用户文本写进文件名，也避免不同场次重名）。
      */
     fun fileName(detail: SessionDetail, zoneId: ZoneId = ZoneId.systemDefault()): String {

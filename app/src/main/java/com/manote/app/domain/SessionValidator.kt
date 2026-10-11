@@ -37,9 +37,18 @@ object SessionValidator {
         return ManoteResult.Success(trimmed)
     }
 
-    /** 打完时间不得晚于提交时的设备当前时间，允许补录过去（规格 2.1）。 */
+    /** 结束时间不得晚于提交时的设备当前时间，允许补录过去（规格 2.1）。 */
     fun validatePlayedAt(playedAt: Long, now: Long): ManoteError? =
         if (playedAt > now) ManoteError.PLAYED_AT_IN_FUTURE else null
+
+    /**
+     * 时长必须在 0.5～24 小时之间（且为 0.1 小时的整数倍）。
+     *
+     * 用户留空时界面会先补上默认值 4 小时再提交，**不会**把「没填」当成 0；
+     * 因此这里对 0 一律判为非法，避免一场 0 小时的记录溜进库里。
+     */
+    fun validateDuration(minutes: Int): ManoteError? =
+        if (SessionDuration.isValid(minutes)) null else ManoteError.INVALID_DURATION
 
     /**
      * 校验座位集合（规格 1.3、5.1）：非空、都落在 0～3 之内，且必须包含 seat 0。

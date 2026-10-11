@@ -14,8 +14,11 @@ enum class ManoteError {
     /** 标题超过 30 字。 */
     INVALID_TITLE,
 
-    /** 打完时间晚于提交时的设备当前时间。 */
+    /** 结束时间晚于提交时的设备当前时间。 */
     PLAYED_AT_IN_FUTURE,
+
+    /** 时长不在 0.5～24 小时之间，或不是 6 分钟（0.1 小时）的整数倍。 */
+    INVALID_DURATION,
 
     /** 座位集合不合法：为空、越出 0～3，或缺少本人所在的 seat 0（规格 1.3）。 */
     INVALID_SEAT_SET,

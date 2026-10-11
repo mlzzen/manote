@@ -9,6 +9,7 @@ import com.manote.app.data.local.SessionResultEntity
 import com.manote.app.data.local.SessionWithResults
 import com.manote.app.domain.ManoteError
 import com.manote.app.domain.ManoteResult
+import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.SessionValidator
 import kotlinx.coroutines.flow.Flow
@@ -31,9 +32,14 @@ data class SessionDraft(
     val title: String,
     val note: String,
     val seats: List<SeatResultInput>,
+    /**
+     * 本场时长（分钟）；界面留空时由调用方填入 [SessionDuration.DEFAULT_MINUTES]。
+     * 这里再给一次默认值，是为了让「没填就是 4 小时」这条规则在漏传时也成立。
+     */
+    val durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
 )
 
-/** 修改一整场：只允许改标题、打完时间、备注与四人金额，不支持换人员与位置。 */
+/** 修改一整场：只允许改标题、结束时间、时长、备注与四人金额，不支持换人员与位置。 */
 data class SessionEdit(
     val id: String,
     val expectedRevision: Long,
@@ -41,6 +47,8 @@ data class SessionEdit(
     val title: String,
     val note: String,
     val netMinorBySeat: Map<Int, Long>,
+    /** 本场时长（分钟）。与金额一样，属于「可以改错、可以改回」的内容。 */
+    val durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
 )
 
 /** 场次详情：场次本身加四个座位结果。 */
@@ -81,6 +89,9 @@ class SessionRepository(
         val now = clock()
 
         SessionValidator.validatePlayedAt(draft.playedAt, now)?.let {
+            return ManoteResult.Failure(it)
+        }
+        SessionValidator.validateDuration(draft.durationMinutes)?.let {
             return ManoteResult.Failure(it)
         }
         val title = when (val result = SessionValidator.normalizeTitle(draft.title)) {
@@ -129,6 +140,7 @@ class SessionRepository(
             id = draft.id,
             title = title,
             playedAt = draft.playedAt,
+            durationMinutes = draft.durationMinutes,
             note = note,
             createdAt = now,
             updatedAt = now,
@@ -174,6 +186,9 @@ class SessionRepository(
         SessionValidator.validatePlayedAt(edit.playedAt, now)?.let {
             return ManoteResult.Failure(it)
         }
+        SessionValidator.validateDuration(edit.durationMinutes)?.let {
+            return ManoteResult.Failure(it)
+        }
         val title = when (val result = SessionValidator.normalizeTitle(edit.title)) {
             is ManoteResult.Success -> result.value
             is ManoteResult.Failure -> return result
@@ -205,6 +220,7 @@ class SessionRepository(
             expectedRevision = edit.expectedRevision,
             title = title,
             playedAt = edit.playedAt,
+            durationMinutes = edit.durationMinutes,
             note = note,
             updatedAt = now,
         )

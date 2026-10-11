@@ -33,33 +33,39 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
+import com.manote.app.domain.DayNet
 import com.manote.app.domain.PlayerStatistics
+import com.manote.app.domain.StreakStats
 import com.manote.app.domain.TimeSlot
 import com.manote.app.domain.TimeSlotStatistics
+import com.manote.app.domain.TrendPoint
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
 import com.manote.app.ui.components.ManotePrimaryButton
+import com.manote.app.ui.components.ManoteReadout
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.ManoteSectionHeader
 import com.manote.app.ui.components.ManoteSessionRow
 import com.manote.app.ui.components.ManoteTextAction
+import com.manote.app.ui.components.NetTrendChart
 import com.manote.app.ui.model.SessionRowUi
 import com.manote.app.ui.model.UiText
 import com.manote.app.ui.model.timeSlotLabel
 import com.manote.app.ui.navigation.ManoteTab
 import com.manote.app.ui.theme.ManoteTheme
 import com.manote.app.ui.theme.manote
+import java.time.LocalDate
 
 /**
  * 首页（规格 3.1）。
  *
- * 显示累计赢钱、累计输钱、净输赢与已记录场数，主体为最近场次与「记一场」。
+ * 显示累计赢钱、累计输钱、净输赢与已记录场数；下面是本人累计净额曲线、
+ * 分时段战绩、连输/连赢记录，主体为最近场次与「记一场」。
  * 所有数字都来自 `session_result` 的实时汇总（规格 2.4），没有记录时显示 0.00 元。
  *
- * 规格明确「首版不实现图表」，因此参考稿里的趋势折线图不在这里实现；
- * 「今日宜忌 / 牌运」属规格外内容，同样不做。
+ * 「今日宜忌 / 牌运」属规格外内容，不做。
  */
 @Composable
 fun HomeScreen(
@@ -111,11 +117,17 @@ private fun HomeContent(
         ) {
             OverviewCard(statistics = state.statistics, loading = state.loading)
 
-            // 一场都没记时不显示分时段战绩，避免三行全是「—」的空表；
+            // 一场都没记时不显示走势与分时段战绩，避免三行全是「—」的空表；
             // 空态已经由上面的战绩概览说明过了。
             if (state.statistics.sessionCount > 0) {
+                ManoteSectionHeader(title = stringResource(R.string.home_trend_title))
+                NetTrendCard(trend = state.trend)
+
                 ManoteSectionHeader(title = stringResource(R.string.home_slot_title))
                 SlotStatisticsCard(slots = state.slotStatistics)
+
+                ManoteSectionHeader(title = stringResource(R.string.home_streak_title))
+                StreakCard(stats = state.streak)
             }
 
             ManoteSectionHeader(
@@ -353,6 +365,148 @@ private const val SLOT_NAME_WEIGHT = 1.0f
 private const val SLOT_COUNT_WEIGHT = 0.7f
 private const val SLOT_METRIC_WEIGHT = 0.9f
 
+/**
+ * 累计净额曲线：本人跨场的累计盈亏走势，外加最新 / 区间最高 / 区间最低三个读数。
+ *
+ * 只有一个点时画不出「走势」，这里给出说明而不是画一条毫无意义的直线。
+ */
+@Composable
+private fun NetTrendCard(trend: List<TrendPoint>) {
+    ManoteCard {
+        if (trend.size < 2) {
+            Text(
+                text = stringResource(R.string.home_trend_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return@ManoteCard
+        }
+
+        NetTrendChart(points = trend)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val values = trend.map { it.cumulativeMinor }
+        val latest = values.last()
+        val highest = values.maxOrNull() ?: 0L
+        val lowest = values.minOrNull() ?: 0L
+        Row(modifier = Modifier.fillMaxWidth()) {
+            ManoteReadout(
+                label = stringResource(R.string.trend_latest),
+                value = UiText.signedYuan(latest),
+                valueColor = signedColor(latest),
+                modifier = Modifier.weight(1f),
+            )
+            ManoteReadout(
+                label = stringResource(R.string.trend_highest),
+                value = UiText.signedYuan(highest),
+                valueColor = signedColor(highest),
+                modifier = Modifier.weight(1f),
+            )
+            ManoteReadout(
+                label = stringResource(R.string.trend_lowest),
+                value = UiText.signedYuan(lowest),
+                valueColor = signedColor(lowest),
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.home_trend_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * 连输 / 连赢记录：当前连胜与连输、历史最长连胜与连输，以及最佳 / 最差单日。
+ *
+ * 「当前」取的是最后一场往前的连续段：今天输了、昨天赢了，当前连输就是 1 场。
+ * 持平会把两条连续段同时切断，因此 0 不会混进连胜或连输里（见 [StreakStats]）。
+ */
+@Composable
+private fun StreakCard(stats: StreakStats) {
+    val colors = MaterialTheme.manote
+
+    ManoteCard {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            ManoteReadout(
+                label = stringResource(R.string.home_streak_current_win),
+                value = streakCount(stats.currentWinStreak),
+                valueColor = if (stats.currentWinStreak > 0) colors.win else mutedColor(),
+                modifier = Modifier.weight(1f),
+            )
+            ManoteReadout(
+                label = stringResource(R.string.home_streak_current_loss),
+                value = streakCount(stats.currentLossStreak),
+                valueColor = if (stats.currentLossStreak > 0) colors.loss else mutedColor(),
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            ManoteReadout(
+                label = stringResource(R.string.home_streak_longest_win),
+                value = streakCount(stats.longestWinStreak),
+                valueColor = if (stats.longestWinStreak > 0) colors.win else mutedColor(),
+                modifier = Modifier.weight(1f),
+            )
+            ManoteReadout(
+                label = stringResource(R.string.home_streak_longest_loss),
+                value = streakCount(stats.longestLossStreak),
+                valueColor = if (stats.longestLossStreak > 0) colors.loss else mutedColor(),
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            DayReadout(
+                label = stringResource(R.string.home_streak_best_day),
+                day = stats.bestDay,
+            )
+            DayReadout(
+                label = stringResource(R.string.home_streak_worst_day),
+                day = stats.worstDay,
+            )
+        }
+    }
+}
+
+/** 「N 场」。单独抽出来是因为 stringResource 只能在 @Composable 上下文里调用，不能塞进普通 lambda。 */
+@Composable
+private fun streakCount(count: Int): String =
+    stringResource(R.string.home_streak_count_format, count)
+
+/** 单日读数：金额 + 「哪一天 · 几场」。一天都还没记时整块显示占位符。 */
+@Composable
+private fun RowScope.DayReadout(label: String, day: DayNet?) {
+    ManoteReadout(
+        label = label,
+        value = if (day == null) {
+            stringResource(R.string.common_unavailable)
+        } else {
+            UiText.signedYuan(day.netMinor)
+        },
+        valueColor = if (day == null) mutedColor() else signedColor(day.netMinor),
+        modifier = Modifier.weight(1f),
+        caption = if (day == null) {
+            null
+        } else {
+            UiText.monthDay(day.day) + " · " +
+                stringResource(R.string.home_streak_count_format, day.sessionCount)
+        },
+    )
+}
+
+@Composable
+private fun mutedColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant
+
 /** 金额的正负配色：赢红、输绿、持平的走中性色，与列表和详情的口径一致。 */
 @Composable
 private fun signedColor(minor: Long): Color {
@@ -520,6 +674,21 @@ private fun HomeContentPreview() {
                         TimeSlot.MORNING to listOf(600L, -200L, 0L),
                         TimeSlot.EVENING to listOf(-1_500L, -2_300L, 900L, -400L),
                     ),
+                ),
+                trend = listOf(
+                    TrendPoint(1_788_000_000_000L, -2_600L, -2_600L),
+                    TrendPoint(1_789_000_000_000L, 900L, -1_700L),
+                    TrendPoint(1_790_000_000_000L, 2_600L, 900L),
+                    TrendPoint(1_791_000_000_000L, -200L, 700L),
+                    TrendPoint(1_792_000_000_000L, -4_100L, -3_400L),
+                ),
+                streak = StreakStats(
+                    currentWinStreak = 0,
+                    currentLossStreak = 1,
+                    longestWinStreak = 2,
+                    longestLossStreak = 3,
+                    bestDay = DayNet(LocalDate.of(2026, 10, 3), 4_200L, 2),
+                    worstDay = DayNet(LocalDate.of(2026, 10, 5), -3_100L, 2),
                 ),
                 recentSessions = listOf(
                     SessionRowUi(

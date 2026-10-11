@@ -46,6 +46,14 @@ enum class BackupRejectReason {
     /** 时间戳为负，或 createdAt/updatedAt/playedAt/archivedAt 的先后关系不成立。 */
     INVALID_TIME,
 
+    /**
+     * 场次时长不在 0.5～24 小时之间，或不是 0.1 小时的整数倍。
+     *
+     * 旧版本导出的备份没有这个字段，解析时会补上默认的 4 小时，
+     * 因此这条只会拒绝**明确写了**一个非法时长（例如 0 或 99 小时）的文件。
+     */
+    INVALID_DURATION,
+
     /** revision 不是正整数。 */
     INVALID_REVISION,
 

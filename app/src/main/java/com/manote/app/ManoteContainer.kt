@@ -3,6 +3,7 @@ package com.manote.app
 import android.content.Context
 import androidx.room.Room
 import com.manote.app.data.local.ManoteDatabase
+import com.manote.app.data.local.ManoteMigrations
 import com.manote.app.data.repository.AndroidBackupFileStore
 import com.manote.app.data.repository.BackupFileStore
 import com.manote.app.data.repository.BackupRepository
@@ -25,6 +26,8 @@ class ManoteContainer(context: Context) {
             ManoteDatabase::class.java,
             ManoteDatabase.DATABASE_NAME,
         )
+        // 显式 migration（规格 5.1）：升级路径写死在代码里，不依赖任何破坏性回退
+        .addMigrations(*ManoteMigrations.ALL)
         .build()
 
     private val writeSerializer = WriteSerializer()

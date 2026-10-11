@@ -4,10 +4,13 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.manote.app.data.repository.PlayerRepository
+import com.manote.app.data.repository.SessionRepository
 import com.manote.app.domain.ManoteResult
+import com.manote.app.domain.Rivalry
 import com.manote.app.ui.model.FriendFiltering
 import com.manote.app.ui.model.FriendRowUi
 import com.manote.app.ui.model.messageRes
+import com.manote.app.ui.model.opponentMatches
 import com.manote.app.ui.model.toRowUi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,13 +46,17 @@ sealed interface FriendsEvent {
 /**
  * 牌友页 ViewModel（规格 3.4）。
  *
- * 档案与聚合各订阅一份，在内存里合并：场数与净输赢直接来自 `session_result` 的聚合，
+ * 档案、聚合与全部场次各订阅一份，在内存里合并：场数与净输赢直接来自 `session_result` 的聚合，
  * 不另存累计值，因此修改或删除场次后这里的数字会立刻跟着变。
+ *
+ * 「最苦主」也要横比所有同桌场次才能判定，所以除了聚合还要读场次结果本身；
+ * 上限 1000 场，在内存里聚合的开销可以忽略。
  *
  * 搜索、「包含已归档」开关与排序都是纯函数（[FriendFiltering]），便于单测。
  */
 class FriendsViewModel(
     private val playerRepository: PlayerRepository,
+    sessionRepository: SessionRepository,
 ) : ViewModel() {
 
     private val _events = MutableSharedFlow<FriendsEvent>(extraBufferCapacity = 4)
@@ -61,11 +68,18 @@ class FriendsViewModel(
     val uiState: StateFlow<FriendsUiState> = combine(
         playerRepository.observeAllFriends(),
         playerRepository.observeAggregates(),
+        sessionRepository.observeSessions(),
         query,
         includeArchived,
-    ) { friends, aggregates, keyword, archived ->
+    ) { friends, aggregates, sessions, keyword, archived ->
         val aggregateByPlayer = aggregates.associateBy { it.playerId }
-        val rows = friends.map { it.toRowUi(aggregateByPlayer[it.id]) }
+        val worstRivalId = Rivalry.worstRival(sessions.flatMap { it.opponentMatches() })?.playerId
+        val rows = friends.map { friend ->
+            friend.toRowUi(
+                aggregate = aggregateByPlayer[friend.id],
+                isWorstRival = friend.id == worstRivalId,
+            )
+        }
         FriendsUiState(
             loading = false,
             query = keyword,

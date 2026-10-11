@@ -36,6 +36,23 @@ val releaseStorePassword = externalValue("SIGNING_STORE_PASSWORD", "storePasswor
 val releaseKeyAlias = externalValue("SIGNING_KEY_ALIAS", "keyAlias")
 val releaseKeyPassword = externalValue("SIGNING_KEY_PASSWORD", "keyPassword")
 
+// ---------------------------------------------------------------------------
+// 调试签名：四台开发机各自生成一把 debug 密钥，换台电脑签名就不一致——
+// 别人的 debug 包装不上你的手机（签名冲突），装过正式包的手机更是直接被挡住。
+//
+// 这里统一用仓库里那把公开的调试密钥（口令就是众所周知的 android），
+// 让任何一台机器、任何一个 CI 打出来的 debug 包都互认。
+// 它只用于本地调试，与发布密钥完全无关；发布密钥仍然只走 Secrets / keystore.properties。
+//
+// 同时 debug 变体带上 .debug 后缀的 applicationId，于是
+//   com.manote.app        ← 正式包（用户装的那个）
+//   com.manote.app.debug  ← 开发包
+// 是两个独立应用，可以同时安装在同一台手机上，谁也覆盖不掉谁。
+// ---------------------------------------------------------------------------
+val debugStoreFile = rootProject.file("keystore/manote-debug.jks").takeIf { it.exists() }
+val debugKeystorePassword = "android"
+val debugKeyAlias = "androiddebugkey"
+
 // 密钥库在、口令不全时立刻报错，而不是等到签名阶段抛一句难懂的异常。
 val missingSigningFields = buildList {
     if (releaseStoreFile != null) {
@@ -80,6 +97,17 @@ android {
     }
 
     signingConfigs {
+        // 调试签名：用仓库里那把公用的调试密钥，换台电脑也能互相覆盖安装。
+        // 文件不在（例如有人只拷了源码）时保持 AGP 默认行为，不做任何替换。
+        if (debugStoreFile != null) {
+            maybeCreate("debug").apply {
+                storeFile = debugStoreFile
+                storePassword = debugKeystorePassword
+                keyAlias = debugKeyAlias
+                keyPassword = debugKeystorePassword
+            }
+        }
+
         // 只在真的拿到密钥库时才声明 release 配置，避免凭空造出一个空签名的 config。
         if (releaseStoreFile != null) {
             create("release") {
@@ -92,6 +120,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            // 开发包与正式包用不同的 applicationId，两者可以同时装在一台手机上：
+            // 调试时不必先卸掉用户装着的正式包，也不会把正式包覆盖成调试版。
+            applicationIdSuffix = ".debug"
+            // 手机上两个图标长得一样，靠版本号后缀区分哪个是开发包。
+            versionNameSuffix = "-debug"
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(

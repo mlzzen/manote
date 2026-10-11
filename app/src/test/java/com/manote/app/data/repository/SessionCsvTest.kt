@@ -2,6 +2,7 @@ package com.manote.app.data.repository
 
 import com.manote.app.data.local.SessionEntity
 import com.manote.app.data.local.SessionResultEntity
+import com.manote.app.domain.SessionDuration
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -29,7 +30,7 @@ class SessionCsvTest {
         assertEquals("", lines[2])
 
         assertEquals(
-            "对局ID,标题,打完时间," +
+            "对局ID,标题,结束时间,时长(小时)," +
                 "自己ID,自己昵称,自己净金额(元)," +
                 "上家ID,上家昵称,上家净金额(元)," +
                 "对家ID,对家昵称,对家净金额(元)," +
@@ -37,7 +38,7 @@ class SessionCsvTest {
                 "备注",
             lines[0],
         )
-        assertEquals(16, lines[1].split(",").size)
+        assertEquals(17, lines[1].split(",").size)
     }
 
     @Test
@@ -49,14 +50,23 @@ class SessionCsvTest {
         assertEquals(SESSION_ID, cells[0])
         assertEquals("周五晚局", cells[1])
         assertEquals("2026-10-05 21:30", cells[2])
-        assertEquals(SELF_ID, cells[3])
-        assertEquals("我", cells[4])
-        assertEquals("30.00", cells[5])
-        assertEquals("老王", cells[7])
-        assertEquals("-10.00", cells[8])
-        assertEquals("阿强", cells[13])
-        assertEquals("-10.00", cells[14])
-        assertEquals("", cells[15])
+        assertEquals("4", cells[3])
+        assertEquals(SELF_ID, cells[4])
+        assertEquals("我", cells[5])
+        assertEquals("30.00", cells[6])
+        assertEquals("老王", cells[8])
+        assertEquals("-10.00", cells[9])
+        assertEquals("阿强", cells[14])
+        assertEquals("-10.00", cells[15])
+        assertEquals("", cells[16])
+    }
+
+    @Test
+    fun durationIsWrittenAsHoursWithoutTrailingZeroes() {
+        // 4 小时写 `4` 而不是 `4.0`；半个钟头写 `0.5`；数值列不加防公式前缀
+        assertEquals("0.5", durationCell(minutes = 30))
+        assertEquals("4", durationCell(minutes = 240))
+        assertEquals("4.5", durationCell(minutes = 270))
     }
 
     @Test
@@ -113,17 +123,17 @@ class SessionCsvTest {
 
     @Test
     fun seatsWithoutRecordKeepTheirColumnsButStayEmpty() {
-        // 规格 1.3：只记录了 0/1 两个位置，未记录的位置三列留空，列数仍然是 16
+        // 规格 1.3：只记录了 0/1 两个位置，未记录的位置三列留空，列数仍然是 17
         val partial = detail().let { it.copy(results = it.results.filter { r -> r.seat <= 1 }) }
 
         val line = SessionCsv.build(partial, ZONE)!!.removePrefix(SessionCsv.BOM)
             .split(SessionCsv.LINE_SEPARATOR)[1]
         val cells = line.split(",")
 
-        assertEquals(16, cells.size)
-        assertEquals("老王", cells[7])
-        // 对家、下家三列（9/10/11、12/13/14）全部为空，而不是填 0.00
-        assertEquals(listOf("", "", "", "", "", ""), cells.subList(9, 15))
+        assertEquals(17, cells.size)
+        assertEquals("老王", cells[8])
+        // 对家、下家三列（10/11/12、13/14/15）全部为空，而不是填 0.00
+        assertEquals(listOf("", "", "", "", "", ""), cells.subList(10, 16))
     }
 
     @Test
@@ -149,10 +159,18 @@ class SessionCsvTest {
         .removePrefix(SessionCsv.BOM)
         .split(SessionCsv.LINE_SEPARATOR)[1]
 
+    /** 第 4 列（index 3）的时长文本。 */
+    private fun durationCell(minutes: Int): String =
+        SessionCsv.build(detail(durationMinutes = minutes), ZONE)!!
+            .removePrefix(SessionCsv.BOM)
+            .split(SessionCsv.LINE_SEPARATOR)[1]
+            .split(",")[3]
+
     private fun detail(
         title: String = "周五晚局",
         note: String = "",
         friendName: String = "老王",
+        durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
     ): SessionDetail {
         val playedAt = PLAYED_AT
         return SessionDetail(
@@ -160,6 +178,7 @@ class SessionCsvTest {
                 id = SESSION_ID,
                 title = title,
                 playedAt = playedAt,
+                durationMinutes = durationMinutes,
                 note = note,
                 createdAt = playedAt,
                 updatedAt = playedAt,

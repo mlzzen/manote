@@ -49,8 +49,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
+import com.manote.app.ui.components.ManoteReadout
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.ManoteSectionHeader
+import com.manote.app.ui.components.NetTrendChart
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.components.SignedAmount
 import com.manote.app.ui.manoteViewModel
@@ -59,6 +61,7 @@ import com.manote.app.ui.model.FriendSessionRowUi
 import com.manote.app.ui.model.UiText
 import com.manote.app.ui.model.seatLabel
 import com.manote.app.ui.theme.manote
+import com.manote.app.domain.TrendPoint
 import kotlinx.coroutines.launch
 
 /**
@@ -145,6 +148,7 @@ fun FriendDetailScreen(
         ) {
             FriendProfileCard(detail = detail)
             FriendStatisticsCard(detail = detail)
+            FriendTrendCard(trend = detail.trend)
 
             ManoteSectionHeader(title = stringResource(R.string.friend_detail_sessions_title))
 
@@ -306,6 +310,61 @@ private fun signedColor(minor: Long): Color {
         minor > 0L -> colors.win
         minor < 0L -> colors.loss
         else -> MaterialTheme.colorScheme.onSurface
+    }
+}
+
+/**
+ * 这位牌友的累计净额走势。
+ *
+ * 只画他自己的跨场累计，回答的是「他最近手气怎么样」；
+ * 两人之间的相对输赢另有口径（见首页与牌友列表的「最苦主」），不混在一条线里。
+ */
+@Composable
+private fun FriendTrendCard(trend: List<TrendPoint>) {
+    ManoteCard {
+        Text(
+            text = stringResource(R.string.friend_detail_trend_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (trend.size < 2) {
+            Text(
+                text = stringResource(R.string.friend_detail_trend_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return@ManoteCard
+        }
+
+        NetTrendChart(points = trend)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val latest = trend.last().cumulativeMinor
+        val highest = trend.maxOf { it.cumulativeMinor }
+        val lowest = trend.minOf { it.cumulativeMinor }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            ManoteReadout(
+                label = stringResource(R.string.trend_latest),
+                value = UiText.signedYuan(latest),
+                valueColor = signedColor(latest),
+                modifier = Modifier.weight(1f),
+            )
+            ManoteReadout(
+                label = stringResource(R.string.trend_highest),
+                value = UiText.signedYuan(highest),
+                valueColor = signedColor(highest),
+                modifier = Modifier.weight(1f),
+            )
+            ManoteReadout(
+                label = stringResource(R.string.trend_lowest),
+                value = UiText.signedYuan(lowest),
+                valueColor = signedColor(lowest),
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 

@@ -6,6 +6,7 @@ import com.manote.app.data.error
 import com.manote.app.data.value
 import com.manote.app.domain.ManoteError
 import com.manote.app.domain.Money
+import com.manote.app.domain.SessionDuration
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -30,6 +31,7 @@ class SessionEditTest : RoomTestCase() {
         playedAt: Long = BASE_NOW - 60_000L,
         title: String = "周五晚局",
         note: String = "",
+        durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
     ) = SessionEdit(
         id = "session-1",
         expectedRevision = expectedRevision,
@@ -37,7 +39,35 @@ class SessionEditTest : RoomTestCase() {
         title = title,
         note = note,
         netMinorBySeat = mapOf(0 to nets[0], 1 to nets[1], 2 to nets[2], 3 to nets[3]),
+        durationMinutes = durationMinutes,
     )
+
+    @Test
+    fun editUpdatesDurationAlongsideTheAmounts() = runBlocking {
+        givenSavedSession()
+
+        sessionRepository.updateSession(
+            editOf(listOf(6000L, -2000L, -2000L, -2000L), durationMinutes = 270),
+        ).value()
+
+        val detail = sessionRepository.getSessionDetail("session-1").value()
+        assertEquals(270, detail.session.durationMinutes)
+    }
+
+    @Test
+    fun editRejectsInvalidDurationAndKeepsTheStoredValue() = runBlocking {
+        givenSavedSession()
+
+        val error = sessionRepository.updateSession(
+            editOf(listOf(6000L, -2000L, -2000L, -2000L), durationMinutes = 0),
+        ).error()
+
+        assertEquals(ManoteError.INVALID_DURATION, error)
+        // 非法输入不落库，库里仍是原来那场 4 小时
+        val detail = sessionRepository.getSessionDetail("session-1").value()
+        assertEquals(SessionDuration.DEFAULT_MINUTES, detail.session.durationMinutes)
+        assertEquals(1L, detail.session.revision)
+    }
 
     @Test
     fun editReplacesResultsWithoutAddingSessions() = runBlocking {

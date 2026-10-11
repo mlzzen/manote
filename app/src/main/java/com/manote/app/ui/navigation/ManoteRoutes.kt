@@ -10,7 +10,7 @@ object ManoteRoutes {
     /** 首页：本人统计与最近场次。 */
     const val HOME = "home"
 
-    /** 场次：按打完时间倒序的场次列表。 */
+    /** 场次：按结束时间倒序的场次列表。 */
     const val SESSIONS = "sessions"
 
     /** 牌友：麻友档案列表与新增。 */

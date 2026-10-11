@@ -24,7 +24,8 @@ interface SessionDao {
      * 返回受影响行数：0 表示场次已被删除或版本已变，调用方据此拒绝覆盖（规格 2.3）。
      */
     @Query(
-        "UPDATE session SET title = :title, playedAt = :playedAt, note = :note, " +
+        "UPDATE session SET title = :title, playedAt = :playedAt, " +
+            "durationMinutes = :durationMinutes, note = :note, " +
             "updatedAt = :updatedAt, revision = revision + 1 " +
             "WHERE id = :id AND revision = :expectedRevision",
     )
@@ -33,6 +34,7 @@ interface SessionDao {
         expectedRevision: Long,
         title: String,
         playedAt: Long,
+        durationMinutes: Int,
         note: String,
         updatedAt: Long,
     ): Int
@@ -41,7 +43,7 @@ interface SessionDao {
     suspend fun deleteById(id: String): Int
 
     /**
-     * 订阅全部场次及其四条结果，按打完时间倒序、同时间按 Session ID 稳定排序（规格 2.4）。
+     * 订阅全部场次及其四条结果，按结束时间倒序、同时间按 Session ID 稳定排序（规格 2.4）。
      * 首页统计与场次列表共用这一条查询，保证两处数字来自同一份快照。
      */
     @Transaction
@@ -54,7 +56,7 @@ interface SessionDao {
     fun observeByIdWithResults(id: String): Flow<List<SessionWithResults>>
 
     /**
-     * 订阅某位玩家参与过的全部场次及其四人结果，按打完时间倒序（规格 3.4 逐场统计）。
+     * 订阅某位玩家参与过的全部场次及其四人结果，按结束时间倒序（规格 3.4 逐场统计）。
      *
      * 连同该场全部四条结果一起取出，界面据此同时显示「麻友本场结果」与「本人本场结果」，
      * 不需要为每一场再查一次。
@@ -68,7 +70,7 @@ interface SessionDao {
     )
     fun observeByPlayerWithResults(playerId: String): Flow<List<SessionWithResults>>
 
-    /** 一次性读出全部场次，供 JSON 备份导出；顺序与界面一致（打完时间倒序）。 */
+    /** 一次性读出全部场次，供 JSON 备份导出；顺序与界面一致（结束时间倒序）。 */
     @Query("SELECT * FROM session ORDER BY playedAt DESC, id DESC")
     suspend fun findAllOrdered(): List<SessionEntity>
 

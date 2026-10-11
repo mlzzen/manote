@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,8 +49,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,7 +62,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import com.manote.app.R
+import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.SessionRules
+import com.manote.app.domain.TimeSlot
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
 import com.manote.app.ui.components.ManotePrimaryButton
@@ -68,6 +74,9 @@ import com.manote.app.ui.components.SignedAmount
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.model.UiText
 import com.manote.app.ui.model.seatLabel
+import com.manote.app.ui.model.sessionClockRange
+import com.manote.app.ui.model.sessionTimeRange
+import com.manote.app.ui.model.timeSlotLabel
 import com.manote.app.ui.theme.manote
 import kotlinx.coroutines.launch
 
@@ -80,8 +89,14 @@ private fun SessionEditMode.viewModelKey(): String = when (this) {
 /**
  * 记一场 / 修改本场（规格 1.3、3.2、3.3）。
  *
- * 一屏完成位置选择与金额填写：自己自动关联本人，上家/对家/下家从牌友中选择或即时创建；
+ * 一屏完成时间、时长、位置选择与金额填写：自己自动关联本人，上家/对家/下家从牌友中选择或即时创建；
  * 每个已记录的位置用「赢 / 输」切换加非负金额输入；底部实时显示合计。
+ *
+ * 时间只填结束时间，时长可留空（默认 4 小时）；两者定出这一场的时间区间，
+ * 早场 / 下午场 / 晚场按区间中点判定，算出来的区间与时段直接显示在输入框下方。
+ *
+ * 选完牌友、或切换「赢 / 输」之后，焦点会自动落到该座位的金额输入框：
+ * 这两步紧接着都是填数字，不该再让用户点一次。
  *
  * 不要求选齐四位、也不要求每人都填金额：没选牌友的位置不记录（不显示输入框），
  * 金额留空按 0 计；合计不为 0 时只给出提示色，保存按钮照常可用。
@@ -116,6 +131,10 @@ fun SessionEditScreen(
 
     var pickingSeat by rememberSaveable { mutableStateOf<Int?>(null) }
     var creatingFriendForSeat by rememberSaveable { mutableStateOf<Int?>(null) }
+    // 刚选好牌友的座位：它的金额输入框该自动获得焦点。
+    // 用 remember 而不是 rememberSaveable——这是一次性的手势意图，
+    // 旋转屏幕后不该凭空又弹一次键盘。
+    var pendingAmountFocusSeat by remember { mutableStateOf<Int?>(null) }
     var showPlayedAtPicker by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
 
@@ -189,7 +208,24 @@ fun SessionEditScreen(
 
             PlayedAtRow(
                 playedAt = state.playedAt,
-                onClick = { showPlayedAtPicker = true },
+                durationText = state.durationText,
+                durationError = state.durationError,
+                // 时长合法时把这一场的时间区间与算出的时段显示出来：
+                // 时段按区间中点判定，不写出来用户就只能猜为什么它被算成下午场
+                durationHint = state.durationMinutes?.let { minutes ->
+                    stringResource(
+                        R.string.session_duration_slot_hint,
+                        sessionClockRange(
+                            startedAt = SessionDuration.startAt(state.playedAt, minutes),
+                            playedAt = state.playedAt,
+                        ),
+                        timeSlotLabel(
+                            TimeSlot.of(SessionDuration.midpointAt(state.playedAt, minutes)),
+                        ),
+                    )
+                },
+                onPickTime = { showPlayedAtPicker = true },
+                onDurationChange = viewModel::setDuration,
             )
 
             state.seats.forEach { draft ->
@@ -197,6 +233,8 @@ fun SessionEditScreen(
                     draft = draft,
                     errorRes = state.amountErrors[draft.seat],
                     rosterLocked = state.rosterLocked,
+                    requestAmountFocus = pendingAmountFocusSeat == draft.seat,
+                    onAmountFocusRequested = { pendingAmountFocusSeat = null },
                     onPick = { pickingSeat = draft.seat },
                     onClear = { viewModel.clearSeat(draft.seat) },
                     onWinChange = { viewModel.setSeatWin(draft.seat, it) },
@@ -238,6 +276,8 @@ fun SessionEditScreen(
             onPick = { option ->
                 viewModel.selectFriend(seat, option)
                 pickingSeat = null
+                // 选完就该填数字了，把焦点直接送过去
+                pendingAmountFocusSeat = seat
             },
             onCreateNew = {
                 creatingFriendForSeat = seat
@@ -253,6 +293,9 @@ fun SessionEditScreen(
             onConfirm = { nickname, note ->
                 viewModel.createFriend(nickname, note, seat)
                 creatingFriendForSeat = null
+                // 新建档案是异步的，这一刻座位还没被填上；标记先留下，
+                // SeatEditor 会等到座位真的记上了再抢焦点
+                pendingAmountFocusSeat = seat
             },
         )
     }
@@ -312,14 +355,28 @@ private fun RosterLockedNotice() {
     }
 }
 
+/**
+ * 结束时间与时长（规格 1.3、3.2）。
+ *
+ * 只填结束时间是刻意的——打完这一刻是确定的，开始时间靠时长倒推，
+ * 用户不必为了记一场去回忆几点开局。推算结果直接写在下面，
+ * 避免「为什么这一场被算成下午场」变成一个看不见的黑箱。
+ */
 @Composable
-private fun PlayedAtRow(playedAt: Long, onClick: () -> Unit) {
+private fun PlayedAtRow(
+    playedAt: Long,
+    durationText: String,
+    durationError: Int?,
+    durationHint: String?,
+    onPickTime: () -> Unit,
+    onDurationChange: (String) -> Unit,
+) {
     ManoteCard(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.small)
-                .clickable(onClick = onClick)
+                .clickable(onClick = onPickTime)
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -348,6 +405,45 @@ private fun PlayedAtRow(playedAt: Long, onClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        Spacer(modifier = Modifier.height(6.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(modifier = Modifier.height(10.dp))
+
+        OutlinedTextField(
+            value = durationText,
+            onValueChange = onDurationChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            isError = durationError != null,
+            label = { Text(text = stringResource(R.string.session_duration_label)) },
+            placeholder = { Text(text = stringResource(R.string.session_duration_hint)) },
+            suffix = { Text(text = stringResource(R.string.session_duration_unit)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            shape = MaterialTheme.shapes.small,
+        )
+
+        when {
+            durationError != null -> {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(durationError),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+
+            durationHint != null -> {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = durationHint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
     }
 }
 
@@ -356,6 +452,10 @@ private fun SeatEditor(
     draft: SeatDraft,
     errorRes: Int?,
     rosterLocked: Boolean,
+    /** 刚刚选好这位牌友：金额框该自动获得焦点。 */
+    requestAmountFocus: Boolean,
+    /** 焦点已送过去，父级可以把标记清掉，免得下次再选同一个人时不再触发。 */
+    onAmountFocusRequested: () -> Unit,
     onPick: () -> Unit,
     onClear: () -> Unit,
     onWinChange: (Boolean) -> Unit,
@@ -365,6 +465,11 @@ private fun SeatEditor(
     // 没选牌友的位置本场不记录：不显示金额与赢输开关，
     // 否则用户填完才发现被忽略（规格 1.3）
     val recorded = selected || draft.isSelfSeat
+
+    // 点「赢 / 输」之后几乎一定紧接着要填金额，这里直接把焦点送过去，
+    // 省掉「点开关 → 再点输入框」这一步。
+    val amountFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
 
     ManoteCard(contentPadding = PaddingValues(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -442,18 +547,43 @@ private fun SeatEditor(
             }
 
             if (recorded) {
-                WinLoseToggle(isWin = draft.isWin, onWinChange = onWinChange)
+                WinLoseToggle(
+                    isWin = draft.isWin,
+                    onWinChange = { win ->
+                        onWinChange(win)
+                        // 输入框在同一个卡片里且恒为已组合状态，这里聚焦不会落空；
+                        // 键盘再显式唤一次，避免个别机型聚焦后不弹键盘。
+                        amountFocus.requestFocus()
+                        keyboard?.show()
+                    },
+                )
             }
         }
 
         if (!recorded) return@ManoteCard
+
+        // 选好牌友之后把焦点直接送到金额框：这一步紧接着就是填数字，不该再让用户点一次。
+        //
+        // 焦点请求必须放在这里、而不是选人那一刻：座位从「未记录」变成「已记录」，
+        // 金额框是这一步才被组合出来的，选人的瞬间它还不存在，`requestFocus()` 会落空。
+        // 依赖 recorded 也顺带覆盖了「新建牌友」——那位牌友是异步建好再选上的，
+        // 标记先留着，等座位真的记上了再抢焦点。
+        LaunchedEffect(requestAmountFocus, recorded) {
+            if (requestAmountFocus && recorded) {
+                amountFocus.requestFocus()
+                keyboard?.show()
+                onAmountFocusRequested()
+            }
+        }
 
         Spacer(modifier = Modifier.height(10.dp))
 
         OutlinedTextField(
             value = draft.amountText,
             onValueChange = onAmountChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(amountFocus),
             singleLine = true,
             isError = errorRes != null,
             placeholder = { Text(text = stringResource(R.string.session_amount_hint)) },
@@ -627,6 +757,21 @@ private fun SessionPreviewDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                // 时间与时长也在这里复述一遍：确认框是最后一次看清单的机会，
+                // 时段是按开始时间判定的，只写结束时间说不清它会被归到哪一段
+                Text(
+                    text = sessionTimeRange(
+                        startedAt = SessionDuration.startAt(
+                            state.playedAt,
+                            state.effectiveDurationMinutes,
+                        ),
+                        playedAt = state.playedAt,
+                        durationMinutes = state.effectiveDurationMinutes,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
                 // 只列出本场实际记录的位置；没选牌友的座位不入库，也就没必要在这里出现
                 state.seats.filter { it.playerId != null }.forEach { draft ->
                     Row(verticalAlignment = Alignment.CenterVertically) {

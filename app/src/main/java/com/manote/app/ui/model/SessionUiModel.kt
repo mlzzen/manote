@@ -3,6 +3,7 @@ package com.manote.app.ui.model
 import com.manote.app.data.local.SessionWithResults
 import com.manote.app.domain.Ranking
 import com.manote.app.domain.SeatNet
+import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.Settlement
 import com.manote.app.domain.TimeSlot
@@ -27,9 +28,11 @@ data class SessionRowUi(
     val note: String,
     val playedAt: Long,
     /**
-     * 打完时间所属时段（早场 / 下午场 / 晚场）。
+     * 本场时段（早场 / 下午场 / 晚场）。
      *
-     * 与界面显示时间用同一个时区判定，列表里「21:30」旁边不会出现「早场」。
+     * 按「结束时间 − 时长 ÷ 2」算出的**中点**判定，而不是结束时间或开始时间：
+     * 14:00 打到 18:30 是下午场，17:30 打到 21:30 是晚场，通宵到早上 6:00 也仍是晚场。
+     * 与界面显示用同一个时区，不会出现「显示 21:30、却算成下午场」。
      */
     val timeSlot: TimeSlot,
     /** 本人（seat 0）本场净额。 */
@@ -60,8 +63,13 @@ data class SessionDetailUi(
     val id: String,
     val title: String,
     val note: String,
+    /** 结束时间。 */
     val playedAt: Long,
-    /** 打完时间所属时段（早场 / 下午场 / 晚场），与列表行同源同口径。 */
+    /** 由结束时间与时长倒推出的开始时间；展示时间区间用。 */
+    val startedAt: Long,
+    /** 本场时长（分钟）。 */
+    val durationMinutes: Int,
+    /** 本场中点所属时段（早场 / 下午场 / 晚场），与列表行同源同口径。 */
     val timeSlot: TimeSlot,
     /** 已记录的座位，按 seat 升序。可能少于四个（规格 1.3）。 */
     val seats: List<SeatUi>,
@@ -95,7 +103,7 @@ fun SessionWithResults.toRowUi(zoneId: ZoneId = ZoneId.systemDefault()): Session
         title = session.title,
         note = session.note,
         playedAt = session.playedAt,
-        timeSlot = TimeSlot.of(session.playedAt, zoneId),
+        timeSlot = timeSlotOf(session.playedAt, session.durationMinutes, zoneId),
         selfNetMinor = self?.netMinor ?: 0L,
         opponentNames = ordered.filter { it.seat != SessionRules.SEAT_SELF }.map { it.nameSnapshot },
         searchHaystack = (listOf(session.title) + ordered.map { it.nameSnapshot })
@@ -103,6 +111,15 @@ fun SessionWithResults.toRowUi(zoneId: ZoneId = ZoneId.systemDefault()): Session
             .lowercase(),
     )
 }
+
+/**
+ * 时段判定的唯一入口：先由结束时间与时长算出这一场的中点，再看中点落在哪个时段。
+ *
+ * 抽成一处是为了让列表、详情、统计三处永远给同一场同一个答案——
+ * 各自写一遍 `TimeSlot.of(...)`，改口径时必然漏掉一处。
+ */
+private fun timeSlotOf(playedAt: Long, durationMinutes: Int, zoneId: ZoneId): TimeSlot =
+    TimeSlot.of(SessionDuration.midpointAt(playedAt, durationMinutes), zoneId)
 
 /** 用换行分隔，避免「标题结尾 + 昵称开头」拼出一个并不存在的词而被误命中。 */
 private const val SEARCH_HAYSTACK_SEPARATOR = "\n"
@@ -119,7 +136,9 @@ fun SessionWithResults.toDetailUi(zoneId: ZoneId = ZoneId.systemDefault()): Sess
         title = session.title,
         note = session.note,
         playedAt = session.playedAt,
-        timeSlot = TimeSlot.of(session.playedAt, zoneId),
+        startedAt = SessionDuration.startAt(session.playedAt, session.durationMinutes),
+        durationMinutes = session.durationMinutes,
+        timeSlot = timeSlotOf(session.playedAt, session.durationMinutes, zoneId),
         seats = ordered.map { result ->
             SeatUi(
                 seat = result.seat,

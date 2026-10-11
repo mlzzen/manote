@@ -3,6 +3,7 @@ package com.manote.app.data.repository
 import com.manote.app.data.local.PlayerKind
 import com.manote.app.domain.BackupRejectReason
 import com.manote.app.domain.Money
+import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.SessionValidator
 import com.manote.app.domain.valueOrNull
@@ -106,6 +107,9 @@ object BackupValidator {
             if (session.revision <= 0L) {
                 return BackupCheck.Rejected(BackupRejectReason.INVALID_REVISION)
             }
+            if (!SessionDuration.isValid(session.durationMinutes)) {
+                return BackupCheck.Rejected(BackupRejectReason.INVALID_DURATION)
+            }
             if (!isValidSessionTimes(session)) {
                 return BackupCheck.Rejected(BackupRejectReason.INVALID_TIME)
             }
@@ -203,7 +207,7 @@ object BackupValidator {
     private fun isValidSessionTimes(session: BackupSession): Boolean {
         if (session.createdAt < 0L || session.updatedAt < 0L || session.playedAt < 0L) return false
         if (session.updatedAt < session.createdAt) return false
-        // 打完时间不可能晚于这条记录最后一次被修改的时间。
+        // 结束时间不可能晚于这条记录最后一次被修改的时间。
         if (session.playedAt > session.updatedAt) return false
         return true
     }

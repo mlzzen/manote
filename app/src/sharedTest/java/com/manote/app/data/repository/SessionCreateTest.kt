@@ -9,6 +9,7 @@ import com.manote.app.data.local.PlayerKind
 import com.manote.app.data.local.SessionEntity
 import com.manote.app.data.value
 import com.manote.app.domain.ManoteError
+import com.manote.app.domain.SessionDuration
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -56,6 +57,42 @@ class SessionCreateTest : RoomTestCase() {
         val results = resultsOf(sessionId)
         assertEquals("金额按输入原样入库，不会被改动", listOf(3000L, -1000L, -1000L, 0L), results.map { it.netMinor })
         assertEquals(1000L, results.sumOf { it.netMinor })
+    }
+
+    @Test
+    fun recordsDurationAndFallsBackToTheDefault() = runBlocking {
+        val players = givenSelfAndThreeFriends()
+        val nets = listOf(1000L, -1000L, 0L, 0L)
+
+        sessionRepository.createSession(
+            draftOf(players, nets, id = "session-1", durationMinutes = 270),
+        ).value()
+        sessionRepository.createSession(
+            draftOf(players, nets, id = "session-2"),
+        ).value()
+
+        assertEquals(
+            270,
+            sessionRepository.getSessionDetail("session-1").value().session.durationMinutes,
+        )
+        assertEquals(
+            "没填时长时落库的就是默认 4 小时",
+            SessionDuration.DEFAULT_MINUTES,
+            sessionRepository.getSessionDetail("session-2").value().session.durationMinutes,
+        )
+    }
+
+    @Test
+    fun createRejectsInvalidDurationWithoutWritingAnything() = runBlocking {
+        // 0 小时不是「没填」——没填由界面补默认值，0 是明确的错误输入
+        val players = givenSelfAndThreeFriends()
+
+        val error = sessionRepository.createSession(
+            draftOf(players, listOf(1000L, -1000L, 0L, 0L), durationMinutes = 0),
+        ).error()
+
+        assertEquals(ManoteError.INVALID_DURATION, error)
+        assertEquals(0, sessionCount())
     }
 
     @Test

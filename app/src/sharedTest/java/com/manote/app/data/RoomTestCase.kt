@@ -13,6 +13,7 @@ import com.manote.app.data.repository.SessionRepository
 import com.manote.app.data.repository.WriteSerializer
 import com.manote.app.domain.ManoteError
 import com.manote.app.domain.ManoteResult
+import com.manote.app.domain.SessionDuration
 import org.junit.After
 import org.junit.Before
 import org.junit.runner.RunWith
@@ -90,6 +91,7 @@ abstract class RoomTestCase {
         playedAt: Long = BASE_NOW - 60_000L,
         title: String = "周五晚局",
         note: String = "",
+        durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
     ): SessionDraft = SessionDraft(
         id = id,
         playedAt = playedAt,
@@ -98,6 +100,7 @@ abstract class RoomTestCase {
         seats = players.indices.map { seat ->
             SeatResultInput(seat = seat, playerId = players[seat], netMinor = nets[seat])
         },
+        durationMinutes = durationMinutes,
     )
 
     /** 每个座位都必须是 0、1、2、3 各一次。 */

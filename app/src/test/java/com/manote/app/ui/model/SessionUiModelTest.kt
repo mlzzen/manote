@@ -3,6 +3,7 @@ package com.manote.app.ui.model
 import com.manote.app.data.local.SessionEntity
 import com.manote.app.data.local.SessionResultEntity
 import com.manote.app.data.local.SessionWithResults
+import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.TimeSlot
 import org.junit.Assert.assertEquals
@@ -87,10 +88,13 @@ class SessionUiModelTest {
 
     @Test
     fun rowCarriesTheTimeSlotJudgedInTheGivenZone() {
-        // 2026-10-05 21:30（上海）→ 晚场；同一时刻按 UTC 算落在当天 13:30 → 下午场
+        // 结束于 2026-10-05 21:30（上海）、打了 2 小时 → 区间 19:30–21:30、中点 20:30 → 晚场；
+        // 同一时刻按 UTC 算，中点落在当天 12:30 → 下午场。
+        // 时段判定必须与显示用同一个时区，否则会出现「显示 19:30、却算成早场」。
         val session = sessionWith(
             3000L,
             playedAt = LocalDateTime.of(2026, 10, 5, 21, 30).atZone(SHANGHAI).toInstant().toEpochMilli(),
+            durationMinutes = 120,
         )
 
         assertEquals(TimeSlot.EVENING, session.toRowUi(SHANGHAI).timeSlot)
@@ -98,26 +102,104 @@ class SessionUiModelTest {
     }
 
     @Test
+    fun timeSlotIsJudgedByTheMidpointNotTheEndTime() {
+        // 这是本次要修的那个错：14:00 打到 18:30 本来是下午场，
+        // 只看结束时间会被算成晚场，而中点 16:15 明确落在下午。
+        val session = sessionWith(
+            3000L,
+            playedAt = LocalDateTime.of(2026, 10, 5, 18, 30).atZone(SHANGHAI).toInstant().toEpochMilli(),
+            durationMinutes = 270,
+        )
+
+        assertEquals(TimeSlot.EVENING, TimeSlot.of(session.session.playedAt, SHANGHAI))
+        assertEquals(TimeSlot.AFTERNOON, session.toRowUi(SHANGHAI).timeSlot)
+    }
+
+    @Test
+    fun timeSlotIsJudgedByTheMidpointNotTheStartTime() {
+        // 17:30 打到 21:30：开始时间落下午场、结束时间落晚场，中点 19:30 说明主要发生在晚上。
+        // 这是「按开始时间判定」会判错的场景。
+        val session = sessionWith(
+            3000L,
+            playedAt = LocalDateTime.of(2026, 10, 5, 21, 30).atZone(SHANGHAI).toInstant().toEpochMilli(),
+            durationMinutes = 240,
+        )
+
+        val startedAt = SessionDuration.startAt(session.session.playedAt, 240)
+        assertEquals(TimeSlot.AFTERNOON, TimeSlot.of(startedAt, SHANGHAI))
+        assertEquals(TimeSlot.EVENING, session.toRowUi(SHANGHAI).timeSlot)
+    }
+
+    @Test
+    fun defaultDurationIsUsedWhenNothingWasRecorded() {
+        // 21:30 收场、没填时长 → 按默认 4 小时，区间 17:30–21:30、中点 19:30 → 晚场。
+        // 界面上的区间提示与这里同源，用户看着不对可以直接改时长。
+        val session = sessionWith(
+            3000L,
+            playedAt = LocalDateTime.of(2026, 10, 5, 21, 30).atZone(SHANGHAI).toInstant().toEpochMilli(),
+        )
+
+        assertEquals(SessionDuration.DEFAULT_MINUTES, session.session.durationMinutes)
+        assertEquals(TimeSlot.EVENING, session.toRowUi(SHANGHAI).timeSlot)
+    }
+
+    @Test
+    fun ordinaryEveningSessionStaysInTheEveningSlot() {
+        // 20:00 打到次日 0:00（中点 22:00）：改动没有把最普通的一场弄歪
+        val session = sessionWith(
+            3000L,
+            playedAt = LocalDateTime.of(2026, 10, 6, 0, 0).atZone(SHANGHAI).toInstant().toEpochMilli(),
+        )
+
+        assertEquals(TimeSlot.EVENING, session.toRowUi(SHANGHAI).timeSlot)
+    }
+
+    @Test
+    fun morningSessionEndingAtNoonStaysInTheMorningSlot() {
+        // 09:00 打到 13:00（中点 11:00）：按结束时间会落到下午场，中点把它留在了早场
+        val session = sessionWith(
+            3000L,
+            playedAt = LocalDateTime.of(2026, 10, 5, 13, 0).atZone(SHANGHAI).toInstant().toEpochMilli(),
+        )
+
+        assertEquals(TimeSlot.MORNING, session.toRowUi(SHANGHAI).timeSlot)
+    }
+
+    @Test
     fun detailCarriesTheSameTimeSlotAsTheRow() {
         val session = sessionWith(
             3000L,
             playedAt = LocalDateTime.of(2026, 10, 5, 21, 30).atZone(SHANGHAI).toInstant().toEpochMilli(),
+            durationMinutes = 120,
         )
 
         assertEquals(session.toRowUi(SHANGHAI).timeSlot, session.toDetailUi(SHANGHAI).timeSlot)
         assertEquals(TimeSlot.EVENING, session.toDetailUi(SHANGHAI).timeSlot)
     }
 
+    @Test
+    fun detailCarriesStartTimeAndDurationForDisplay() {
+        val end = LocalDateTime.of(2026, 10, 5, 18, 30).atZone(SHANGHAI).toInstant().toEpochMilli()
+
+        val detail = sessionWith(3000L, playedAt = end, durationMinutes = 270).toDetailUi()
+
+        assertEquals(end, detail.playedAt)
+        assertEquals(end - 270 * 60_000L, detail.startedAt)
+        assertEquals(270, detail.durationMinutes)
+    }
+
     private fun sessionWith(
         vararg netsBySeat: Long,
         title: String = "周一晚局",
         playedAt: Long = 1_700_000_000_000L,
+        durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
     ): SessionWithResults {
         return SessionWithResults(
             session = SessionEntity(
                 id = SESSION_ID,
                 title = title,
                 playedAt = playedAt,
+                durationMinutes = durationMinutes,
                 note = "",
                 createdAt = playedAt,
                 updatedAt = playedAt,

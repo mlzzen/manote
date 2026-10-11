@@ -4,6 +4,7 @@ import com.manote.app.data.local.PlayerEntity
 import com.manote.app.data.local.PlayerKind
 import com.manote.app.data.local.SessionEntity
 import com.manote.app.data.local.SessionResultEntity
+import com.manote.app.domain.SessionDuration
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.Instant
@@ -46,6 +47,15 @@ data class BackupSession(
     val id: String,
     val title: String,
     val playedAt: Long,
+    /**
+     * 本场时长（分钟）。
+     *
+     * 旧版本（协议版本仍是 3）导出的备份没有这个字段，反序列化时会补上默认的 4 小时，
+     * 因此老备份照样能导入——这正是「不填按 4 小时算」那条规则本身。
+     * 协议版本号没有跟着 bump：文件在**两个方向**上都兼容（旧文件缺字段用默认值，
+     * 新文件多出的字段被旧版本按未知键忽略），bump 反而会把用户手上的老备份挡在门外。
+     */
+    val durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
     val note: String,
     val createdAt: Long,
     val updatedAt: Long,
@@ -76,6 +86,7 @@ fun SessionEntity.toBackupSession(): BackupSession = BackupSession(
     id = id,
     title = title,
     playedAt = playedAt,
+    durationMinutes = durationMinutes,
     note = note,
     createdAt = createdAt,
     updatedAt = updatedAt,
@@ -104,6 +115,7 @@ fun BackupSession.toEntity(): SessionEntity = SessionEntity(
     id = id,
     title = title,
     playedAt = playedAt,
+    durationMinutes = durationMinutes,
     note = note,
     createdAt = createdAt,
     updatedAt = updatedAt,

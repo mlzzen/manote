@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import com.manote.app.R
 import com.manote.app.domain.AmountParseFailure
 import com.manote.app.domain.BackupRejectReason
+import com.manote.app.domain.DurationParseFailure
 import com.manote.app.domain.ManoteError
 
 /**
@@ -18,6 +19,7 @@ fun ManoteError.messageRes(): Int = when (this) {
     ManoteError.INVALID_NOTE -> R.string.error_invalid_note
     ManoteError.INVALID_TITLE -> R.string.error_invalid_title
     ManoteError.PLAYED_AT_IN_FUTURE -> R.string.error_played_at_in_future
+    ManoteError.INVALID_DURATION -> R.string.error_invalid_duration
     ManoteError.INVALID_SEAT_SET -> R.string.error_invalid_seat_set
     ManoteError.DUPLICATE_PLAYER -> R.string.error_duplicate_player
     ManoteError.SEAT_ZERO_NOT_SELF -> R.string.error_seat_zero_not_self
@@ -44,6 +46,15 @@ fun AmountParseFailure.messageRes(): Int = when (this) {
     AmountParseFailure.OUT_OF_RANGE -> R.string.amount_out_of_range
 }
 
+/** 时长解析失败原因 → 提示文案。 */
+@StringRes
+fun DurationParseFailure.messageRes(): Int = when (this) {
+    DurationParseFailure.EMPTY -> R.string.duration_empty
+    DurationParseFailure.INVALID_FORMAT -> R.string.duration_invalid
+    DurationParseFailure.TOO_MANY_DECIMALS -> R.string.duration_too_many_decimals
+    DurationParseFailure.OUT_OF_RANGE -> R.string.duration_out_of_range
+}
+
 /**
  * 备份被拒绝的原因 → 提示文案。
  *
@@ -62,6 +73,7 @@ fun BackupRejectReason.messageRes(): Int = when (this) {
     BackupRejectReason.AMOUNT_OUT_OF_RANGE -> R.string.backup_reject_amount_out_of_range
     BackupRejectReason.INVALID_TEXT -> R.string.backup_reject_invalid_text
     BackupRejectReason.INVALID_TIME -> R.string.backup_reject_invalid_time
+    BackupRejectReason.INVALID_DURATION -> R.string.backup_reject_invalid_duration
     BackupRejectReason.INVALID_REVISION -> R.string.backup_reject_invalid_revision
     BackupRejectReason.LIMIT_EXCEEDED -> R.string.backup_reject_limit_exceeded
 }

@@ -14,10 +14,13 @@ import com.manote.app.data.repository.SessionEdit
 import com.manote.app.data.repository.SessionRepository
 import com.manote.app.domain.AmountParseResult
 import com.manote.app.domain.AmountParser
+import com.manote.app.domain.DurationParseResult
+import com.manote.app.domain.DurationParser
 import com.manote.app.domain.ManoteError
 import com.manote.app.domain.ManoteResult
 import com.manote.app.domain.Money
 import com.manote.app.domain.SeatEntry
+import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.valueOrNull
 import com.manote.app.ui.model.filterAmountInput
@@ -71,6 +74,12 @@ data class SessionEditUiState(
     val selfNickname: String? = null,
     val seats: List<SeatDraft> = defaultSeatDrafts(),
     val playedAt: Long = 0L,
+    /** 时长输入文本（小时）；留空表示按默认 4 小时计。 */
+    val durationText: String = "",
+    /** 解析后的时长（分钟）；留空时就是默认 4 小时，解析失败时为 null。 */
+    val durationMinutes: Int? = null,
+    /** 时长解析失败原因（字符串资源 id）。留空不算失败。 */
+    val durationError: Int? = null,
     val title: String = "",
     val note: String = "",
     /** 各**已记录**座位（已选牌友）的符号化净额；金额留空按 0 计（规格 1.3）。 */
@@ -107,6 +116,14 @@ data class SessionEditUiState(
     val rosterLocked: Boolean get() = mode is SessionEditMode.Edit
 
     val isEditing: Boolean get() = mode is SessionEditMode.Edit
+
+    /**
+     * 提交时实际使用的时长（分钟）。
+     *
+     * 留空即 4 小时：「没填」与「填了 4 小时」对时段判定完全等价，
+     * 因此界面不必强迫用户填一个他并不关心的数字。
+     */
+    val effectiveDurationMinutes: Int get() = durationMinutes ?: SessionDuration.DEFAULT_MINUTES
 }
 
 /** 表单一次性事件。 */
@@ -136,10 +153,11 @@ sealed interface SessionEditEvent {
  * - 提交前先预览确认；保存期间禁用按钮；
  * - 同一次提交复用同一个 Session UUID，重试不会记出第二场（规格 2.3）；
  * - **不要求选齐四人，也不要求每人都填金额**：只记录选了牌友的位置，金额留空按 0 计；
- *   合计不为 0 只在界面提示，不阻拦保存（规格 1.3）。
+ *   合计不为 0 只在界面提示，不阻拦保存（规格 1.3）；
+ * - 时长留空即按默认 4 小时提交，填错（0、25 小时、两位小数）则拦住保存。
  *
  * 修改（规格 3.3）：
- * - 人员与位置只读，可编辑时间、标题、备注与已记录位置的金额，进入时全部预填；
+ * - 人员与位置只读，可编辑时间、时长、标题、备注与已记录位置的金额，进入时全部预填；
  * - 保存走 `updateSession`，携带进入时的 revision，过期则拒绝覆盖并保留输入（T19）；
  * - 不做「恢复草稿后清空已归档牌友」这一步：已归档麻友的历史场次本来就允许修正（T13）。
  */
@@ -224,6 +242,16 @@ class SessionEditViewModel(
 
     fun setPlayedAt(epochMillis: Long) {
         _uiState.update { it.copy(playedAt = epochMillis) }
+        persist()
+        recompute()
+    }
+
+    /**
+     * 时长输入（小时）。与金额输入同一套字符过滤：只留数字与一个小数点，
+     * 多出来的小数位交给解析器明确拒绝，而不是悄悄截断成「看起来对」的数字。
+     */
+    fun setDuration(text: String) {
+        _uiState.update { it.copy(durationText = filterAmountInput(text)) }
         persist()
         recompute()
     }
@@ -317,6 +345,7 @@ class SessionEditViewModel(
         val currentMode = state.mode
         viewModelScope.launch {
             _uiState.update { it.copy(saving = true, previewVisible = false) }
+            val durationMinutes = state.effectiveDurationMinutes
             val result: ManoteResult<String> = when (currentMode) {
                 SessionEditMode.Create -> {
                     val draft = SessionDraft(
@@ -326,6 +355,7 @@ class SessionEditViewModel(
                         title = state.title,
                         note = state.note,
                         seats = inputs,
+                        durationMinutes = durationMinutes,
                     )
                     sessionRepository.createSession(draft)
                 }
@@ -345,6 +375,7 @@ class SessionEditViewModel(
                                     title = state.title,
                                     note = state.note,
                                     netMinorBySeat = inputs.associate { it.seat to it.netMinor },
+                                    durationMinutes = durationMinutes,
                                 ),
                             )
                         ) {
@@ -397,6 +428,9 @@ class SessionEditViewModel(
         SessionRules.SEAT_SELF !in state.signedBySeat -> R.string.error_invalid_seat_set
         state.playedAt > clock() -> R.string.error_played_at_in_future
 
+        // 时长填错（而不是留空）同样要拦住：留空是「按 4 小时算」，填错是笔误
+        state.durationError != null -> state.durationError
+
         // 合计不为 0 只提示，不阻拦保存（规格 1.3）
         else -> null
     }
@@ -433,13 +467,31 @@ class SessionEditViewModel(
                 }
             }
 
+            val duration = resolveDuration(state.durationText)
+
             state.copy(
                 signedBySeat = signed,
                 amountErrors = errors,
                 amountsValid = errors.isEmpty(),
                 totalMinor = if (errors.isEmpty()) signed.values.sum() else null,
+                durationMinutes = duration.minutes,
+                durationError = duration.errorRes,
                 dirty = state.isDirty(),
             )
+        }
+    }
+
+    /** 时长文本 → （分钟，错误提示）。留空按默认 4 小时，不算错误。 */
+    private data class DurationResolution(val minutes: Int?, val errorRes: Int?)
+
+    private fun resolveDuration(raw: String): DurationResolution {
+        val text = raw.trim()
+        if (text.isEmpty()) {
+            return DurationResolution(SessionDuration.DEFAULT_MINUTES, null)
+        }
+        return when (val parsed = DurationParser.parse(text)) {
+            is DurationParseResult.Success -> DurationResolution(parsed.minutes, null)
+            is DurationParseResult.Failure -> DurationResolution(null, parsed.reason.messageRes())
         }
     }
 
@@ -453,11 +505,13 @@ class SessionEditViewModel(
         val base = baseline
         return if (base != null) {
             playedAt != base.playedAt ||
+                durationText != base.durationText ||
                 title != base.title ||
                 note != base.note ||
                 seats.map { SeatFormValue(it.isWin, it.amountText) } != base.seatValues
         } else {
-            title.isNotBlank() ||
+            durationText.isNotBlank() ||
+                title.isNotBlank() ||
                 note.isNotBlank() ||
                 seats.any { it.seat != SessionRules.SEAT_SELF && it.playerId != null } ||
                 seats.any { it.amountText.isNotBlank() }
@@ -505,6 +559,9 @@ class SessionEditViewModel(
                         state.copy(
                             mode = SessionEditMode.Edit(sessionId),
                             playedAt = detail.session.playedAt,
+                            // 已经存下来的时长照原样填回输入框（240 分钟 → 「4」），
+                            // 让用户看到的就是库里那个值，而不是一个格式不同的同一数字
+                            durationText = SessionDuration.formatHours(detail.session.durationMinutes),
                             // 从没起过标题的场次留空，让输入框显示「留空则为「麻将对局」」的提示，
                             // 而不是把占位名当成用户填过的内容摆在框里
                             title = detail.session.title
@@ -548,6 +605,7 @@ class SessionEditViewModel(
         val state = _uiState.value
         baseline = FormBaseline(
             playedAt = state.playedAt,
+            durationText = state.durationText,
             title = state.title,
             note = state.note,
             seatValues = state.seats.map { SeatFormValue(it.isWin, it.amountText) },
@@ -575,6 +633,7 @@ class SessionEditViewModel(
             state.copy(
                 seats = seats,
                 playedAt = savedState.get<Long>(key(KEY_PLAYED_AT)) ?: state.playedAt,
+                durationText = savedState.get<String>(key(KEY_DURATION)).orEmpty(),
                 title = savedState.get<String>(key(KEY_TITLE)).orEmpty(),
                 note = savedState.get<String>(key(KEY_NOTE)).orEmpty(),
             )
@@ -626,6 +685,7 @@ class SessionEditViewModel(
     private fun persist() {
         val state = _uiState.value
         savedState[key(KEY_PLAYED_AT)] = state.playedAt
+        savedState[key(KEY_DURATION)] = state.durationText
         savedState[key(KEY_TITLE)] = state.title
         savedState[key(KEY_NOTE)] = state.note
         state.seats.forEach { draft ->
@@ -641,6 +701,7 @@ class SessionEditViewModel(
             savedState.remove<String>(key(KEY_PENDING_ID))
         }
         savedState.remove<Long>(key(KEY_PLAYED_AT))
+        savedState.remove<String>(key(KEY_DURATION))
         savedState.remove<String>(key(KEY_TITLE))
         savedState.remove<String>(key(KEY_NOTE))
         (0 until SessionRules.SEAT_COUNT).forEach { seat ->
@@ -682,6 +743,7 @@ class SessionEditViewModel(
 
     private data class FormBaseline(
         val playedAt: Long,
+        val durationText: String,
         val title: String,
         val note: String,
         val seatValues: List<SeatFormValue>,
@@ -691,6 +753,7 @@ class SessionEditViewModel(
         const val STOP_TIMEOUT_MILLIS = 5_000L
         const val KEY_PENDING_ID = "pending_session_id"
         const val KEY_PLAYED_AT = "played_at"
+        const val KEY_DURATION = "duration_hours"
         const val KEY_TITLE = "title"
         const val KEY_NOTE = "note"
 

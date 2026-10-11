@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -98,5 +100,45 @@ fun ManoteTextAction(
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(18.dp),
         )
+    }
+}
+
+/**
+ * 一栏小读数：标签在上、数值在下，可再挂一行小字说明（例如「10.05 · 2 场」）。
+ *
+ * 字号刻意比 [Statistic]-类的大数字小一档：这类读数常常三栏并排，
+ * 用 titleMedium 会让「+¥1,234.00」在窄栏里被挤掉。
+ * 放进 Row 时由调用方给 `Modifier.weight(1f)`，各栏因此严格等宽。
+ */
+@Composable
+fun ManoteReadout(
+    label: String,
+    value: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier,
+    caption: String? = null,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleSmall,
+            color = valueColor,
+            maxLines = 1,
+        )
+        if (caption != null) {
+            Text(
+                text = caption,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
     }
 }
