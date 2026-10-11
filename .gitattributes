@@ -1,0 +1,12 @@
+# 行尾统一：仓库在 Windows 上开发、在 Linux 上构建，这条规则防止两边打架。
+#
+# gradlew 必须是 LF。一旦被签出成 CRLF，Linux 上的 `#!/bin/sh` 会带上尾随的 \r，
+# 报 "bad interpreter: No such file or directory"，CI 直接跑不起来。
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# 签名材料按二进制处理，不做任何行尾转换
+*.jks binary
+*.keystore binary

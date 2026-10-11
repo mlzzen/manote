@@ -1,0 +1,234 @@
+name: Release
+
+# 推送形如 v1.0.0 的 tag 时自动发布；也可在 Actions 页面手动触发。
+# 手动触发时留空版本号 → 只构建并上传产物，不发 Release（试跑用）。
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '版本号，形如 v1.0.0；留空则只构建、不发 Release'
+        required: false
+        default: ''
+
+# 创建 Release 需要写权限，其余一律只读。
+permissions:
+  contents: write
+
+# 同一发版流程不并发跑，避免两个 Run 抢着创建同一个 Release。
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+        with:
+          # 自动生成更新说明要读历史提交，浅克隆不够。
+          fetch-depth: 0
+
+      - name: 配置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 配置 Gradle 缓存
+        uses: gradle/actions/setup-gradle@v4
+
+      # 本机用的是腾讯云镜像，境外 runner 上未必可达。
+      # 两个源提供的都是同一个官方发行包，distributionSha256Sum 因此仍然有效。
+      - name: 确认 Gradle 发行包源可达
+        run: |
+          set -euo pipefail
+          file=gradle/wrapper/gradle-wrapper.properties
+          url=$(sed -n 's/^distributionUrl=//p' "$file" | tr -d '\\')
+          if curl -sSfI --max-time 30 "$url" > /dev/null 2>&1; then
+            echo "发行包源可达：$url"
+            exit 0
+          fi
+          version=$(printf '%s' "$url" | sed -n 's|.*/gradle-\(.*\)-bin\.zip|\1|p')
+          if [ -z "$version" ]; then
+            echo "::error::无法从 $url 解析 Gradle 版本号。"
+            exit 1
+          fi
+          echo "::warning::$url 不可达，改用官方源 gradle-$version"
+          sed -i "s|^distributionUrl=.*|distributionUrl=https\\\\://services.gradle.org/distributions/gradle-$version-bin.zip|" "$file"
+          sed -n 's/^distributionUrl=/改用：/p' "$file"
+
+      - name: 确保 Android SDK 35 就位
+        run: |
+          set -euo pipefail
+          sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [ -z "$sdk" ]; then
+            echo "::error::runner 上没有 Android SDK。"
+            exit 1
+          fi
+          if [ -d "$sdk/platforms/android-35" ] && ls -d "$sdk"/build-tools/35.* > /dev/null 2>&1; then
+            echo "android-35 与 build-tools 35 已就位，跳过安装。"
+            exit 0
+          fi
+          yes | "$sdk/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$sdk/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: 解析版本号
+        id: version
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TAG" ]; then
+            echo "未指定版本号：只构建，不发 Release。"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          case "$TAG" in
+            v*) ;;
+            *)
+              echo "::error::tag 必须以 v 开头（形如 v1.2.3），收到的是 '$TAG'。"
+              echo "::error::统一前缀才能让以后的自动化一眼认出哪些 tag 是发版。"
+              exit 1
+              ;;
+          esac
+          name="${TAG#v}"
+          if ! printf '%s' "$name" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::版本号必须形如 v1.2.3，收到的是 '$TAG'。"
+            exit 1
+          fi
+          IFS='.' read -r major minor patch <<< "$name"
+          # 10# 强制按十进制解析，否则 "08" 会被当成八进制而报错。
+          major=$((10#$major)); minor=$((10#$minor)); patch=$((10#$patch))
+          # 归一化，免得 v01.02.03 把 "01.02.03" 原样写进 APK 的 versionName。
+          version="$major.$minor.$patch"
+          code=$(( major * 10000 + minor * 100 + patch ))
+          if [ "$code" -gt 2100000000 ]; then
+            echo "::error::versionCode 超出 Android 上限：$code"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            echo "已存在同名 tag：$TAG"
+          else
+            echo "::warning::本地没有 $TAG 这个 tag，将由发布步骤创建。"
+          fi
+          {
+            echo "tag=$TAG"
+            echo "name=$version"
+            echo "code=$code"
+          } >> "$GITHUB_OUTPUT"
+          echo "版本号 $version（versionCode $code），tag 为 $TAG"
+
+      - name: 还原签名密钥库
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_BASE64:-}" ]; then
+            echo "::error::缺少 Secret SIGNING_KEYSTORE_BASE64，无法打签名包。"
+            exit 1
+          fi
+          mkdir -p keystore
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > keystore/release.jks
+          echo "密钥库已还原：$(wc -c < keystore/release.jks) 字节"
+
+      - name: 单元测试
+        run: ./gradlew :app:testDebugUnitTest --console=plain
+
+      - name: 构建签名 APK
+        env:
+          # 让构建脚本在拿不到密钥库时直接失败，而不是悄悄产出未签名的包。
+          MANOTE_REQUIRE_SIGNING: '1'
+          MANOTE_VERSION_NAME: ${{ steps.version.outputs.name }}
+          MANOTE_VERSION_CODE: ${{ steps.version.outputs.code }}
+          SIGNING_STORE_FILE: keystore/release.jks
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease --console=plain
+
+      - name: 校验 APK 确实已签名
+        id: apk
+        env:
+          # 可选：在仓库 Variables 里设 SIGNING_CERT_SHA256，就能顺带证明
+          # 这个包是用「你预期的那把钥匙」签的，而不是 Secrets 里配错了的另一把。
+          EXPECTED_CERT: ${{ vars.SIGNING_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          src=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -z "$src" ]; then
+            echo "::error::没有找到 release APK。"
+            exit 1
+          fi
+          case "$src" in
+            *unsigned*)
+              echo "::error::产物是未签名的 APK：$src"
+              exit 1
+              ;;
+          esac
+
+          sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          apksigner=$(ls -1 "$sdk"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1 || true)
+          if [ -z "$apksigner" ]; then
+            echo "::error::找不到 apksigner，无法确认 APK 是否真的签了名。"
+            exit 1
+          fi
+
+          # 未签名时 apksigner verify 以非零码退出，这一行本身就是签名闸门。
+          "$apksigner" verify --print-certs "$src"
+
+          # 注意：本工程 minSdk 26，AGP 只写 v2 签名方案，没有 v1（JAR）签名，
+          # 所以这里不能用 `keytool -printcert -jarfile` 作退路——那会误判成未签名。
+          digest=$("$apksigner" verify --print-certs "$src" \
+            | sed -n 's/.*certificate SHA-256 digest: //p' \
+            | head -1 | tr -d ':' | tr 'A-Z' 'a-z')
+          if [ -z "$digest" ]; then
+            echo "::error::没能读出 APK 的签名证书指纹。"
+            exit 1
+          fi
+
+          if [ -n "${EXPECTED_CERT:-}" ]; then
+            expected=$(printf '%s' "$EXPECTED_CERT" | tr -d ':' | tr 'A-Z' 'a-z')
+            if [ "$digest" != "$expected" ]; then
+              echo "::error::签名证书指纹不匹配。APK=$digest，预期=$expected。检查签名 Secrets 是否配错。"
+              exit 1
+            fi
+            echo "证书指纹与仓库 Variable SIGNING_CERT_SHA256 一致。"
+          else
+            echo "证书 SHA-256：$digest"
+            echo "（未设 Variables.SIGNING_CERT_SHA256，跳过指纹比对）"
+          fi
+
+          echo "path=$src" >> "$GITHUB_OUTPUT"
+
+      - name: 按版本号重命名
+        id: asset
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          out="manote-${VERSION_NAME:-dev}.apk"
+          cp "${{ steps.apk.outputs.path }}" "$out"
+          echo "path=$out" >> "$GITHUB_OUTPUT"
+          echo "已生成 $out（$(wc -c < "$out") 字节）"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-${{ steps.version.outputs.name || 'dev' }}
+          path: ${{ steps.asset.outputs.path }}
+          if-no-files-found: error
+
+      - name: 发布 Release
+        if: steps.version.outputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.name }}
+          files: ${{ steps.asset.outputs.path }}
+          # 按提交历史自动生成更新说明，省得每次手写。
+          generate_release_notes: true
+          fail_on_unmatched_files: true
