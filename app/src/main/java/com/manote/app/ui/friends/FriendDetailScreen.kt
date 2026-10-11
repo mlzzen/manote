@@ -1,10 +1,12 @@
 package com.manote.app.ui.friends
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -47,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
+import com.manote.app.domain.DatedNet
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
 import com.manote.app.ui.components.ManoteReadout
@@ -67,7 +71,8 @@ import kotlinx.coroutines.launch
 /**
  * 麻友详情（规格 3.4）。
  *
- * 展示当前昵称、备注、累计赢钱、累计输钱、净输赢、场均与场数；
+ * 展示当前昵称、备注、累计赢钱、累计输钱、净输赢、场均、场数、单场赢最多 / 输最多，
+ * 以及同场时我的净输赢与场均；
  * 逐场列出日期、这位麻友所在位置，以及他与本人各自的本场结果，点按进入完整四人详情。
  * 菜单提供编辑与归档/取消归档。
  */
@@ -243,18 +248,29 @@ private fun FriendProfileCard(detail: FriendDetailUi) {
     }
 }
 
-/** 累计赢钱 / 累计输钱 / 净输赢 / 场均 / 场数。全部实时来自 `session_result`。 */
+/**
+ * 这位麻友的累计战绩：累计赢钱 / 累计输钱 / 净输赢 / 场均 / 单场极值，
+ * 以及我与他在同场场次里的净输赢与场均。全部实时来自 `session_result`。
+ *
+ * 场数放在标题右侧的徽标里（与首页「战绩概览」的「总牌局」同一个位置）：
+ * 它是这一组数字的量级说明，不是一个与净额并列的指标；
+ * 腾出来的格子正好给「同场时我的」两个数，读数区因此仍是整齐的成对排布。
+ */
 @Composable
 private fun FriendStatisticsCard(detail: FriendDetailUi) {
     val colors = MaterialTheme.manote
     val statistics = detail.statistics
 
     ManoteCard {
-        Text(
-            text = stringResource(R.string.friend_detail_stats_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.friend_detail_stats_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            SessionsBadge(count = statistics.sessionCount)
+        }
         Spacer(modifier = Modifier.height(14.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -292,10 +308,27 @@ private fun FriendStatisticsCard(detail: FriendDetailUi) {
         Spacer(modifier = Modifier.height(14.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
+            SessionExtremeStatistic(
+                label = stringResource(R.string.stat_best_win),
+                extreme = detail.extremes.bestWin,
+            )
+            SessionExtremeStatistic(
+                label = stringResource(R.string.stat_worst_loss),
+                extreme = detail.extremes.worstLoss,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
             Statistic(
-                label = stringResource(R.string.friend_stat_sessions),
-                value = statistics.sessionCount.toString(),
-                valueColor = MaterialTheme.colorScheme.onSurface,
+                label = stringResource(R.string.friend_stat_together_net),
+                value = detail.myNetTogetherMinor
+                    ?.let { UiText.signedYuan(it) }
+                    ?: stringResource(R.string.common_unavailable),
+                valueColor = detail.myNetTogetherMinor
+                    ?.let { signedColor(it) }
+                    ?: MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
             Statistic(
@@ -306,8 +339,9 @@ private fun FriendStatisticsCard(detail: FriendDetailUi) {
                 valueColor = detail.myAverageTogetherMinor
                     ?.let { signedColor(it) }
                     ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                // 场均是「同场的那几场」算出来的，把场数一并写出来，
-                // 否则 3 场的 -50 和 30 场的 -50 看起来一样可信
+                // 合计与场均都是「同场的那几场」算出来的，把场数一并写出来，
+                // 否则 3 场的 -50 和 30 场的 -50 看起来一样可信。
+                // 同一行里只写一次：两个数共用同一个分母，写两遍只是噪声。
                 caption = detail.commonSessionCount
                     .takeIf { it > 0 }
                     ?.let { stringResource(R.string.friend_stat_together_sessions_format, it) },
@@ -315,6 +349,59 @@ private fun FriendStatisticsCard(detail: FriendDetailUi) {
             )
         }
     }
+}
+
+/**
+ * 「N 场 / 场数」小徽标，与首页「战绩概览」右侧的「总牌局」同款。
+ *
+ * 场数是这一组数字的量级说明，放在标题旁比让它单独占一格读数更贴近它的角色。
+ */
+@Composable
+private fun SessionsBadge(count: Int) {
+    Column(
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.friends_stat_format, count),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = stringResource(R.string.friend_stat_sessions),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * 单场极值：金额 + 「哪一天」。
+ *
+ * 没有这样的场次（他从没赢过 / 从没输过）时显示占位符而不是 ¥0.00——
+ * 「有过一场刚好持平」和「根本没赢过」是两回事。
+ * 日期小字给出来，否则一个孤零零的金额无从追溯；这与首页的单场极值同一口径。
+ */
+@Composable
+private fun RowScope.SessionExtremeStatistic(label: String, extreme: DatedNet?) {
+    Statistic(
+        label = label,
+        value = if (extreme == null) {
+            stringResource(R.string.common_unavailable)
+        } else {
+            UiText.signedYuan(extreme.netMinor)
+        },
+        valueColor = if (extreme == null) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            signedColor(extreme.netMinor)
+        },
+        caption = extreme?.let { UiText.monthDay(it.playedAt) },
+        modifier = Modifier.weight(1f),
+    )
 }
 
 /** 金额的正负配色：赢红、输绿、持平的走中性色，与首页概览口径一致。 */

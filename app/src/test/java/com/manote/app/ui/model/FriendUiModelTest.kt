@@ -122,6 +122,28 @@ class FriendUiModelTest {
         assertEquals(0L, player("f1", "阿明").toRowUi(aggregate = null).averageMinor)
     }
 
+    @Test
+    fun rowUiCarriesMyAverageTogetherWithThatFriend() {
+        val row = player("f1", "阿明").toRowUi(
+            aggregate = PlayerAggregate(playerId = "f1", sessionCount = 3, netMinor = 4_500L),
+            myAverageTogetherMinor = -1_250L,
+        )
+
+        assertEquals(
+            "这一格是我与他同场时的场均，与他自己的场均（averageMinor）是两个数",
+            -1_250L,
+            row.myAverageTogetherMinor,
+        )
+        assertEquals(1_500L, row.averageMinor)
+    }
+
+    @Test
+    fun rowUiHasNoTogetherAverageWithoutARecord() {
+        // 没同场过时是 null，列表据此不显示这一行，
+        // 排序也据此把它排到最后——而不是拿「场均 0 元」冒充
+        assertNull(player("f1", "阿明").toRowUi(aggregate = null).myAverageTogetherMinor)
+    }
+
     // ————————————————————— 麻友详情 —————————————————————
 
     @Test
@@ -171,6 +193,7 @@ class FriendUiModelTest {
 
         // 同场时我的场均：两场我的净额分别是 -800 与 +2_000，合计 +1_200 → 场均 +600
         assertEquals(2, detail.commonSessionCount)
+        assertEquals("合计先算出来，场均只是它 ÷ 场数", 1_200L, detail.myNetTogetherMinor)
         assertEquals(600L, detail.myAverageTogetherMinor)
     }
 
@@ -204,7 +227,46 @@ class FriendUiModelTest {
         assertEquals(listOf("s-2"), detail.sessions.map { it.sessionId })
         // 同场账只算他真的在场的那些场：他缺席的那一场我的 +1_000 不计入
         assertEquals(1, detail.commonSessionCount)
+        assertEquals(-500L, detail.myNetTogetherMinor)
         assertEquals(-500L, detail.myAverageTogetherMinor)
+        // 单场极值同样只看他在场的场：他缺席那场是本人的战绩，与他无关。
+        // 他唯一在场的一场是 +500，因此「输最多」是 null 而不是 ¥0.00。
+        assertEquals(500L, requireNotNull(detail.extremes.bestWin).netMinor)
+        assertNull(detail.extremes.worstLoss)
+    }
+
+    @Test
+    fun detailUiCarriesTheFriendsOwnSingleSessionExtremes() {
+        // 「单场赢最多 / 输最多」看的是这位麻友自己的净额，与本人打得多好无关：
+        // 两场里我的净额是 -800 与 +2_000，而极值取的是他的 500 与 -2_000
+        val friend = player("f2", "阿华")
+        val sessions = listOf(
+            session(
+                id = "s-2",
+                title = "周日夜战",
+                playedAt = 2_000L,
+                results = listOf(
+                    result("s-2", 0, "self", "我", -800L),
+                    result("s-2", 2, "f2", "阿华", 500L),
+                ),
+            ),
+            session(
+                id = "s-1",
+                title = "周五晚局",
+                playedAt = 1_000L,
+                results = listOf(
+                    result("s-1", 0, "self", "我", 2_000L),
+                    result("s-1", 1, "f2", "阿华", -2_000L),
+                ),
+            ),
+        )
+
+        val detail = friend.toDetailUi(PlayerStatistics.EMPTY, sessions)
+
+        assertEquals(500L, requireNotNull(detail.extremes.bestWin).netMinor)
+        assertEquals(2_000L, requireNotNull(detail.extremes.bestWin).playedAt)
+        assertEquals(-2_000L, requireNotNull(detail.extremes.worstLoss).netMinor)
+        assertEquals(1_000L, requireNotNull(detail.extremes.worstLoss).playedAt)
     }
 
     @Test
@@ -215,8 +277,12 @@ class FriendUiModelTest {
         assertEquals(0, detail.statistics.sessionCount)
         assertEquals(0L, detail.statistics.netMinor)
         // 一场都没打过：没有同场账可言，界面据此显示占位符而不是 ¥0.00
+        assertNull(detail.myNetTogetherMinor)
         assertNull(detail.myAverageTogetherMinor)
         assertEquals(0, detail.commonSessionCount)
+        // 单场极值同理：没打过就没有极值，两边都是 null
+        assertNull(detail.extremes.bestWin)
+        assertNull(detail.extremes.worstLoss)
     }
 
     @Test

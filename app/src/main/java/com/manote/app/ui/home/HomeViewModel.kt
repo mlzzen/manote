@@ -6,6 +6,7 @@ import com.manote.app.data.repository.PlayerRepository
 import com.manote.app.data.repository.SessionRepository
 import com.manote.app.domain.DatedNet
 import com.manote.app.domain.PlayerStatistics
+import com.manote.app.domain.SessionExtremes
 import com.manote.app.domain.StreakStats
 import com.manote.app.domain.Streaks
 import com.manote.app.domain.TimeSlotStatistics
@@ -29,6 +30,8 @@ data class HomeUiState(
     val trend: List<TrendPoint> = emptyList(),
     /** 连输 / 连赢与单日极值。 */
     val streak: StreakStats = StreakStats.EMPTY,
+    /** 单场赢最多 / 输最多；从没赢过或从没输过时对应的一边为 null。 */
+    val extremes: SessionExtremes = SessionExtremes.EMPTY,
     val recentSessions: List<SessionRowUi> = emptyList(),
 )
 
@@ -65,6 +68,9 @@ class HomeViewModel(
                     ),
                     trend = Trend.cumulative(dated),
                     streak = Streaks.of(dated),
+                    // 单场极值与走势、连输连赢同源：都是这同一份 dated，
+                    // 不会出现「曲线上的顶点」与「单场赢最多」对不上
+                    extremes = SessionExtremes.of(dated),
                     recentSessions = rows.take(RECENT_LIMIT),
                 )
             }.stateIn(

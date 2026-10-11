@@ -8,7 +8,8 @@ import org.junit.Test
  *
  * 排序在这里显式实现（而不是只靠 SQL 的 ORDER BY），因此可以用纯单测守护：
  * - 默认是「updatedAt 倒序、同时间按 ID 升序」这条既有不变量；
- * - 按场均 / 净额排序时，并列按 ID 升序、**没打过牌的始终垫底**。
+ * - 三个可排序指标（他的场均、我的场均、他累计的净输赢）各按各的数，
+ *   并列按 ID 升序、**没有可谈数字的始终垫底**。
  * 没有这些约束，列表会在重组之间跳动，名次也说不清依据。
  */
 class FriendFilteringTest {
@@ -21,6 +22,7 @@ class FriendFilteringTest {
         netMinor: Long = 0L,
         archived: Boolean = false,
         updatedAt: Long = 0L,
+        myAverageTogetherMinor: Long? = null,
     ) = FriendRowUi(
         id = id,
         nickname = nickname,
@@ -29,6 +31,7 @@ class FriendFilteringTest {
         netMinor = netMinor,
         archived = archived,
         updatedAt = updatedAt,
+        myAverageTogetherMinor = myAverageTogetherMinor,
     )
 
     private val aMing = row("f1", "阿明", "戴眼镜", sessionCount = 3, netMinor = 4500L, updatedAt = 300L)
@@ -113,12 +116,36 @@ class FriendFilteringTest {
 
     // ————————————————————— 排序 —————————————————————
 
-    // 刻意让「净额」与「场均」给出不同的名次，否则测不出两个排序真的各按各的算：
-    //   steady 净额最高（+200）、场均却不如 rich；
-    //   blank 最近编辑过，但一场都没打过。
-    private val rich = row("rich", "大赢家", sessionCount = 2, netMinor = 10_000L, updatedAt = 100L)
-    private val steady = row("steady", "小赢", sessionCount = 10, netMinor = 20_000L, updatedAt = 200L)
-    private val loser = row("loser", "常输", sessionCount = 4, netMinor = -8_000L, updatedAt = 300L)
+    // 刻意让三个指标给出**三种不同的名次**，否则测不出它们真的各按各的算：
+    //   净额： steady +20_000 > rich +10_000 > loser -8_000
+    //   场均： rich +5_000 > steady +2_000 > loser -2_000
+    //   我的场均： loser +1_500 > steady -500 > rich -3_000
+    //     （他在桌上我反而打得好的，正是那位「常输」）
+    //   blank 最近编辑过，但一场都没打过，三个榜都垫底。
+    private val rich = row(
+        id = "rich",
+        nickname = "大赢家",
+        sessionCount = 2,
+        netMinor = 10_000L,
+        updatedAt = 100L,
+        myAverageTogetherMinor = -3_000L,
+    )
+    private val steady = row(
+        id = "steady",
+        nickname = "小赢",
+        sessionCount = 10,
+        netMinor = 20_000L,
+        updatedAt = 200L,
+        myAverageTogetherMinor = -500L,
+    )
+    private val loser = row(
+        id = "loser",
+        nickname = "常输",
+        sessionCount = 4,
+        netMinor = -8_000L,
+        updatedAt = 300L,
+        myAverageTogetherMinor = 1_500L,
+    )
     private val blank = row("blank", "还没打过", sessionCount = 0, netMinor = 0L, updatedAt = 999L)
     private val mixed = listOf(rich, steady, loser, blank)
 
@@ -153,12 +180,85 @@ class FriendFilteringTest {
     }
 
     @Test
+    fun sortsByMyAverageDescending() {
+        // 我的场均：loser +1500、steady -500、rich -3000，没打过的垫底。
+        // 这个顺序与上面「他的场均」「净额」都不同，三者确实是三个数。
+        val result = FriendFiltering.apply(mixed, "", false, FriendSort.MY_AVERAGE_DESC)
+
+        assertEquals(listOf("loser", "steady", "rich", "blank"), result.map { it.id })
+    }
+
+    @Test
+    fun sortsByMyAverageAscending() {
+        val result = FriendFiltering.apply(mixed, "", false, FriendSort.MY_AVERAGE_ASC)
+
+        assertEquals(listOf("rich", "steady", "loser", "blank"), result.map { it.id })
+    }
+
+    @Test
+    fun myAverageSortLooksAtMyNumbersNotHis() {
+        // 常赢的那位自己赚得最多，但我在他面前是输的；常输的那位自己亏最多，
+        // 我在他面前反而是赢的。「我的场均」必须把后者排在前面——
+        // 若把两侧的净额写反，这条断言会立刻红。
+        val shark = row(
+            id = "shark",
+            nickname = "常赢",
+            sessionCount = 5,
+            netMinor = 25_000L,
+            myAverageTogetherMinor = 100L,
+        )
+        val fish = row(
+            id = "fish",
+            nickname = "常输",
+            sessionCount = 5,
+            netMinor = -20_000L,
+            myAverageTogetherMinor = 2_000L,
+        )
+
+        assertEquals(
+            listOf("fish", "shark"),
+            FriendFiltering.apply(listOf(shark, fish), "", false, FriendSort.MY_AVERAGE_DESC)
+                .map { it.id },
+        )
+        // 换成「他的场均」，名次正好反过来——两个排序读的是两边的数
+        assertEquals(
+            listOf("shark", "fish"),
+            FriendFiltering.apply(listOf(shark, fish), "", false, FriendSort.AVERAGE_DESC)
+                .map { it.id },
+        )
+    }
+
+    @Test
+    fun friendsIHaveNeverPlayedWithGoLastInMyAverageSort() {
+        // 他打过牌，只是没和我同过场：这一格是 null，同样垫底，
+        // 而不是被当成「我的场均 0 元」挤进榜单中段
+        val stranger = row(
+            id = "stranger",
+            nickname = "没同场过",
+            sessionCount = 6,
+            netMinor = 9_000L,
+            updatedAt = 999L,
+        )
+        val withMe = row(
+            id = "withMe",
+            nickname = "同场过",
+            sessionCount = 6,
+            netMinor = -9_000L,
+            myAverageTogetherMinor = -5_000L,
+        )
+
+        val result = FriendFiltering.apply(listOf(stranger, withMe), "", false, FriendSort.MY_AVERAGE_DESC)
+
+        assertEquals(listOf("withMe", "stranger"), result.map { it.id })
+    }
+
+    @Test
     fun unrankedFriendsGoLastWhateverTheDirection() {
-        // 还没打过牌的牌友不该挤进「场均榜」的中段——他不是「场均 0 元」，
-        // 而是还没有场均可谈。他更新最新（updatedAt = 999），依然排到最后。
+        // 还没有可谈数字的牌友不该挤进榜单中段——他不是「场均 0 元」，而是还没有这个数。
+        // 他更新最新（updatedAt = 999），依然排到最后。
         FriendSort.entries.filter { it != FriendSort.RECENT }.forEach { sort ->
             assertEquals(
-                "$sort 下没打过牌的都应垫底",
+                "$sort 下没有数字的都该垫底",
                 "blank",
                 FriendFiltering.apply(mixed, "", false, sort).last().id,
             )

@@ -33,8 +33,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
+import com.manote.app.domain.DatedNet
 import com.manote.app.domain.DayNet
 import com.manote.app.domain.PlayerStatistics
+import com.manote.app.domain.SessionExtremes
 import com.manote.app.domain.StreakStats
 import com.manote.app.domain.TimeSlot
 import com.manote.app.domain.TimeSlotStatistics
@@ -115,7 +117,11 @@ private fun HomeContent(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            OverviewCard(statistics = state.statistics, loading = state.loading)
+            OverviewCard(
+                statistics = state.statistics,
+                extremes = state.extremes,
+                loading = state.loading,
+            )
 
             // 一场都没记时不显示走势与分时段战绩，避免三行全是「—」的空表；
             // 空态已经由上面的战绩概览说明过了。
@@ -166,9 +172,13 @@ private fun HomeContent(
     }
 }
 
-/** 战绩概览：胜 / 负 / 平 三色格 + 占比条 + 净胜、场均、胜率、净胜场。 */
+/** 战绩概览：胜 / 负 / 平 三色格 + 占比条 + 净胜、场均、胜率、净胜场、单场极值。 */
 @Composable
-private fun OverviewCard(statistics: PlayerStatistics, loading: Boolean) {
+private fun OverviewCard(
+    statistics: PlayerStatistics,
+    extremes: SessionExtremes,
+    loading: Boolean,
+) {
     val colors = MaterialTheme.manote
 
     ManoteCard {
@@ -260,7 +270,42 @@ private fun OverviewCard(statistics: PlayerStatistics, loading: Boolean) {
                 modifier = Modifier.weight(1f),
             )
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            SessionExtremeReadout(
+                label = stringResource(R.string.stat_best_win),
+                extreme = extremes.bestWin,
+            )
+            SessionExtremeReadout(
+                label = stringResource(R.string.stat_worst_loss),
+                extreme = extremes.worstLoss,
+            )
+        }
     }
+}
+
+/**
+ * 单场极值读数：金额 + 「哪一场」。
+ *
+ * 没有这样的场次（从没赢过 / 从没输过）时整块显示占位符，
+ * 而不是 ¥0.00——那会被读成「有过一场刚好持平的记录」，是另一个事实。
+ * 日期小字与「最佳 / 最差单日」一样给出来，否则一个孤零零的金额无从追溯。
+ */
+@Composable
+private fun RowScope.SessionExtremeReadout(label: String, extreme: DatedNet?) {
+    Metric(
+        label = label,
+        value = if (extreme == null) {
+            stringResource(R.string.common_unavailable)
+        } else {
+            UiText.signedYuan(extreme.netMinor)
+        },
+        valueColor = if (extreme == null) mutedColor() else signedColor(extreme.netMinor),
+        caption = extreme?.let { UiText.monthDay(it.playedAt) },
+        modifier = Modifier.weight(1f),
+    )
 }
 
 /**
@@ -625,6 +670,8 @@ private fun Metric(
     value: String,
     valueColor: Color,
     modifier: Modifier = Modifier,
+    /** 数值下方的一行小字，例如单场极值的日期。 */
+    caption: String? = null,
 ) {
     Column(modifier = modifier) {
         Text(
@@ -640,6 +687,15 @@ private fun Metric(
             color = valueColor,
             maxLines = 1,
         )
+        if (caption != null) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = caption,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -689,6 +745,11 @@ private fun HomeContentPreview() {
                     longestLossStreak = 3,
                     bestDay = DayNet(LocalDate.of(2026, 10, 3), 4_200L, 2),
                     worstDay = DayNet(LocalDate.of(2026, 10, 5), -3_100L, 2),
+                ),
+                // 与上面 trend 里的点同源：+2_600 是最高的一场，-4_100 是最低的一场
+                extremes = SessionExtremes(
+                    bestWin = DatedNet(playedAt = 1_790_000_000_000L, netMinor = 2_600L),
+                    worstLoss = DatedNet(playedAt = 1_792_000_000_000L, netMinor = -4_100L),
                 ),
                 recentSessions = listOf(
                     SessionRowUi(

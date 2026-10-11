@@ -90,6 +90,10 @@ class FriendsViewModel(
         val worstRivalId = Rivalry.worstRival(matches)?.playerId
         val bestRivalId = Rivalry.bestRival(matches)?.playerId
         val tableKingId = Rivalry.strongestOpponent(matches)?.playerId
+        // 每行还要带上「我与他的同场场均」给排序与显示用，所以要拿到全部同场账。
+        // 这里多聚合一遍（上面三个判定各自也会聚一次）：match 数在千级以内，
+        // 一次 groupBy 的开销可以忽略，比把这套判定逻辑复制到第二处划算得多。
+        val recordByPlayer = Rivalry.of(matches).associateBy { it.playerId }
         val rows = friends.map { friend ->
             friend.toRowUi(
                 aggregate = aggregateByPlayer[friend.id],
@@ -98,6 +102,7 @@ class FriendsViewModel(
                     if (friend.id == bestRivalId) add(FriendBadge.LUCKY_STAR)
                     if (friend.id == tableKingId) add(FriendBadge.TABLE_KING)
                 },
+                myAverageTogetherMinor = recordByPlayer[friend.id]?.myAverageMinor,
             )
         }
         FriendsUiState(

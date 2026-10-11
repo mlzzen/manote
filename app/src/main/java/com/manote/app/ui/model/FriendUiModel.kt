@@ -7,6 +7,7 @@ import com.manote.app.domain.DatedNet
 import com.manote.app.domain.OpponentMatch
 import com.manote.app.domain.PlayerStatistics
 import com.manote.app.domain.Rivalry
+import com.manote.app.domain.SessionExtremes
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.Trend
 import com.manote.app.domain.TrendPoint
@@ -50,6 +51,15 @@ data class FriendRowUi(
      * 场数都不够门槛时就是不挂，界面不必为此特判。
      */
     val badges: Set<FriendBadge> = emptySet(),
+    /**
+     * 我与这位牌友同场时，我的场均（分）；从没同场过时为 null。
+     *
+     * 与麻友详情页那一格、以及「最苦主 / 福星」的判定同源（都是 [RivalryRecord.myAverageMinor]），
+     * 三处不可能各算一个数。
+     *
+     * 注意它**不是**这位牌友自己的场均（那是 [averageMinor]）：这一个看的是「他在桌上我打成什么样」。
+     */
+    val myAverageTogetherMinor: Long? = null,
 ) {
     /**
      * 场均净输赢，分：跨场净输赢 ÷ 参与场数。
@@ -84,8 +94,25 @@ data class FriendDetailUi(
     val note: String,
     val archived: Boolean,
     val statistics: PlayerStatistics,
+    /**
+     * 这位麻友自己的单场赢最多 / 输最多。
+     *
+     * 只统计他真的在场的那些场次（他缺席的场自然不会出现在逐场列表里）；
+     * 从没赢过或从没输过时对应的一边为 null。
+     */
+    val extremes: SessionExtremes = SessionExtremes.EMPTY,
     /** 这位麻友的累计净额走势，按结束时间升序；场次少于 2 场时为空。 */
     val trend: List<TrendPoint> = emptyList(),
+    /**
+     * 我与这位麻友同场时，我的净输赢合计（分）。从没同场过时为 null。
+     *
+     * 与 [myAverageTogetherMinor] 是同一个数的两种看法：合计 ÷ 同场场数 = 场均。
+     * 合计能回答「在这些场里我总共赢输了多少」，场均能回答「平均打成什么样」，
+     * 两者都在，才知道这个场均背后是几场的量。
+     *
+     * 注意这不是「从他身上赢了多少」——四人对局没有两两转账记录，那笔账算不出来。
+     */
+    val myNetTogetherMinor: Long? = null,
     /**
      * 我与这位麻友同场时，我的场均（分）。从没同场过时为 null。
      *
@@ -104,11 +131,12 @@ data class FriendDetailUi(
  * 而不是把整行丢掉——刚建好的麻友必须能在列表里看到。
  *
  * [badges] 由调用方用 [Rivalry] 算好后传入：三个标签都要横比所有牌友，
- * 孤零零一行给不出结论。
+ * 孤零零一行给不出结论。[myAverageTogetherMinor] 同理，也要在全局的同场账里查。
  */
 fun PlayerEntity.toRowUi(
     aggregate: PlayerAggregate?,
     badges: Set<FriendBadge> = emptySet(),
+    myAverageTogetherMinor: Long? = null,
 ): FriendRowUi = FriendRowUi(
     id = id,
     nickname = nickname,
@@ -118,6 +146,7 @@ fun PlayerEntity.toRowUi(
     archived = archivedAt != null,
     updatedAt = updatedAt,
     badges = badges,
+    myAverageTogetherMinor = myAverageTogetherMinor,
 )
 
 /**
@@ -169,15 +198,19 @@ fun PlayerEntity.toDetailUi(
         )
     }
     val record = Rivalry.recordFor(sessionsWithResults.flatMap { it.opponentMatches() }, id)
+    // 这位麻友逐场的（结束时间，净额）。走势与单场极值共用这一份，
+    // 两者不会各自去翻一遍结果表、也就不会对不上。
+    val dated = rows.map { DatedNet(playedAt = it.playedAt, netMinor = it.netMinor) }
     return FriendDetailUi(
         id = id,
         nickname = nickname,
         note = note,
         archived = archivedAt != null,
         statistics = statistics,
-        trend = Trend.cumulative(
-            rows.asReversed().map { DatedNet(playedAt = it.playedAt, netMinor = it.netMinor) },
-        ),
+        extremes = SessionExtremes.of(dated),
+        // 走势按时间升序累加（图从左到右即时间先后），而逐场记录是倒序的
+        trend = Trend.cumulative(dated.asReversed()),
+        myNetTogetherMinor = record?.myNetMinor,
         myAverageTogetherMinor = record?.myAverageMinor,
         commonSessionCount = record?.commonSessionCount ?: 0,
         sessions = rows,

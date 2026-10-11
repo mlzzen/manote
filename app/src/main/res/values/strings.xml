@@ -18,6 +18,9 @@
     <string name="common_amount_unit">元</string>
     <string name="common_unavailable">—</string>
     <string name="stat_average">场均</string>
+    <!-- 单场极值：首页战绩概览与牌友详情共用同一组标签 -->
+    <string name="stat_best_win">单场赢最多</string>
+    <string name="stat_worst_loss">单场输最多</string>
 
     <!-- 底部导航 -->
     <string name="nav_home">首页</string>
@@ -178,14 +181,18 @@
     <string name="friends_help_table_king">牌王：他自己场均最高的那位，与我在他面前打得如何无关。</string>
     <string name="friends_help_archived">已归档：不能再用于新建场次，历史场次与统计都保留。</string>
     <string name="friends_help_stats">场均 = 该牌友的累计净输赢 ÷ 参与场数；净额就是每行末尾那个累计净输赢。</string>
-    <string name="friends_help_sort">排序里的 ↓ 是从高到低、↑ 是从低到高；按场均或净额排序时，还没打过牌的牌友始终排在最后。</string>
+    <string name="friends_help_my_average">我的场均 = 我与他同场时，我的累计净输赢 ÷ 同场场数——与「最苦主 / 福星」用的是同一个数，看的是我在他面前打成什么样，不是他打得怎么样。</string>
+    <string name="friends_help_sort">排序里的 ↓ 是从高到低、↑ 是从低到高；「场均」与「净额」看的是牌友自己，「我的场均」看的是我在他面前打成什么样。没有可谈数字的人（没打过牌、或没和他同过场）始终排在最后。</string>
     <string name="friends_sort_action">排序</string>
     <string name="friends_sort_recent">最近编辑</string>
     <string name="friends_sort_average_desc">场均 ↓</string>
     <string name="friends_sort_average_asc">场均 ↑</string>
+    <string name="friends_sort_my_average_desc">我的场均 ↓</string>
+    <string name="friends_sort_my_average_asc">我的场均 ↑</string>
     <string name="friends_sort_net_desc">净额 ↓</string>
     <string name="friends_sort_net_asc">净额 ↑</string>
     <string name="friends_average_label">场均</string>
+    <string name="friends_my_average_label">我的场均</string>
     <string name="friends_stat_format">%1$d 场</string>
     <string name="friends_no_sessions">还没记录过</string>
     <string name="friends_search_empty_title">没有匹配的牌友</string>
@@ -203,6 +210,7 @@
     <string name="friend_stat_loss_amount">累计输钱</string>
     <string name="friend_stat_net">净输赢</string>
     <string name="friend_stat_sessions">场数</string>
+    <string name="friend_stat_together_net">同场时我的净输赢</string>
     <string name="friend_stat_together_average">同场时我的场均</string>
     <string name="friend_stat_together_sessions_format">同场 %1$d 场</string>
     <string name="friend_detail_sessions_title">逐场记录</string>

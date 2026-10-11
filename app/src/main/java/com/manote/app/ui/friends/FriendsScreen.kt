@@ -73,7 +73,7 @@ import kotlinx.coroutines.launch
  * 牌友页（规格 3.4）。
  *
  * 搜索昵称/备注，默认只显示未归档，可切换「包含已归档」，
- * 并可按场均或累计净输赢排序（两个方向各一项）。
+ * 并可按「他的场均」「我的场均」「其累计净输赢」排序（各两个方向）。
  * 每行显示昵称、备注摘要、场数、场均与净输赢；数字都来自 `session_result` 的实时聚合。
  * 同场满 [com.manote.app.domain.Rivalry.MIN_COMMON_SESSIONS] 场时，行上会挂出
  * 「最苦主」（我在他面前场均最低）、「福星」（我在他面前场均最高）、
@@ -279,6 +279,7 @@ private fun FriendHelpDialog(onDismiss: () -> Unit) {
                 HelpLine(text = stringResource(R.string.friends_help_table_king), labeled = true)
                 HelpLine(text = stringResource(R.string.friends_help_archived), labeled = true)
                 HelpLine(text = stringResource(R.string.friends_help_stats))
+                HelpLine(text = stringResource(R.string.friends_help_my_average))
                 HelpLine(text = stringResource(R.string.friends_help_sort))
             }
         },
@@ -368,6 +369,8 @@ private fun FriendSort.label(): String = stringResource(
         FriendSort.RECENT -> R.string.friends_sort_recent
         FriendSort.AVERAGE_DESC -> R.string.friends_sort_average_desc
         FriendSort.AVERAGE_ASC -> R.string.friends_sort_average_asc
+        FriendSort.MY_AVERAGE_DESC -> R.string.friends_sort_my_average_desc
+        FriendSort.MY_AVERAGE_ASC -> R.string.friends_sort_my_average_asc
         FriendSort.NET_DESC -> R.string.friends_sort_net_desc
         FriendSort.NET_ASC -> R.string.friends_sort_net_asc
     },
@@ -444,28 +447,47 @@ private fun FriendRow(friend: FriendRowUi, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                // 右侧上下两个数：上面是累计净输赢（排序里的「净额」），下面是场均。
-                // 两个都能拿来排序，就都摆在能看见的地方，免得排完不知道依据是什么。
+                // 右侧几个数：累计净输赢（排序里的「净额」）、场均（他的），
+                // 以及我的场均（与他同场时）。
+                // 三个都能拿来排序，就都摆在能看见的地方，免得排完不知道依据是什么。
                 Column(horizontalAlignment = Alignment.End) {
                     SignedAmount(
                         netMinor = friend.netMinor,
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = stringResource(R.string.friends_average_label),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        SignedAmount(
-                            netMinor = friend.averageMinor,
-                            style = MaterialTheme.typography.labelSmall,
+                    AverageLine(
+                        label = stringResource(R.string.friends_average_label),
+                        signedMinor = friend.averageMinor,
+                    )
+                    // 没同场过时这一格是 null，整行不出现——摆一个「—」在这里
+                    // 只会让人以为他和别人打得不一样，其实只是「还没有这个数」
+                    friend.myAverageTogetherMinor?.let { mine ->
+                        Spacer(modifier = Modifier.height(2.dp))
+                        AverageLine(
+                            label = stringResource(R.string.friends_my_average_label),
+                            signedMinor = mine,
                         )
                     }
                 }
             }
         }
+    }
+}
+
+/** 「标签 + 带正负号的金额」的一行小字，供列表右侧的场均与我的场均共用。 */
+@Composable
+private fun AverageLine(label: String, signedMinor: Long) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SignedAmount(
+            netMinor = signedMinor,
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }
 
