@@ -59,6 +59,29 @@ sdk.dir=/path/to/Android/Sdk
 ./gradlew testDebugUnitTest    # 运行单元测试
 ```
 
+**单元测试不得隐式依赖跑测机器的时区。** 存储一律是 UTC epoch 毫秒，显示与统计按设备时区，
+因此测试只有两种写法是安全的：要么「按设备时区构造、按设备时区断言」（两边同源），
+要么把 `ZoneId` 显式传进被测函数（`TimeSlot.of`、`SessionCsv.build/fileName`、
+`UiText.dateTime`、`toRowUi/toDetailUi` 等都接受可选的 `zoneId`）。
+开发机在东八区、CI 的 runner 是 UTC，隐式依赖本机时区的断言会**本地全绿、CI 必挂**。
+
+提交前可以用 init script 换几个时区各跑一遍（不经修改构建文件）：
+
+```bash
+cat > /tmp/tz.init.gradle <<'EOF'
+allprojects {
+    tasks.withType(Test).configureEach {
+        systemProperty 'user.timezone', project.findProperty('tz') ?: 'UTC'
+        systemProperty 'user.language', 'en'
+        systemProperty 'user.country', 'US'
+    }
+}
+EOF
+for z in Asia/Shanghai UTC America/New_York Pacific/Kiritimati; do
+  ./gradlew testDebugUnitTest -I /tmp/tz.init.gradle -Ptz="$z" --rerun --console=plain
+done
+```
+
 ## 发布
 
 推一个形如 `v1.2.3` 的 tag，就会自动构建签名 APK 并发布 Release：

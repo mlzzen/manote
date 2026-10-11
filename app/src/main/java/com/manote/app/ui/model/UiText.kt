@@ -17,6 +17,12 @@ import java.util.Locale
  *
  * 金额一律经 [Money] 从整数分换算，不在这里做任何浮点运算（规格 2.1）。
  * 时间按设备时区显示，但存储始终是 UTC epoch milliseconds（规格 2.1）。
+ *
+ * 所有时间格式化都接受一个可选的 [ZoneId]，默认设备时区——与
+ * [com.manote.app.domain.TimeSlot.of]、[com.manote.app.data.repository.SessionCsv] 等
+ * 保持同一套约定。界面调用不必传（取默认即可）；
+ * 需要钉死时区的场合（测试、导出）则显式传入，
+ * 避免出现「按 A 时区构造、按 B 时区读出」这类只有换台机器才暴露的错。
  */
 object UiText {
 
@@ -34,8 +40,8 @@ object UiText {
     }
 
     /** `2026.10.05`。 */
-    fun date(epochMillis: Long): String {
-        val date = toLocalDate(epochMillis)
+    fun date(epochMillis: Long, zoneId: ZoneId = ZoneId.systemDefault()): String {
+        val date = toLocalDate(epochMillis, zoneId)
         return String.format(
             Locale.US,
             "%04d.%02d.%02d",
@@ -46,22 +52,22 @@ object UiText {
     }
 
     /** `2026.10.05 21:30`。 */
-    fun dateTime(epochMillis: Long): String {
-        val zone = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
+    fun dateTime(epochMillis: Long, zoneId: ZoneId = ZoneId.systemDefault()): String {
+        val time = Instant.ofEpochMilli(epochMillis).atZone(zoneId)
         return String.format(
             Locale.US,
             "%04d.%02d.%02d %02d:%02d",
-            zone.year,
-            zone.monthValue,
-            zone.dayOfMonth,
-            zone.hour,
-            zone.minute,
+            time.year,
+            time.monthValue,
+            time.dayOfMonth,
+            time.hour,
+            time.minute,
         )
     }
 
     /** `10.05`，用于紧凑列表。 */
-    fun monthDay(epochMillis: Long): String {
-        val date = toLocalDate(epochMillis)
+    fun monthDay(epochMillis: Long, zoneId: ZoneId = ZoneId.systemDefault()): String {
+        val date = toLocalDate(epochMillis, zoneId)
         return String.format(Locale.US, "%02d.%02d", date.monthValue, date.dayOfMonth)
     }
 
@@ -85,8 +91,8 @@ object UiText {
         return date.atTime(hour, minute).atZone(zoneId).toInstant().toEpochMilli()
     }
 
-    fun toLocalDate(epochMillis: Long): LocalDate =
-        Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+    fun toLocalDate(epochMillis: Long, zoneId: ZoneId = ZoneId.systemDefault()): LocalDate =
+        Instant.ofEpochMilli(epochMillis).atZone(zoneId).toLocalDate()
 
     /**
      * UUID 短串（前 8 位），用于区分同名麻友（规格 3.4）。

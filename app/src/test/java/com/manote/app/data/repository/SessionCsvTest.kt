@@ -102,7 +102,9 @@ class SessionCsvTest {
 
     @Test
     fun fileNameUsesTimeAndShortIdOnly() {
-        val name = SessionCsv.fileName(detail())
+        // 必须显式传 ZONE：文件名里的时间按传入时区格式化，
+        // 漏传就退回设备时区，在 UTC 的 CI 上会写成 -1330（东八区 21:30）。
+        val name = SessionCsv.fileName(detail(), ZONE)
 
         assertEquals("manote_20261005-2130_00000000.csv", name)
         assertFalse("文件名不能带标题", name.contains("周五晚局"))

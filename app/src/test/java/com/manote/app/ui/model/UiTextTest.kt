@@ -9,7 +9,10 @@ import java.time.ZoneOffset
 /**
  * 展示文本的格式化。
  *
- * 时间断言都基于「同一个时区构造、同一个时区显示」，因此在任何机器时区下都成立。
+ * 涉及时间的断言一律不依赖跑测机器的时区：
+ * 要么「按设备时区构造、按设备时区显示」（两边同源，任何机器都成立），
+ * 要么显式传 [ZoneId]（跨时区的往返）。CI 的 runner 是 UTC，
+ * 若在这里隐式依赖系统时区，本地东八区全绿、CI 上必然挂。
  */
 class UiTextTest {
 
@@ -80,7 +83,8 @@ class UiTextTest {
             LocalDateTime.of(2026, 10, 5, 21, 30).atZone(shanghai).toInstant().toEpochMilli(),
             combined,
         )
-        assertEquals("2026.10.05 21:30", UiText.dateTime(combined))
+        // 必须按同一个时区读回，否则在 UTC 机器上会显示成 13:30
+        assertEquals("2026.10.05 21:30", UiText.dateTime(combined, shanghai))
     }
 
     @Test
@@ -93,7 +97,8 @@ class UiTextTest {
 
         val combined = UiText.combineDateAndTime(dateUtcMillis, hour = 0, minute = 30, zoneId = shanghai)
 
-        assertEquals("2026.11.01 00:30", UiText.dateTime(combined))
+        // 按同一时区读回：若把 UTC 零点当成当地零点，这里会变成 10-31 16:30
+        assertEquals("2026.11.01 00:30", UiText.dateTime(combined, shanghai))
     }
 
     @Test
