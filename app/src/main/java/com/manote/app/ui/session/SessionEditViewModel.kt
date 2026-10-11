@@ -505,7 +505,11 @@ class SessionEditViewModel(
                         state.copy(
                             mode = SessionEditMode.Edit(sessionId),
                             playedAt = detail.session.playedAt,
-                            title = detail.session.title,
+                            // 从没起过标题的场次留空，让输入框显示「留空则为「麻将对局」」的提示，
+                            // 而不是把占位名当成用户填过的内容摆在框里
+                            title = detail.session.title
+                                .takeUnless { SessionRules.isPlaceholderTitle(it) }
+                                .orEmpty(),
                             note = detail.session.note,
                             seats = (0 until SessionRules.SEAT_COUNT).map { seat ->
                                 val row = bySeat[seat]

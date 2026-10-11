@@ -5,6 +5,8 @@ import com.manote.app.domain.Ranking
 import com.manote.app.domain.SeatNet
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.Settlement
+import com.manote.app.domain.TimeSlot
+import java.time.ZoneId
 
 /** 某个座位在界面上的展示数据。 */
 data class SeatUi(
@@ -24,6 +26,12 @@ data class SessionRowUi(
     val title: String,
     val note: String,
     val playedAt: Long,
+    /**
+     * 打完时间所属时段（早场 / 下午场 / 晚场）。
+     *
+     * 与界面显示时间用同一个时区判定，列表里「21:30」旁边不会出现「早场」。
+     */
+    val timeSlot: TimeSlot,
     /** 本人（seat 0）本场净额。 */
     val selfNetMinor: Long,
     /** 其余各位的昵称快照，按 seat 升序；本场只记录了部分位置时会少于三个（规格 1.3）。 */
@@ -33,7 +41,16 @@ data class SessionRowUi(
      * 预先算好，搜索时只做一次 `contains`，不必在每次按键时重新拼字符串。
      */
     val searchHaystack: String,
-)
+) {
+    /**
+     * 用户是否真的起过标题。
+     *
+     * 为 false 时列表不显示标题行——[SessionRules.DEFAULT_TITLE] 是占位名，
+     * 每行都重复一句「麻将对局」只是噪音。
+     * 搜索串里仍然保留它，用「麻将」依旧搜得到这些场次。
+     */
+    val hasCustomTitle: Boolean get() = !SessionRules.isPlaceholderTitle(title)
+}
 
 /** 一笔结清建议的展示数据。 */
 data class TransferUi(val fromSeat: Int, val toSeat: Int, val amountMinor: Long)
@@ -44,6 +61,8 @@ data class SessionDetailUi(
     val title: String,
     val note: String,
     val playedAt: Long,
+    /** 打完时间所属时段（早场 / 下午场 / 晚场），与列表行同源同口径。 */
+    val timeSlot: TimeSlot,
     /** 已记录的座位，按 seat 升序。可能少于四个（规格 1.3）。 */
     val seats: List<SeatUi>,
     /** 已记录座位的净额合计，分。 */
@@ -68,7 +87,7 @@ data class SessionDetailUi(
  * 搜索串按规格 3.3 只含「标题 + 历史昵称（nameSnapshot）」，
  * 不把备注纳入，否则「搜索标题」会被备注里的词意外命中。
  */
-fun SessionWithResults.toRowUi(): SessionRowUi {
+fun SessionWithResults.toRowUi(zoneId: ZoneId = ZoneId.systemDefault()): SessionRowUi {
     val ordered = results.sortedBy { it.seat }
     val self = ordered.firstOrNull { it.seat == SessionRules.SEAT_SELF }
     return SessionRowUi(
@@ -76,6 +95,7 @@ fun SessionWithResults.toRowUi(): SessionRowUi {
         title = session.title,
         note = session.note,
         playedAt = session.playedAt,
+        timeSlot = TimeSlot.of(session.playedAt, zoneId),
         selfNetMinor = self?.netMinor ?: 0L,
         opponentNames = ordered.filter { it.seat != SessionRules.SEAT_SELF }.map { it.nameSnapshot },
         searchHaystack = (listOf(session.title) + ordered.map { it.nameSnapshot })
@@ -88,7 +108,7 @@ fun SessionWithResults.toRowUi(): SessionRowUi {
 private const val SEARCH_HAYSTACK_SEPARATOR = "\n"
 
 /** 场次 → 四人详情。排名与结清都在这里一次算好，Composable 只负责渲染。 */
-fun SessionWithResults.toDetailUi(): SessionDetailUi {
+fun SessionWithResults.toDetailUi(zoneId: ZoneId = ZoneId.systemDefault()): SessionDetailUi {
     val ordered = results.sortedBy { it.seat }
     val nets = ordered.map { SeatNet(seat = it.seat, netMinor = it.netMinor) }
     val ranksBySeat = Ranking.rank(nets).associate { it.seat to it.rank }
@@ -99,6 +119,7 @@ fun SessionWithResults.toDetailUi(): SessionDetailUi {
         title = session.title,
         note = session.note,
         playedAt = session.playedAt,
+        timeSlot = TimeSlot.of(session.playedAt, zoneId),
         seats = ordered.map { result ->
             SeatUi(
                 seat = result.seat,

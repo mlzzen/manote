@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.manote.app.data.repository.PlayerRepository
 import com.manote.app.data.repository.SessionRepository
 import com.manote.app.domain.PlayerStatistics
+import com.manote.app.domain.TimeSlotStatistics
 import com.manote.app.ui.model.SessionRowUi
 import com.manote.app.ui.model.toRowUi
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,6 +18,8 @@ import kotlinx.coroutines.launch
 data class HomeUiState(
     val loading: Boolean = true,
     val statistics: PlayerStatistics = PlayerStatistics.EMPTY,
+    /** 早 / 下午 / 晚三个时段的战绩，顺序固定，恒为三条（规格 2.4 的口径）。 */
+    val slotStatistics: List<TimeSlotStatistics> = TimeSlotStatistics.blank(),
     val recentSessions: List<SessionRowUi> = emptyList(),
 )
 
@@ -39,6 +42,10 @@ class HomeViewModel(
                     loading = false,
                     // seat=0 恒为 SELF，因此 seat 0 的净额序列就是本人的跨场净额序列
                     statistics = PlayerStatistics.of(rows.map { it.selfNetMinor }),
+                    // 分时段统计与列表上的时段标签共用 SessionRowUi.timeSlot，不会各判各的
+                    slotStatistics = TimeSlotStatistics.of(
+                        rows.groupBy({ it.timeSlot }, { it.selfNetMinor }),
+                    ),
                     recentSessions = rows.take(RECENT_LIMIT),
                 )
             }.stateIn(

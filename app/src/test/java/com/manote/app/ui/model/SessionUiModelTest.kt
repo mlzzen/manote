@@ -3,10 +3,14 @@ package com.manote.app.ui.model
 import com.manote.app.data.local.SessionEntity
 import com.manote.app.data.local.SessionResultEntity
 import com.manote.app.data.local.SessionWithResults
+import com.manote.app.domain.SessionRules
+import com.manote.app.domain.TimeSlot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * 场次 → 界面模型（规格 1.3、2.5）。
@@ -59,12 +63,60 @@ class SessionUiModelTest {
         assertTrue(detail.balanced)
     }
 
-    private fun sessionWith(vararg netsBySeat: Long): SessionWithResults {
-        val playedAt = 1_700_000_000_000L
+    @Test
+    fun defaultTitleIsNotTreatedAsACustomTitle() {
+        // 没起过标题的场次在列表里不显示标题行，否则每行都重复一句「麻将对局」
+        val placeholder = sessionWith(3000L, title = SessionRules.DEFAULT_TITLE).toRowUi()
+
+        assertFalse(placeholder.hasCustomTitle)
+
+        val named = sessionWith(3000L, title = "周五晚局").toRowUi()
+
+        assertTrue(named.hasCustomTitle)
+        assertEquals("周五晚局", named.title)
+    }
+
+    @Test
+    fun placeholderTitleIsStillSearchable() {
+        // 标题只是不显示，搜索串里仍保留，用「麻将」照旧搜得到这些场次
+        val row = sessionWith(3000L, title = SessionRules.DEFAULT_TITLE).toRowUi()
+
+        assertFalse(row.hasCustomTitle)
+        assertTrue(row.searchHaystack.contains("麻将对局"))
+    }
+
+    @Test
+    fun rowCarriesTheTimeSlotJudgedInTheGivenZone() {
+        // 2026-10-05 21:30（上海）→ 晚场；同一时刻按 UTC 算落在当天 13:30 → 下午场
+        val session = sessionWith(
+            3000L,
+            playedAt = LocalDateTime.of(2026, 10, 5, 21, 30).atZone(SHANGHAI).toInstant().toEpochMilli(),
+        )
+
+        assertEquals(TimeSlot.EVENING, session.toRowUi(SHANGHAI).timeSlot)
+        assertEquals(TimeSlot.AFTERNOON, session.toRowUi(ZoneId.of("UTC")).timeSlot)
+    }
+
+    @Test
+    fun detailCarriesTheSameTimeSlotAsTheRow() {
+        val session = sessionWith(
+            3000L,
+            playedAt = LocalDateTime.of(2026, 10, 5, 21, 30).atZone(SHANGHAI).toInstant().toEpochMilli(),
+        )
+
+        assertEquals(session.toRowUi(SHANGHAI).timeSlot, session.toDetailUi(SHANGHAI).timeSlot)
+        assertEquals(TimeSlot.EVENING, session.toDetailUi(SHANGHAI).timeSlot)
+    }
+
+    private fun sessionWith(
+        vararg netsBySeat: Long,
+        title: String = "周一晚局",
+        playedAt: Long = 1_700_000_000_000L,
+    ): SessionWithResults {
         return SessionWithResults(
             session = SessionEntity(
                 id = SESSION_ID,
-                title = "周一晚局",
+                title = title,
                 playedAt = playedAt,
                 note = "",
                 createdAt = playedAt,
@@ -88,5 +140,6 @@ class SessionUiModelTest {
 
     private companion object {
         const val SESSION_ID = "00000000-0000-4000-8000-000000000009"
+        val SHANGHAI: ZoneId = ZoneId.of("Asia/Shanghai")
     }
 }

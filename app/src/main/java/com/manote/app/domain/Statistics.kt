@@ -72,6 +72,62 @@ data class PlayerStatistics(
 }
 
 /**
+ * 某个时段（早场 / 下午场 / 晚场）的个人统计。
+ *
+ * 与 [PlayerStatistics] 同一口径：完全由已保存场次实时算出，不另存任何累计账本。
+ */
+data class TimeSlotStatistics(
+    val slot: TimeSlot,
+    val statistics: PlayerStatistics,
+) {
+    /** 该时段已记录场数。 */
+    val sessionCount: Int get() = statistics.sessionCount
+
+    /** 该时段净额，分。 */
+    val netMinor: Long get() = statistics.netMinor
+
+    /**
+     * 该时段胜率，百分数取整（四舍五入）。
+     *
+     * 分母是「该时段的全部场次」，持平场也算在分母里——「十场只赢三场」与
+     * 「三场全赢」不是一回事，把持平剔除会把胜率算虚高。
+     * 没有场次时返回 0，由界面自行显示占位符。
+     */
+    val winRatePercent: Int
+        get() = if (sessionCount == 0) {
+            0
+        } else {
+            (statistics.winCount * 100 + sessionCount / 2) / sessionCount
+        }
+
+    /** 该时段场均净额，分。没有场次时为 0。 */
+    val averageNetMinor: Long get() = statistics.averageNetMinor
+
+    /** 该时段是否还没有任何记录。 */
+    val isEmpty: Boolean get() = sessionCount == 0
+
+    companion object {
+
+        /**
+         * 由「时段 → 该时段各场净额」生成三个时段的统计。
+         *
+         * 返回值恒为三条，顺序固定为早 / 下午 / 晚；缺失的时段补成 0 场，
+         * 界面因此不必再判断「有没有这一段」。
+         */
+        fun of(netMinorsBySlot: Map<TimeSlot, List<Long>>): List<TimeSlotStatistics> =
+            TimeSlot.displayOrder.map { slot ->
+                TimeSlotStatistics(
+                    slot = slot,
+                    statistics = PlayerStatistics.of(netMinorsBySlot[slot].orEmpty()),
+                )
+            }
+
+        /** 三个时段都是空的统计，用作还没读到数据时的初值。 */
+        fun blank(): List<TimeSlotStatistics> = of(emptyMap())
+    }
+}
+
+/**
  * 整数除法，四舍五入（.5 向远离零的方向进位），不经过浮点。
  *
  * 负数必须单独走一遍，否则 `(value + divisor / 2) / divisor` 会把 -1.5 读成 -1。

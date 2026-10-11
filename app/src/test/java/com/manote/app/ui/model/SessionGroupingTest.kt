@@ -1,5 +1,6 @@
 package com.manote.app.ui.model
 
+import com.manote.app.domain.TimeSlot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -91,6 +92,7 @@ class SessionGroupingTest {
         title = "周一晚局",
         note = "",
         playedAt = playedAt,
+        timeSlot = TimeSlot.of(playedAt, zone),
         selfNetMinor = selfNet,
         opponentNames = emptyList(),
         searchHaystack = "",

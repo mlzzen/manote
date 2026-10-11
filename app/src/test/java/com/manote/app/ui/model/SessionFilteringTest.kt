@@ -1,5 +1,6 @@
 package com.manote.app.ui.model
 
+import com.manote.app.domain.TimeSlot
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.LocalDateTime
@@ -31,6 +32,7 @@ class SessionFilteringTest {
         title = title,
         note = "",
         playedAt = playedAt,
+        timeSlot = TimeSlot.of(playedAt, zone),
         selfNetMinor = 0L,
         opponentNames = names,
         // 与 SessionWithResults.toRowUi() 的拼法保持一致

@@ -37,4 +37,16 @@ object SessionRules {
      * 使「最多 N 字」对所有输入都成立。
      */
     fun textLength(text: String): Int = text.codePointCount(0, text.length)
+
+    /**
+     * 这个标题是不是「占位默认名」，也就是用户从来没有起过标题。
+     *
+     * [DEFAULT_TITLE] 只是为了让标题字段非空而填的东西，并不是用户写的名字；
+     * 把它当成真实标题显示，列表里每一行都会挂着一句同样的「麻将对局」。
+     * 界面据此决定这一行还要不要显示标题。
+     *
+     * 空白也算占位——正常入库的标题不会是空白，但旧草稿或导入的数据可能带上。
+     */
+    fun isPlaceholderTitle(title: String): Boolean =
+        title.isBlank() || title == DEFAULT_TITLE
 }

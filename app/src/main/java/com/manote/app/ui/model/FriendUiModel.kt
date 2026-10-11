@@ -35,7 +35,10 @@ data class FriendSessionRowUi(
     val netMinor: Long,
     /** 本人（seat 0）本场净额，分。 */
     val selfNetMinor: Long,
-)
+) {
+    /** 用户是否真的起过标题；为 false 时这一行不显示标题（见 `SessionRowUi.hasCustomTitle`）。 */
+    val hasCustomTitle: Boolean get() = !SessionRules.isPlaceholderTitle(title)
+}
 
 /** 麻友详情：档案 + 跨场统计 + 逐场记录。 */
 data class FriendDetailUi(

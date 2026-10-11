@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 import com.manote.app.R
 import com.manote.app.domain.Money
 import com.manote.app.domain.SessionRules
+import com.manote.app.domain.TimeSlot
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -111,5 +112,15 @@ fun seatLabel(seat: Int): String = stringResource(
         1 -> R.string.seat_upper
         2 -> R.string.seat_opposite
         else -> R.string.seat_lower
+    },
+)
+
+/** 时段名称：早场 / 下午场 / 晚场。 */
+@Composable
+fun timeSlotLabel(slot: TimeSlot): String = stringResource(
+    when (slot) {
+        TimeSlot.MORNING -> R.string.time_slot_morning
+        TimeSlot.AFTERNOON -> R.string.time_slot_afternoon
+        TimeSlot.EVENING -> R.string.time_slot_evening
     },
 )

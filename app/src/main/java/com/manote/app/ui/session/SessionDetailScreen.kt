@@ -53,6 +53,7 @@ import com.manote.app.ui.components.ManoteEmptyState
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.components.SignedAmount
+import com.manote.app.ui.components.TimeSlotTag
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.model.SeatUi
 import com.manote.app.ui.model.SessionDetailUi
@@ -118,7 +119,11 @@ fun SessionDetailScreen(
     }
 
     SessionDetailContent(
-        title = state.detail?.title ?: stringResource(R.string.detail_title),
+        // 没起过标题的场次在顶栏回落成「场次详情」，而不是顶着一句占位的「麻将对局」
+        title = state.detail
+            ?.title
+            ?.takeUnless { SessionRules.isPlaceholderTitle(it) }
+            ?: stringResource(R.string.detail_title),
         loading = state.loading,
         detail = state.detail,
         deleting = state.deleting,
@@ -198,17 +203,24 @@ private fun SessionDetailContent(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             ManoteCard {
-                Text(
-                    text = UiText.dateTime(detail.playedAt),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = detail.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = UiText.dateTime(detail.playedAt),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TimeSlotTag(slot = detail.timeSlot)
+                }
+                // 「麻将对局」是占位默认名：顶栏已经回落成「场次详情」，这里再重复一句没有意义
+                if (!SessionRules.isPlaceholderTitle(detail.title)) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = detail.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (detail.note.isNotBlank()) {
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(

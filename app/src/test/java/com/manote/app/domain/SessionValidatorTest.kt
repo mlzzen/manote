@@ -1,6 +1,7 @@
 package com.manote.app.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,10 +39,23 @@ class SessionValidatorTest {
         // 15 个 emoji 是 15 字，不应因 UTF-16 代理对被算成 30 字以上而误拒
         val emojiTitle = "\uD83C\uDC04".repeat(15)
         assertTrue(successOrNull(SessionValidator.normalizeTitle(emojiTitle)) != null)
+
         assertEquals(
             ManoteError.INVALID_TITLE,
             errorOrNull(SessionValidator.normalizeTitle("\uD83C\uDC04".repeat(31))),
         )
+    }
+
+    @Test
+    fun placeholderTitleCoversDefaultAndBlankButNotRealNames() {
+        // 「麻将对局」是占位默认名，不是用户起过的标题
+        assertTrue(SessionRules.isPlaceholderTitle(SessionRules.DEFAULT_TITLE))
+        assertTrue(SessionRules.isPlaceholderTitle(""))
+        assertTrue(SessionRules.isPlaceholderTitle("   "))
+
+        assertFalse(SessionRules.isPlaceholderTitle("周五晚局"))
+        // 只是包含默认名，不等于默认名本身
+        assertFalse(SessionRules.isPlaceholderTitle("麻将对局·加赛"))
     }
 
     @Test

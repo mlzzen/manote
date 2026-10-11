@@ -34,7 +34,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.manote.app.R
+import com.manote.app.domain.TimeSlot
 import com.manote.app.ui.model.UiText
+import com.manote.app.ui.model.timeSlotLabel
 import com.manote.app.ui.theme.manote
 
 /**
@@ -106,6 +108,29 @@ fun ResultBadge(
             color = content,
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
+        )
+    }
+}
+
+/**
+ * 时段标签：早场 / 下午场 / 晚场。
+ *
+ * 用底色块而不是纯文字，让它在日期旁边一眼可辨，又不会抢金额和输赢标签的位置。
+ * 场次列表、最近场次与场次详情共用，保证三处对同一场给出同一个时段。
+ */
+@Composable
+fun TimeSlotTag(slot: TimeSlot, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.extraSmall,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Text(
+            text = timeSlotLabel(slot),
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
         )
     }
 }

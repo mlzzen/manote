@@ -333,7 +333,7 @@ private fun Statistic(
     }
 }
 
-/** 逐场一行：日期、标题、这位麻友的位置、他与本人各自的本场结果（规格 3.4）。 */
+/** 逐场一行：日期、标题（没起过名时不显示）、这位麻友的位置、他与本人各自的本场结果（规格 3.4）。 */
 @Composable
 private fun FriendSessionCard(row: FriendSessionRowUi, onClick: () -> Unit) {
     ManoteCard(
@@ -348,13 +348,16 @@ private fun FriendSessionCard(row: FriendSessionRowUi, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                 )
-                Text(
-                    text = row.title,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // 「麻将对局」只是占位默认名，没起过标题就不显示，避免每一行都重复
+                if (row.hasCustomTitle) {
+                    Text(
+                        text = row.title,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = seatLabel(row.seat),

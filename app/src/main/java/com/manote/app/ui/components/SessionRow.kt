@@ -22,9 +22,10 @@ import com.manote.app.ui.model.SessionRowUi
 import com.manote.app.ui.model.UiText
 
 /**
- * 场次列表的一行：日期与标题、其余三位牌友头像、本人结果标签与金额。
+ * 场次列表的一行：日期、时段标签与标题、其余三位牌友头像、本人结果标签与金额。
  *
- * 首页「最近场次」和场次列表共用，保证两处观感与信息一致。
+ * 首页「最近场次」和场次列表共用，保证两处观感与信息一致；
+ * 时段标签也因此自动出现在两处，不必各自实现一遍。
  * 整行可点击，点击区远超 48dp（规格 3.6）。
  */
 @Composable
@@ -54,13 +55,21 @@ fun ManoteSessionRow(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                 )
-                Text(
-                    text = row.title,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TimeSlotTag(slot = row.timeSlot)
+                    if (row.hasCustomTitle) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = row.title,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            // 标题自己省略，而不是把左边的时段标签挤掉
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {

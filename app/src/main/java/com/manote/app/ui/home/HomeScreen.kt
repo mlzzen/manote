@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,12 +27,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
 import com.manote.app.domain.PlayerStatistics
+import com.manote.app.domain.TimeSlot
+import com.manote.app.domain.TimeSlotStatistics
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteCard
@@ -43,6 +47,7 @@ import com.manote.app.ui.components.ManoteSessionRow
 import com.manote.app.ui.components.ManoteTextAction
 import com.manote.app.ui.model.SessionRowUi
 import com.manote.app.ui.model.UiText
+import com.manote.app.ui.model.timeSlotLabel
 import com.manote.app.ui.navigation.ManoteTab
 import com.manote.app.ui.theme.ManoteTheme
 import com.manote.app.ui.theme.manote
@@ -105,6 +110,13 @@ private fun HomeContent(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             OverviewCard(statistics = state.statistics, loading = state.loading)
+
+            // 一场都没记时不显示分时段战绩，避免三行全是「—」的空表；
+            // 空态已经由上面的战绩概览说明过了。
+            if (state.statistics.sessionCount > 0) {
+                ManoteSectionHeader(title = stringResource(R.string.home_slot_title))
+                SlotStatisticsCard(slots = state.slotStatistics)
+            }
 
             ManoteSectionHeader(
                 title = stringResource(R.string.home_recent_title),
@@ -238,6 +250,108 @@ private fun OverviewCard(statistics: PlayerStatistics, loading: Boolean) {
         }
     }
 }
+
+/**
+ * 分时段战绩：早场 / 下午场 / 晚场各自的场数、胜率与场均。
+ *
+ * 表头与三行数据共用同一组列权重，右对齐后严格成列。
+ * 某段没有记录时显示「—」而不是 0% / ¥0.00：
+ * 「这一段没打过」和「打了但持平」必须能一眼分开（规格 3.6 的信息诚实原则）。
+ */
+@Composable
+private fun SlotStatisticsCard(slots: List<TimeSlotStatistics>) {
+    ManoteCard {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(modifier = Modifier.weight(SLOT_NAME_WEIGHT))
+            SlotColumnHeader(
+                text = stringResource(R.string.home_slot_count),
+                weight = SLOT_COUNT_WEIGHT,
+            )
+            SlotColumnHeader(
+                text = stringResource(R.string.home_stat_win_rate),
+                weight = SLOT_METRIC_WEIGHT,
+            )
+            SlotColumnHeader(
+                text = stringResource(R.string.stat_average),
+                weight = SLOT_METRIC_WEIGHT,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        slots.forEach { slot ->
+            SlotStatRow(slot = slot)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.SlotColumnHeader(text: String, weight: Float) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.End,
+        maxLines = 1,
+        modifier = Modifier.weight(weight),
+    )
+}
+
+@Composable
+private fun SlotStatRow(slot: TimeSlotStatistics) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val placeholder = stringResource(R.string.common_unavailable)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = timeSlotLabel(slot.slot),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            modifier = Modifier.weight(SLOT_NAME_WEIGHT),
+        )
+        SlotValue(
+            text = if (slot.isEmpty) placeholder else stringResource(
+                R.string.home_slot_count_format,
+                slot.sessionCount,
+            ),
+            color = muted,
+            weight = SLOT_COUNT_WEIGHT,
+        )
+        SlotValue(
+            text = if (slot.isEmpty) placeholder else "${slot.winRatePercent}%",
+            color = if (slot.isEmpty) muted else MaterialTheme.colorScheme.onSurface,
+            weight = SLOT_METRIC_WEIGHT,
+        )
+        SlotValue(
+            text = if (slot.isEmpty) placeholder else UiText.signedYuan(slot.averageNetMinor),
+            color = if (slot.isEmpty) muted else signedColor(slot.averageNetMinor),
+            weight = SLOT_METRIC_WEIGHT,
+        )
+    }
+}
+
+@Composable
+private fun RowScope.SlotValue(text: String, color: Color, weight: Float) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = color,
+        textAlign = TextAlign.End,
+        maxLines = 1,
+        modifier = Modifier.weight(weight),
+    )
+}
+
+/** 列宽权重：时段名稍宽，「场数」最窄，两个指标等宽。 */
+private const val SLOT_NAME_WEIGHT = 1.0f
+private const val SLOT_COUNT_WEIGHT = 0.7f
+private const val SLOT_METRIC_WEIGHT = 0.9f
 
 /** 金额的正负配色：赢红、输绿、持平的走中性色，与列表和详情的口径一致。 */
 @Composable
@@ -401,24 +515,32 @@ private fun HomeContentPreview() {
                     winMinor = 2_600L,
                     lossMinor = 123_900L,
                 ),
+                slotStatistics = TimeSlotStatistics.of(
+                    mapOf(
+                        TimeSlot.MORNING to listOf(600L, -200L, 0L),
+                        TimeSlot.EVENING to listOf(-1_500L, -2_300L, 900L, -400L),
+                    ),
+                ),
                 recentSessions = listOf(
                     SessionRowUi(
                         id = "1",
                         title = "麻将对局",
                         note = "",
                         playedAt = 1_791_000_000_000L,
+                        timeSlot = TimeSlot.EVENING,
                         selfNetMinor = -200L,
                         opponentNames = listOf("次小", "次建米", "麻米建"),
                         searchHaystack = "麻将对局\n次小\n次建米\n麻米建",
                     ),
                     SessionRowUi(
                         id = "2",
-                        title = "麻将对局",
+                        title = "周五晚局",
                         note = "",
                         playedAt = 1_790_000_000_000L,
+                        timeSlot = TimeSlot.AFTERNOON,
                         selfNetMinor = 2_600L,
                         opponentNames = listOf("阿强", "小美"),
-                        searchHaystack = "麻将对局\n阿强\n小美",
+                        searchHaystack = "周五晚局\n阿强\n小美",
                     ),
                 ),
             ),
