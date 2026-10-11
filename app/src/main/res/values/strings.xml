@@ -170,7 +170,22 @@
     <string name="friends_worst_rival_badge">最苦主</string>
     <string name="friends_lucky_badge">福星</string>
     <string name="friends_table_king_badge">牌王</string>
-    <string name="friends_badge_hint">同场满 %1$d 场时：我在他面前场均最低的标「最苦主」，最高的标「福星」，他自己场均最高的标「牌王」。</string>
+    <string name="friends_help_action">标签与排序说明</string>
+    <string name="friends_help_title">标签与排序说明</string>
+    <string name="friends_help_badges_title">标签（都要求同场满 %1$d 场）</string>
+    <string name="friends_help_worst_rival">最苦主：我在他面前场均最低的那位。</string>
+    <string name="friends_help_lucky">福星：我在他面前场均最高的那位。</string>
+    <string name="friends_help_table_king">牌王：他自己场均最高的那位，与我在他面前打得如何无关。</string>
+    <string name="friends_help_archived">已归档：不能再用于新建场次，历史场次与统计都保留。</string>
+    <string name="friends_help_stats">场均 = 该牌友的累计净输赢 ÷ 参与场数；净额就是每行末尾那个累计净输赢。</string>
+    <string name="friends_help_sort">排序里的 ↓ 是从高到低、↑ 是从低到高；按场均或净额排序时，还没打过牌的牌友始终排在最后。</string>
+    <string name="friends_sort_action">排序</string>
+    <string name="friends_sort_recent">最近编辑</string>
+    <string name="friends_sort_average_desc">场均 ↓</string>
+    <string name="friends_sort_average_asc">场均 ↑</string>
+    <string name="friends_sort_net_desc">净额 ↓</string>
+    <string name="friends_sort_net_asc">净额 ↑</string>
+    <string name="friends_average_label">场均</string>
     <string name="friends_stat_format">%1$d 场</string>
     <string name="friends_no_sessions">还没记录过</string>
     <string name="friends_search_empty_title">没有匹配的牌友</string>

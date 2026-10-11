@@ -10,6 +10,7 @@ import com.manote.app.domain.Rivalry
 import com.manote.app.domain.SessionRules
 import com.manote.app.domain.Trend
 import com.manote.app.domain.TrendPoint
+import com.manote.app.domain.divideRounded
 
 /**
  * 牌友列表上的标签。
@@ -49,7 +50,16 @@ data class FriendRowUi(
      * 场数都不够门槛时就是不挂，界面不必为此特判。
      */
     val badges: Set<FriendBadge> = emptySet(),
-)
+) {
+    /**
+     * 场均净输赢，分：跨场净输赢 ÷ 参与场数。
+     *
+     * 从 [sessionCount] 与 [netMinor] 现算，而不是另存一个字段——两份数字迟早会对不上。
+     * 一场都没打过时返回 0，它不是一个「场均 0 元」的结果，排序时会被单独排到最后。
+     */
+    val averageMinor: Long
+        get() = if (sessionCount == 0) 0L else divideRounded(netMinor, sessionCount.toLong())
+}
 
 /** 麻友详情里的「逐场」一行：这一场他在哪个位置、他和本人各是什么结果。 */
 data class FriendSessionRowUi(

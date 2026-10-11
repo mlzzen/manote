@@ -1,6 +1,7 @@
 package com.manote.app.ui.friends
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,14 +11,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +35,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +63,7 @@ import com.manote.app.ui.components.SignedAmount
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.model.FriendBadge
 import com.manote.app.ui.model.FriendRowUi
+import com.manote.app.ui.model.FriendSort
 import com.manote.app.ui.navigation.ManoteTab
 import com.manote.app.ui.session.CreateFriendDialog
 import com.manote.app.ui.theme.manote
@@ -61,12 +72,13 @@ import kotlinx.coroutines.launch
 /**
  * 牌友页（规格 3.4）。
  *
- * 搜索昵称/备注，默认只显示未归档，可切换「包含已归档」。
- * 每行显示昵称、备注摘要、场数与净输赢；数字都来自 `session_result` 的实时聚合。
+ * 搜索昵称/备注，默认只显示未归档，可切换「包含已归档」，
+ * 并可按场均或累计净输赢排序（两个方向各一项）。
+ * 每行显示昵称、备注摘要、场数、场均与净输赢；数字都来自 `session_result` 的实时聚合。
  * 同场满 [com.manote.app.domain.Rivalry.MIN_COMMON_SESSIONS] 场时，行上会挂出
  * 「最苦主」（我在他面前场均最低）、「福星」（我在他面前场均最高）、
  * 「牌王」（他自己的场均最高）三个标签，可同时满足多个。
- * 点按一行进入麻友详情，编辑与归档在那里；新增入口在顶栏右上角。
+ * 点按一行进入麻友详情，编辑与归档在那里；新增与「标签说明」入口都在顶栏右上角。
  */
 @Composable
 fun FriendsScreen(
@@ -84,6 +96,7 @@ fun FriendsScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showHelpDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -101,6 +114,14 @@ fun FriendsScreen(
         modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         actions = {
+            // 标签与排序的说明从列表里挪到了这里：
+            // 常驻的一行小字每屏都占位置，而真正需要解释的人才会去点它
+            IconButton(onClick = { showHelpDialog = true }) {
+                Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = stringResource(R.string.friends_help_action),
+                )
+            }
             IconButton(onClick = { showCreateDialog = true }) {
                 Icon(
                     imageVector = Icons.Filled.Add,
@@ -155,6 +176,8 @@ fun FriendsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                     )
+                    FriendSortButton(current = state.sort, onSelect = viewModel::setSort)
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = stringResource(R.string.friends_include_archived),
                         style = MaterialTheme.typography.bodySmall,
@@ -164,18 +187,6 @@ fun FriendsScreen(
                     Switch(
                         checked = state.includeArchived,
                         onCheckedChange = viewModel::setIncludeArchived,
-                    )
-                }
-
-                // 打了标就要说清楚标是怎么来的，否则「最苦主」三个字只会让人莫名其妙
-                if (state.visible.any { it.badges.isNotEmpty() }) {
-                    Text(
-                        text = stringResource(
-                            R.string.friends_badge_hint,
-                            Rivalry.MIN_COMMON_SESSIONS,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -242,7 +253,125 @@ fun FriendsScreen(
             onConfirm = { nickname, note -> viewModel.createFriend(nickname, note) },
         )
     }
+
+    if (showHelpDialog) {
+        FriendHelpDialog(onDismiss = { showHelpDialog = false })
+    }
 }
+
+/**
+ * 标签与排序的说明。
+ *
+ * 原先这三条以常驻小字的形式压在列表上方，每屏都占一行、还容易被当成装饰；
+ * 收进这里之后，只有真想弄清楚「最苦主是什么意思」的人才会去点开。
+ */
+@Composable
+private fun FriendHelpDialog(onDismiss: () -> Unit) {
+    val minSessions = Rivalry.MIN_COMMON_SESSIONS
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.friends_help_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                HelpLine(text = stringResource(R.string.friends_help_badges_title, minSessions))
+                HelpLine(text = stringResource(R.string.friends_help_worst_rival), labeled = true)
+                HelpLine(text = stringResource(R.string.friends_help_lucky), labeled = true)
+                HelpLine(text = stringResource(R.string.friends_help_table_king), labeled = true)
+                HelpLine(text = stringResource(R.string.friends_help_archived), labeled = true)
+                HelpLine(text = stringResource(R.string.friends_help_stats))
+                HelpLine(text = stringResource(R.string.friends_help_sort))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.action_confirm))
+            }
+        },
+    )
+}
+
+/** 说明里的一行；[labeled] 为 true 时用正文色，作为小节标题的那行用弱化色。 */
+@Composable
+private fun HelpLine(text: String, labeled: Boolean = false) {
+    Text(
+        text = text,
+        style = if (labeled) {
+            MaterialTheme.typography.bodySmall
+        } else {
+            MaterialTheme.typography.labelLarge
+        },
+        color = if (labeled) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        },
+    )
+}
+
+/**
+ * 排序入口。
+ *
+ * 用文字按钮而不是图标：`material-icons-core` 里没有合适的「排序」图标，
+ * 而写出当前排序方式（「场均 ↓」）本身就比一个抽象的图标更好认。
+ */
+@Composable
+private fun FriendSortButton(current: FriendSort, onSelect: (FriendSort) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        Row(
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .clip(MaterialTheme.shapes.small)
+                .clickable { expanded = true }
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = current.label(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+            )
+            Icon(
+                imageVector = Icons.Filled.ArrowDropDown,
+                contentDescription = stringResource(R.string.friends_sort_action),
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            FriendSort.entries.forEach { sort ->
+                DropdownMenuItem(
+                    text = { Text(text = sort.label()) },
+                    // 选中的那项打勾：菜单里的文字与按钮上的一致，不打勾就分不出当前是哪个
+                    trailingIcon = {
+                        if (sort == current) {
+                            Icon(imageVector = Icons.Filled.Check, contentDescription = null)
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(sort)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** 排序方式 → 文案。用穷尽 `when`，将来加排序方式时编译期就会提醒补文案。 */
+@Composable
+private fun FriendSort.label(): String = stringResource(
+    when (this) {
+        FriendSort.RECENT -> R.string.friends_sort_recent
+        FriendSort.AVERAGE_DESC -> R.string.friends_sort_average_desc
+        FriendSort.AVERAGE_ASC -> R.string.friends_sort_average_asc
+        FriendSort.NET_DESC -> R.string.friends_sort_net_desc
+        FriendSort.NET_ASC -> R.string.friends_sort_net_asc
+    },
+)
 
 /** 一行麻友：昵称、备注摘要、场数与净输赢（规格 3.4）。整行可点击进入详情。 */
 @Composable
@@ -315,10 +444,26 @@ private fun FriendRow(friend: FriendRowUi, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                SignedAmount(
-                    netMinor = friend.netMinor,
-                    style = MaterialTheme.typography.titleSmall,
-                )
+                // 右侧上下两个数：上面是累计净输赢（排序里的「净额」），下面是场均。
+                // 两个都能拿来排序，就都摆在能看见的地方，免得排完不知道依据是什么。
+                Column(horizontalAlignment = Alignment.End) {
+                    SignedAmount(
+                        netMinor = friend.netMinor,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.friends_average_label),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        SignedAmount(
+                            netMinor = friend.averageMinor,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
             }
         }
     }

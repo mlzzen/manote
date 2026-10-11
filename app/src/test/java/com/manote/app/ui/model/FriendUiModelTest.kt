@@ -101,6 +101,27 @@ class FriendUiModelTest {
         assertEquals("排序键必须原样带出，列表才能稳定排序", 950L, row.updatedAt)
     }
 
+    @Test
+    fun rowAverageIsTheNetDividedBySessionCount() {
+        val won = player("f1", "阿明").toRowUi(
+            PlayerAggregate(playerId = "f1", sessionCount = 3, netMinor = 4_500L),
+        )
+        val lost = player("f2", "阿华").toRowUi(
+            PlayerAggregate(playerId = "f2", sessionCount = 3, netMinor = -5_000L),
+        )
+
+        assertEquals(1_500L, won.averageMinor)
+        // -5000 ÷ 3 = -1666.67 → -1667，与其它「场均」用同一套四舍五入
+        assertEquals(-1667L, lost.averageMinor)
+    }
+
+    @Test
+    fun rowAverageIsZeroWithoutSessions() {
+        // 一场都没打过：场均无从谈起，这里返回 0，
+        // 由 FriendFiltering 在按数值排序时把他排到最后，而不是当成「场均 0 元」
+        assertEquals(0L, player("f1", "阿明").toRowUi(aggregate = null).averageMinor)
+    }
+
     // ————————————————————— 麻友详情 —————————————————————
 
     @Test
