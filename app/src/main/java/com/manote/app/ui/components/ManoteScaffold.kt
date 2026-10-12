@@ -30,11 +30,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.manote.app.R
+import com.manote.app.ui.theme.manote
 
 /**
  * 各页面共用的骨架：顶栏 + 可选底部栏。
@@ -49,6 +51,10 @@ import com.manote.app.R
  * 内容区通过 [content] 拿到已扣减顶栏/底栏内边距的 [PaddingValues]。
  * 系统栏处理：顶栏自带状态栏内边距；底部栏由调用方负责导航栏内边距；
  * 内容区只保留横向安全区，避免横屏挖孔遮挡。
+ *
+ * **整页的背景由这里铺，页面自己不要画背景色。** 它是一道顶光而不是一块平色
+ * （见 [ManoteExtendedColors.pageBackground]），铺在最外层才能从状态栏一直连到导航栏；
+ * 顶栏因此刻意不画底色，否则会在离屏顶端一小段处把这道光切断。
  */
 @Composable
 fun ManoteScaffold(
@@ -61,22 +67,29 @@ fun ManoteScaffold(
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
-        topBar = {
-            ManoteTopBar(
-                title = title,
-                branded = branded,
-                onNavigateBack = onNavigateBack,
-                actions = actions,
-            )
-        },
-        bottomBar = bottomBar,
-        snackbarHost = snackbarHost,
-        content = content,
-    )
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.manote.pageBackground),
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            // 透明而不是画布色：底下那层才是这一页真正的底
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+            topBar = {
+                ManoteTopBar(
+                    title = title,
+                    branded = branded,
+                    onNavigateBack = onNavigateBack,
+                    actions = actions,
+                )
+            },
+            bottomBar = bottomBar,
+            snackbarHost = snackbarHost,
+            content = content,
+        )
+    }
 }
 
 /** 居中式顶栏。返回按钮固定带可访问标签（规格 3.6）。 */
@@ -91,7 +104,7 @@ fun ManoteTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
+            // 不画底色：顶栏正下方就是页面的顶光，画一块平色会在顶端切出一道横线
             .statusBarsPadding()
             .heightIn(min = 56.dp)
             .padding(horizontal = 8.dp, vertical = 6.dp),

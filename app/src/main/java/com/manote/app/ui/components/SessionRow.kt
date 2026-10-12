@@ -2,6 +2,7 @@ package com.manote.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.manote.app.ui.model.SessionRowUi
@@ -59,13 +61,16 @@ fun ManoteSessionRow(
             // 整张行一起缩放：结果色边、头像与金额是一块内容，按下时同进同退。
             .manotePress(interaction),
         shape = shape,
-        color = MaterialTheme.colorScheme.surface,
+        // 与内容卡片同一层顶光；底色画在内层，顺序因此是「底光 → 结果色边 → 内容」
+        color = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(shape)
+                .background(MaterialTheme.manote.cardSurface)
                 .clickable(
                     interactionSource = interaction,
                     indication = LocalIndication.current,

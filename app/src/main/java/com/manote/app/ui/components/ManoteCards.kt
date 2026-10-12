@@ -39,13 +39,21 @@ import com.manote.app.ui.theme.manote
  * 内容卡片：白底、大圆角、一圈很淡的描边。
  * 描边比阴影更贴合参考稿，也能在深色主题下有稳定边界。
  *
+ * 底色不是一块平色而是**顶光渐变**（纯白起、往下收一点暖白，见
+ * [ManoteExtendedColors.cardSurface]）：卡片因此像一层纸被头顶的光斜照，
+ * 而不是一整块死白。色差小到只在该看见的时候才看见——卡片与画布的分界
+ * 仍然只由那圈 1px 描边负责。
+ *
  * 传了 [onClick] 时整张卡可点击（规格 3.6：点击区域至少 48dp，
  * 卡片内边距加内容高度必然超过这个下限）。
+ *
+ * @param containerColor 传了就整块用这个平色（例如需要与画布区分的地方）；
+ *   不传则用卡片默认的顶光渐变。
  */
 @Composable
 fun ManoteCard(
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
+    containerColor: Color? = null,
     borderColor: Color = MaterialTheme.colorScheme.outlineVariant,
     contentPadding: PaddingValues = PaddingValues(16.dp),
     onClick: (() -> Unit)? = null,
@@ -69,10 +77,24 @@ fun ManoteCard(
                 },
             ),
         shape = MaterialTheme.shapes.large,
-        color = containerColor,
+        // 底色画在内层：底色是一道渐变，而 Surface 只收一个平色。
+        // 内容色显式给 onSurface，替换掉原先由 surface 推导出来的那一份。
+        color = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, borderColor),
     ) {
-        Column(modifier = Modifier.padding(contentPadding), content = content)
+        Column(
+            modifier = Modifier
+                .then(
+                    if (containerColor == null) {
+                        Modifier.background(MaterialTheme.manote.cardSurface)
+                    } else {
+                        Modifier.background(containerColor)
+                    },
+                )
+                .padding(contentPadding),
+            content = content,
+        )
     }
 }
 

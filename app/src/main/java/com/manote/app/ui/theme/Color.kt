@@ -2,6 +2,7 @@ package com.manote.app.ui.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
@@ -70,6 +71,24 @@ internal val BorderLight = Color(0xFFEDE4D2)
 internal val OutlineLight = Color(0xFFC9BFA9)
 internal val ChipLight = Color(0xFFF1ECE0)
 
+/**
+ * 页面背景的顶光：最上缘一层极淡的鼠尾草绿，往下渐渐还给画布色。
+ *
+ * 平铺一块画布色会让整屏像一张纸；一层几乎看不出的绿意在顶部铺开、
+ * 到底部已经与画布同色，页面就像被头顶的光照着——与英雄卡自己的纵向渐变同一个意象。
+ * 这两个值都很靠近画布色，只负责改「光的方向」，不改变页面的明度关系。
+ */
+internal val PageTopLight = Color(0xFFE7EFE4)
+internal val PageMidLight = Color(0xFFF3F3E9)
+
+/**
+ * 卡片顶光的下缘：纯白起、往下收一点点暖白。
+ *
+ * 与上缘的差值刻意压到 2 个色阶——卡片不再是「一块死白」，但也不至于看起来像两种材质；
+ * 卡片与画布的分界仍然只由那圈 1px 描边负责。
+ */
+internal val CardBottomLight = Color(0xFFFDFBF5)
+
 /** 文本三级。 */
 internal val TextPrimaryLight = Color(0xFF1B211D)
 internal val TextSecondaryLight = Color(0xFF7C837B)
@@ -121,6 +140,18 @@ internal val SurfaceAltDark = Color(0xFF232B26)
 internal val BorderDark = Color(0xFF2C3833)
 internal val OutlineDark = Color(0xFF3C4A43)
 internal val ChipDark = Color(0xFF252E29)
+
+/**
+ * 深色主题下的顶光：上缘比画布亮半档、偏墨绿，往下沉回画布。
+ *
+ * 浅色主题靠「深底白字」拉开层级，深色主题里一块纯 #121614 的底则沉得发死；
+ * 顶部亮半档既补上了同样的「光从上面来」，也不会亮到抢走英雄卡的对比。
+ */
+internal val PageTopDark = Color(0xFF1B2A23)
+internal val PageMidDark = Color(0xFF161D19)
+
+/** 深色卡片顶光的下缘就是卡片底色，只把上缘提亮半档。 */
+internal val CardTopDark = Color(0xFF1F2723)
 
 internal val TextPrimaryDark = Color(0xFFE8ECE8)
 internal val TextSecondaryDark = Color(0xFF9AA39C)
@@ -205,6 +236,47 @@ data class ManoteExtendedColors(
     val onHeroBadgeGold: Color,
     val heroBadgeBrand: Color,
     val onHeroBadgeBrand: Color,
+    /**
+     * 整页背景的顶光渐变。
+     *
+     * 页面一律由 [com.manote.app.ui.components.ManoteScaffold] 铺这一道，
+     * 各页自己不画背景色——否则「页面底色」会有好几份说法。
+     * 最下一段刻意停在画布色上：底部那颗悬浮按钮用画布色描了一圈外环，
+     * 底端只要与画布差一点，那圈环就会露出来。
+     */
+    val pageBackground: Brush,
+    /** 卡片（[com.manote.app.ui.components.ManoteCard] 与场次行）的顶光，比页面那层更弱。 */
+    val cardSurface: Brush,
+)
+
+/**
+ * 两道顶光渐变在这里只写一次，两个主题各一份。
+ *
+ * 页面那道用一个中间停靠点（0.34）而不是从头到尾线性过渡：光要在第一屏内就落回画布，
+ * 页面下半部分必须**严格等于**画布色——底部悬浮按钮的外环、编辑页的保存条
+ * 都用画布色贴在同一条线上，渐变若在下面还留着一点点色差，它们就会显出边界。
+ * 卡片那道只有两个停靠点：卡片本来就小，多一个停靠点只会让四边看起来不均匀。
+ */
+private val PageBackgroundLight = Brush.verticalGradient(
+    0f to PageTopLight,
+    0.34f to PageMidLight,
+    0.72f to CanvasLight,
+    1f to CanvasLight,
+)
+private val CardSurfaceLight = Brush.verticalGradient(
+    0f to SurfaceLight,
+    1f to CardBottomLight,
+)
+
+private val PageBackgroundDark = Brush.verticalGradient(
+    0f to PageTopDark,
+    0.34f to PageMidDark,
+    0.72f to CanvasDark,
+    1f to CanvasDark,
+)
+private val CardSurfaceDark = Brush.verticalGradient(
+    0f to CardTopDark,
+    1f to SurfaceDark,
 )
 
 internal val LightExtendedColors = ManoteExtendedColors(
@@ -242,6 +314,8 @@ internal val LightExtendedColors = ManoteExtendedColors(
     onHeroBadgeGold = OnHeroBadgeGold,
     heroBadgeBrand = HeroBadgeBrand,
     onHeroBadgeBrand = OnHeroBadgeBrand,
+    pageBackground = PageBackgroundLight,
+    cardSurface = CardSurfaceLight,
 )
 
 internal val DarkExtendedColors = ManoteExtendedColors(
@@ -279,6 +353,8 @@ internal val DarkExtendedColors = ManoteExtendedColors(
     onHeroBadgeGold = OnHeroBadgeGold,
     heroBadgeBrand = HeroBadgeBrand,
     onHeroBadgeBrand = OnHeroBadgeBrand,
+    pageBackground = PageBackgroundDark,
+    cardSurface = CardSurfaceDark,
 )
 
 internal val LocalManoteExtendedColors = staticCompositionLocalOf { LightExtendedColors }
