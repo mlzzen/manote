@@ -44,6 +44,22 @@ internal val OnDrawContainerLight = Color(0xFF3E2F06)
 internal val GoldLight = Color(0xFFD9B85C)
 internal val OnGoldLight = Color(0xFF33270A)
 
+/** 鎏金容器：荣誉标记（牌王 / 第一名）的底色，比纯金色更适合铺一片面积。 */
+internal val GoldContainerLight = Color(0xFFF5E8C6)
+internal val OnGoldContainerLight = Color(0xFF4A3708)
+
+/**
+ * 英雄卡：深墨绿实底，用来托住整页最大的那个数字。
+ *
+ * 它是全应用唯一一块「深色大面积」，反复出现在各页顶部，形成固定的视觉锚点。
+ * 卡内的次级文字用 [OnHeroMutedLight] 而不是半透明白 —— 换主题时不必再算透明度。
+ */
+internal val HeroSurfaceLight = Color(0xFF14352A)
+internal val OnHeroLight = Color(0xFFFFFFFF)
+internal val OnHeroMutedLight = Color(0xFF9FD3B8)
+internal val HeroChipLight = Color(0xFF1F5E45)
+internal val OnHeroChipLight = Color(0xFFD6F0E2)
+
 /** 画布 / 卡片 / 描边 / 胶囊底色。 */
 internal val CanvasLight = Color(0xFFF8F4EA)
 internal val CanvasDimLight = Color(0xFFEFE9DA)
@@ -80,6 +96,21 @@ internal val OnDrawContainerDark = Color(0xFFF3E4B8)
 
 internal val GoldDark = Color(0xFFD9B85C)
 internal val OnGoldDark = Color(0xFF33270A)
+
+internal val GoldContainerDark = Color(0xFF3C3216)
+internal val OnGoldContainerDark = Color(0xFFF3E4B8)
+
+/**
+ * 深色主题下的英雄卡比画布略亮一档。
+ *
+ * 浅色主题靠「深底白字」拉开层级，深色主题里再用更深的底就沉进背景了，
+ * 因此改成比画布亮的墨绿，让同一套版式在两个主题下都还看得出是一块独立的卡。
+ */
+internal val HeroSurfaceDark = Color(0xFF1B4433)
+internal val OnHeroDark = Color(0xFFEAF6EF)
+internal val OnHeroMutedDark = Color(0xFF9FD3B8)
+internal val HeroChipDark = Color(0xFF27543F)
+internal val OnHeroChipDark = Color(0xFFD6F0E2)
 
 internal val CanvasDark = Color(0xFF121614)
 internal val CanvasDimDark = Color(0xFF0C100E)
@@ -123,6 +154,25 @@ data class ManoteExtendedColors(
     /** 金黄点缀。 */
     val gold: Color,
     val onGold: Color,
+    /** 荣誉标记的底色（牌王 / 第一名），比 [gold] 更适合铺面积。 */
+    val goldContainer: Color,
+    val onGoldContainer: Color,
+    /** 英雄卡：各页顶部那块深墨绿，托住全页最大的数字。 */
+    val heroSurface: Color,
+    val onHero: Color,
+    val onHeroMuted: Color,
+    val heroChip: Color,
+    val onHeroChip: Color,
+    /**
+     * 英雄卡里的输赢三色。
+     *
+     * 不能直接用 [win] / [loss]：那两个是给浅底配的深色，压在深墨绿上几乎看不见。
+     * 这里固定取提亮后的一档，两个主题共用——英雄卡在两个主题下都是深底，
+     * 需要的也就是同一组亮色。
+     */
+    val heroWin: Color,
+    val heroLoss: Color,
+    val heroDraw: Color,
 )
 
 internal val LightExtendedColors = ManoteExtendedColors(
@@ -143,6 +193,16 @@ internal val LightExtendedColors = ManoteExtendedColors(
     onDrawBadge = OnDrawContainerLight,
     gold = GoldLight,
     onGold = OnGoldLight,
+    goldContainer = GoldContainerLight,
+    onGoldContainer = OnGoldContainerLight,
+    heroSurface = HeroSurfaceLight,
+    onHero = OnHeroLight,
+    onHeroMuted = OnHeroMutedLight,
+    heroChip = HeroChipLight,
+    onHeroChip = OnHeroChipLight,
+    heroWin = WinDark,
+    heroLoss = LossDark,
+    heroDraw = DrawDark,
 )
 
 internal val DarkExtendedColors = ManoteExtendedColors(
@@ -163,6 +223,16 @@ internal val DarkExtendedColors = ManoteExtendedColors(
     onDrawBadge = OnDrawContainerDark,
     gold = GoldDark,
     onGold = OnGoldDark,
+    goldContainer = GoldContainerDark,
+    onGoldContainer = OnGoldContainerDark,
+    heroSurface = HeroSurfaceDark,
+    onHero = OnHeroDark,
+    onHeroMuted = OnHeroMutedDark,
+    heroChip = HeroChipDark,
+    onHeroChip = OnHeroChipDark,
+    heroWin = WinDark,
+    heroLoss = LossDark,
+    heroDraw = DrawDark,
 )
 
 internal val LocalManoteExtendedColors = staticCompositionLocalOf { LightExtendedColors }

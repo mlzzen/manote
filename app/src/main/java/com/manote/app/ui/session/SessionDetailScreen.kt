@@ -2,6 +2,7 @@ package com.manote.app.ui.session
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,10 +51,12 @@ import com.manote.app.R
 import com.manote.app.domain.SessionRules
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
+import com.manote.app.ui.components.ManoteHeroCard
+import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.ManoteScaffold
+import com.manote.app.ui.components.ManoteSectionHeader
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.components.SignedAmount
-import com.manote.app.ui.components.TimeSlotTag
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.model.SeatUi
 import com.manote.app.ui.model.SessionDetailUi
@@ -61,6 +64,7 @@ import com.manote.app.ui.model.TransferUi
 import com.manote.app.ui.model.UiText
 import com.manote.app.ui.model.seatLabel
 import com.manote.app.ui.model.sessionTimeRange
+import com.manote.app.ui.model.timeSlotLabel
 import com.manote.app.ui.theme.manote
 import kotlinx.coroutines.launch
 
@@ -203,52 +207,7 @@ private fun SessionDetailContent(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ManoteCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = UiText.dateTime(detail.playedAt),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TimeSlotTag(slot = detail.timeSlot)
-                }
-                // 时段按这一场的中点判定，这里就把开始 – 结束一并写出来：
-                // 否则「18:30 结束、却标着下午场」看起来像算错了
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = sessionTimeRange(
-                        startedAt = detail.startedAt,
-                        playedAt = detail.playedAt,
-                        durationMinutes = detail.durationMinutes,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                // 「麻将对局」是占位默认名：顶栏已经回落成「场次详情」，这里再重复一句没有意义
-                if (!SessionRules.isPlaceholderTitle(detail.title)) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = detail.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (detail.note.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = stringResource(R.string.detail_note_label),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = detail.note,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
+            SessionHeroCard(detail = detail)
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 detail.seats.forEach { seat ->
@@ -261,10 +220,111 @@ private fun SessionDetailContent(
     }
 }
 
+/**
+ * 场次头部：本人净输赢 + 名次与时段 + 时间区间 + 标题与备注。
+ *
+ * 本人这一场的输赢是详情页唯一的主角，因此放进英雄卡并放大到 headlineLarge。
+ * 卡内的输赢色走 `heroWin` / `heroLoss` 那一组提亮色——给浅底配的深红深绿
+ * 压在深墨绿上几乎看不见。
+ *
+ * 时间区间一定跟着时段一起出现：时段是按这一场的中点判定的，
+ * 只写「晚场」会让「18:30 结束却算晚场」看起来像算错了。
+ */
+@Composable
+private fun SessionHeroCard(detail: SessionDetailUi) {
+    val colors = MaterialTheme.manote
+    val self = detail.seats.firstOrNull { it.seat == SessionRules.SEAT_SELF }
+
+    ManoteHeroCard {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.detail_self_net_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onHeroMuted,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = self?.let { UiText.signedYuan(it.netMinor) }
+                        ?: stringResource(R.string.common_unavailable),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = when {
+                        self == null -> colors.onHero
+                        self.netMinor > 0L -> colors.heroWin
+                        self.netMinor < 0L -> colors.heroLoss
+                        else -> colors.onHero
+                    },
+                    maxLines = 1,
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (self != null) {
+                    // 第一名用鎏金：这一场里唯一值得单独庆祝的位置
+                    ManotePill(
+                        text = stringResource(R.string.detail_rank_format, self.rank),
+                        containerColor = if (self.rank == 1) colors.gold else colors.heroChip,
+                        contentColor = if (self.rank == 1) colors.onGold else colors.onHeroChip,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+                ManotePill(
+                    text = timeSlotLabel(detail.timeSlot),
+                    containerColor = colors.heroChip,
+                    contentColor = colors.onHeroChip,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = UiText.dateTime(detail.playedAt),
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.onHero,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = sessionTimeRange(
+                startedAt = detail.startedAt,
+                playedAt = detail.playedAt,
+                durationMinutes = detail.durationMinutes,
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.onHeroMuted,
+        )
+
+        // 「麻将对局」是占位默认名：顶栏已经回落成「场次详情」，这里再重复一句没有意义
+        if (!SessionRules.isPlaceholderTitle(detail.title)) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = detail.title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onHero,
+            )
+        }
+        if (detail.note.isNotBlank()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.detail_note_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.onHeroMuted,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = detail.note,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onHero,
+            )
+        }
+    }
+}
+
 @Composable
 private fun SeatRow(seat: SeatUi, isSelf: Boolean) {
     val colors = MaterialTheme.manote
-    val rankColor = if (seat.rank == 1) colors.gold else MaterialTheme.colorScheme.onSurfaceVariant
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -272,25 +332,27 @@ private fun SeatRow(seat: SeatUi, isSelf: Boolean) {
         color = if (isSelf) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
+            MaterialTheme.colorScheme.surface
         },
+        border = if (isSelf) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // 自己用实心品牌色、其他人用浅绿底：一列座位里先认出自己那一行
             PlayerAvatar(
                 name = seat.nickname,
                 size = 42.dp,
                 containerColor = if (isSelf) {
                     MaterialTheme.colorScheme.primary
                 } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
+                    MaterialTheme.colorScheme.primaryContainer
                 },
                 contentColor = if (isSelf) {
                     MaterialTheme.colorScheme.onPrimary
                 } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                    MaterialTheme.colorScheme.onPrimaryContainer
                 },
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -302,21 +364,43 @@ private fun SeatRow(seat: SeatUi, isSelf: Boolean) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
+                Spacer(modifier = Modifier.height(4.dp))
+                ManotePill(
+                    // 本人的座位名跟着所在行的品牌底走，避免两块绿糊在一起
                     text = seatLabel(seat.seat),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = MaterialTheme.shapes.extraSmall,
+                    containerColor = if (isSelf) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.primaryContainer
+                    },
+                    contentColor = if (isSelf) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    horizontalPadding = 6.dp,
+                    verticalPadding = 1.dp,
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
                 SignedAmount(netMinor = seat.netMinor)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
+                Spacer(modifier = Modifier.height(4.dp))
+                // 第一名是这一场唯一值得用鎏金标出来的位置
+                ManotePill(
                     text = stringResource(R.string.detail_rank_format, seat.rank),
+                    containerColor = if (seat.rank == 1) {
+                        colors.goldContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
+                    contentColor = if (seat.rank == 1) {
+                        colors.onGoldContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = if (seat.rank == 1) FontWeight.Bold else FontWeight.Normal,
-                    color = rankColor,
                 )
             }
         }
@@ -328,11 +412,7 @@ private fun SettlementCard(detail: SessionDetailUi) {
     val nameBySeat = detail.seats.associate { it.seat to it.nickname }
 
     ManoteCard {
-        Text(
-            text = stringResource(R.string.detail_settlement_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        ManoteSectionHeader(title = stringResource(R.string.detail_settlement_title))
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = stringResource(R.string.detail_settlement_hint),

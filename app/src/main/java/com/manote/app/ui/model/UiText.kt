@@ -11,6 +11,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.TextStyle
 import java.util.Locale
 
 /**
@@ -145,6 +146,23 @@ fun timeSlotLabel(slot: TimeSlot): String = stringResource(
         TimeSlot.AFTERNOON -> R.string.time_slot_afternoon
         TimeSlot.EVENING -> R.string.time_slot_evening
     },
+)
+
+/**
+ * 顶栏上的「今天」，例如 `10.12 · 周一`。
+ *
+ * 取设备时区的当天，与全应用的时间显示同源。星期名固定用中文取，
+ * 不跟随系统语言——本应用的界面文案只有中文一套，若跟随系统语言，
+ * 日文或英文系统上会出现「10.12 · Mon」这样的混排。
+ *
+ * [today] 可显式传入，便于预览与测试钉死日期，与本文件其它格式化函数的
+ * `zoneId` 参数是同一个用意：默认取环境，需要确定性时由调用方给死。
+ */
+@Composable
+fun todayLabel(today: LocalDate = LocalDate.now()): String = stringResource(
+    R.string.common_today_format,
+    UiText.monthDay(today),
+    today.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.CHINA),
 )
 
 /**

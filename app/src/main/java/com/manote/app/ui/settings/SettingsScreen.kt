@@ -40,11 +40,14 @@ import com.manote.app.data.repository.BackupSummary
 import com.manote.app.data.repository.DataCounts
 import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteCard
+import com.manote.app.ui.components.ManoteHeroCard
 import com.manote.app.ui.components.ManoteScaffold
+import com.manote.app.ui.components.ManoteSectionHeader
 import com.manote.app.ui.components.ManoteTextAction
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.navigation.ManoteTab
+import com.manote.app.ui.theme.manote
 import kotlinx.coroutines.launch
 
 /**
@@ -103,6 +106,7 @@ fun SettingsScreen(
 
     ManoteScaffold(
         title = stringResource(R.string.nav_settings),
+        branded = true,
         modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
@@ -121,48 +125,43 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ManoteCard {
+            // 本人档案用英雄卡：这个页面里唯一属于「我」的东西就是这张脸和这个名字，
+            // 它值得占全页最重的一块底。深底上也正好压得住 52dp 的头像。
+            ManoteHeroCard {
+                val heroColors = MaterialTheme.manote
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     PlayerAvatar(
                         name = state.selfNickname.orEmpty(),
                         size = 52.dp,
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = heroColors.heroChip,
+                        contentColor = heroColors.onHeroChip,
                     )
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = state.selfNickname.orEmpty(),
                             style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = heroColors.onHero,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             text = stringResource(R.string.settings_profile_title),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = heroColors.onHeroMuted,
                         )
                     }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(modifier = Modifier.fillMaxWidth()) {
                     ManoteTextAction(
                         label = stringResource(R.string.settings_rename_action),
                         onClick = viewModel::requestRename,
+                        contentColor = heroColors.onHeroChip,
                     )
                 }
             }
 
             ManoteCard {
-                Text(
-                    text = stringResource(R.string.settings_data_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
+                ManoteSectionHeader(title = stringResource(R.string.settings_data_title))
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = stringResource(
                         R.string.settings_data_current_format,
@@ -205,12 +204,8 @@ fun SettingsScreen(
             }
 
             ManoteCard {
-                Text(
-                    text = stringResource(R.string.settings_about_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
+                ManoteSectionHeader(title = stringResource(R.string.settings_about_title))
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = stringResource(R.string.settings_version_format, BuildConfig.VERSION_NAME),
                     style = MaterialTheme.typography.titleSmall,

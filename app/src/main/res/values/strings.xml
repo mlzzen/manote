@@ -17,6 +17,8 @@
     <!-- 复用文本 -->
     <string name="common_amount_unit">元</string>
     <string name="common_unavailable">—</string>
+    <!-- 顶栏上的今天：日期 · 星期 -->
+    <string name="common_today_format">%1$s · %2$s</string>
     <string name="stat_average">场均</string>
     <!-- 单场极值：首页战绩概览与牌友详情共用同一组标签 -->
     <string name="stat_best_win">单场赢最多</string>
@@ -46,10 +48,10 @@
 
     <!-- 首页 -->
     <string name="home_overview_title">战绩概览</string>
-    <string name="home_overview_total_format">%1$d 场</string>
-    <string name="home_overview_total_label">总牌局</string>
     <string name="home_overview_empty">还没有可统计的场次</string>
-    <string name="home_stat_net">净胜</string>
+    <!-- 英雄卡上的读数胶囊 -->
+    <string name="home_hero_sessions_format">已记 %1$d 场</string>
+    <string name="home_stat_net">累计净输赢</string>
     <string name="home_stat_win_rate">胜率</string>
     <string name="home_stat_net_wins">净胜场</string>
     <string name="home_slot_title">分时段战绩</string>
@@ -84,10 +86,14 @@
     <string name="sessions_search_empty_desc">换个关键词，或清空搜索看看全部场次。</string>
     <string name="sessions_month_count_format">%1$d 场</string>
     <string name="sessions_month_self_format">本人 %1$s</string>
+    <!-- 场次页头部：当前筛选与搜索之下、下面这些场次的本人净额合计 -->
+    <string name="sessions_hero_label">筛选结果净输赢</string>
 
     <!-- 四人详情 -->
     <string name="detail_title">场次详情</string>
     <string name="detail_rank_format">第 %1$d 名</string>
+    <!-- 详情头部的英雄卡：这一场本人的净输赢 -->
+    <string name="detail_self_net_label">本人净输赢</string>
     <string name="detail_settlement_title">结清建议</string>
     <string name="detail_settlement_hint">只是算术建议，不代表已经付款。</string>
     <string name="detail_no_settlement">无需结清</string>

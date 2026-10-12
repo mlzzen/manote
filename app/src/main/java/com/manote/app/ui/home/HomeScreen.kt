@@ -7,16 +7,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,16 +46,20 @@ import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
+import com.manote.app.ui.components.ManoteHeroCard
+import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.ManotePrimaryButton
 import com.manote.app.ui.components.ManoteReadout
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.ManoteSectionHeader
 import com.manote.app.ui.components.ManoteSessionRow
+import com.manote.app.ui.components.ManoteShareBar
 import com.manote.app.ui.components.ManoteTextAction
 import com.manote.app.ui.components.NetTrendChart
+import com.manote.app.ui.components.TimeSlotTag
 import com.manote.app.ui.model.SessionRowUi
 import com.manote.app.ui.model.UiText
-import com.manote.app.ui.model.timeSlotLabel
+import com.manote.app.ui.model.todayLabel
 import com.manote.app.ui.navigation.ManoteTab
 import com.manote.app.ui.theme.ManoteTheme
 import com.manote.app.ui.theme.manote
@@ -63,10 +68,14 @@ import java.time.LocalDate
 /**
  * 首页（规格 3.1）。
  *
- * 显示累计赢钱、累计输钱、净输赢与已记录场数；下面是本人累计净额曲线、
- * 分时段战绩、连输/连赢记录，主体为最近场次与「记一场」。
- * 所有数字都来自 `session_result` 的实时汇总（规格 2.4），没有记录时显示 0.00 元。
+ * 结构自上而下：英雄卡（累计净输赢）→ 战绩概览 → 累计净额曲线 → 分时段战绩
+ * → 连输 / 连赢 → 最近场次 → 记一场。
  *
+ * 只有「累计净输赢」一个数字被放大到 headlineLarge 并放进深墨绿底：
+ * 全页其余读数都是同一档小字。此前所有读数同字号，满屏平铺，
+ * 眼睛没有落点；现在先给结论，再给依据。
+ *
+ * 所有数字都来自 `session_result` 的实时汇总（规格 2.4），没有记录时显示 0.00 元。
  * 「今日宜忌 / 牌运」属规格外内容，不做。
  */
 @Composable
@@ -97,10 +106,25 @@ private fun HomeContent(
     onRecordSession: () -> Unit,
     onOpenSessionDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** 顶栏上的日期。默认取设备时区的今天，预览与测试传入固定日期。 */
+    today: LocalDate = LocalDate.now(),
 ) {
     ManoteScaffold(
-        title = stringResource(R.string.nav_home),
+        // 首页的标题就是应用名：品牌标记出现在四个页签顶栏的同一位置，
+        // 翻页时那个方块不动，只有它右边的字在变。
+        title = stringResource(R.string.app_name),
+        branded = true,
         modifier = modifier,
+        actions = {
+            ManotePill(
+                text = todayLabel(today),
+                modifier = Modifier.padding(end = 6.dp),
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                verticalPadding = 5.dp,
+            )
+        },
         bottomBar = {
             ManoteBottomBar(
                 current = ManoteTab.HOME,
@@ -117,15 +141,18 @@ private fun HomeContent(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            OverviewCard(
+            HeroCard(
                 statistics = state.statistics,
-                extremes = state.extremes,
+                trend = state.trend,
                 loading = state.loading,
             )
 
-            // 一场都没记时不显示走势与分时段战绩，避免三行全是「—」的空表；
-            // 空态已经由上面的战绩概览说明过了。
+            // 一场都没记时不显示概览、走势与分时段战绩，避免三行全是「—」的空表；
+            // 空态已经由英雄卡上的 0.00 与「最近场次」里的说明覆盖了。
             if (state.statistics.sessionCount > 0) {
+                ManoteSectionHeader(title = stringResource(R.string.home_overview_title))
+                BreakdownCard(statistics = state.statistics, extremes = state.extremes)
+
                 ManoteSectionHeader(title = stringResource(R.string.home_trend_title))
                 NetTrendCard(trend = state.trend)
 
@@ -172,40 +199,104 @@ private fun HomeContent(
     }
 }
 
-/** 战绩概览：胜 / 负 / 平 三色格 + 占比条 + 净胜、场均、胜率、净胜场、单场极值。 */
+/**
+ * 英雄卡：累计净输赢 + 三个读数胶囊 + 迷你走势。
+ *
+ * 它是全页唯一一块深底，也是唯一把金额放大到 headlineLarge 的地方。
+ * 迷你走势用卡内的薄荷色而非红绿：深墨绿底上红绿都会糊掉，
+ * 且这一条曲线只是「大致的方向」，精确的读数由下面那张曲线卡负责。
+ */
 @Composable
-private fun OverviewCard(
+private fun HeroCard(
     statistics: PlayerStatistics,
-    extremes: SessionExtremes,
+    trend: List<TrendPoint>,
     loading: Boolean,
 ) {
     val colors = MaterialTheme.manote
 
-    ManoteCard {
-        Row(verticalAlignment = Alignment.Top) {
-            Text(
-                text = stringResource(R.string.home_overview_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            TotalSessionsBadge(count = statistics.sessionCount)
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
+    ManoteHeroCard {
+        Text(
+            text = stringResource(R.string.home_stat_net),
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.onHeroMuted,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = UiText.signedYuan(statistics.netMinor),
+            style = MaterialTheme.typography.headlineLarge,
+            color = colors.onHero,
+            maxLines = 1,
+        )
 
         if (statistics.sessionCount == 0) {
-            // 首帧还没读到场次时不显示「还没有可统计的场次」，避免闪一下空态
+            // 首帧还没读到场次时不写死一句「还没有记录」，避免闪一下
             if (!loading) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = stringResource(R.string.home_overview_empty),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.onHeroMuted,
                 )
             }
-            return@ManoteCard
+            return@ManoteHeroCard
         }
 
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            HeroChip(stringResource(R.string.home_hero_sessions_format, statistics.sessionCount))
+            HeroChip(
+                stringResource(R.string.home_stat_win_rate) + " " +
+                    "${UiText.percent(statistics.winCount, statistics.sessionCount)}%",
+            )
+            HeroChip(
+                stringResource(R.string.home_stat_net_wins) + " " +
+                    "${statistics.winCount - statistics.lossCount}",
+            )
+        }
+
+        // 只有一个点时画不出走势，卡上就只留读数
+        if (trend.size >= 2) {
+            Spacer(modifier = Modifier.height(10.dp))
+            NetTrendChart(
+                points = trend,
+                height = 46.dp,
+                lineColorOverride = colors.onHeroMuted,
+                dotRingColorOverride = colors.heroSurface,
+                areaAlpha = 0.22f,
+                showZeroLine = false,
+                verticalInset = 4.dp,
+            )
+        }
+    }
+}
+
+/** 英雄卡里的小胶囊。底色比卡身亮一档，在深绿上是一块浅浅的牌子。 */
+@Composable
+private fun HeroChip(text: String) {
+    val colors = MaterialTheme.manote
+    ManotePill(
+        text = text,
+        containerColor = colors.heroChip,
+        contentColor = colors.onHeroChip,
+        style = MaterialTheme.typography.labelSmall,
+        verticalPadding = 4.dp,
+    )
+}
+
+/**
+ * 战绩概览：胜 / 负 / 平 三色格 + 占比条 + 场均、单场赢最多 / 输最多。
+ *
+ * 本页的净输赢已经由英雄卡承担，这里不再重复——同一屏上出现两次同一个数字，
+ * 读者会先去找它们的差别，而它们并没有差别。
+ */
+@Composable
+private fun BreakdownCard(
+    statistics: PlayerStatistics,
+    extremes: SessionExtremes,
+) {
+    val colors = MaterialTheme.manote
+
+    ManoteCard {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             StatTile(
                 label = stringResource(R.string.result_win),
@@ -213,6 +304,7 @@ private fun OverviewCard(
                 amountMinor = statistics.winMinor,
                 containerColor = colors.winContainer,
                 contentColor = colors.onWinContainer,
+                accentColor = colors.win,
                 modifier = Modifier.weight(1f),
             )
             StatTile(
@@ -221,6 +313,7 @@ private fun OverviewCard(
                 amountMinor = -statistics.lossMinor,
                 containerColor = colors.lossContainer,
                 contentColor = colors.onLossContainer,
+                accentColor = colors.loss,
                 modifier = Modifier.weight(1f),
             )
             StatTile(
@@ -229,51 +322,30 @@ private fun OverviewCard(
                 amountMinor = 0L,
                 containerColor = colors.drawContainer,
                 contentColor = colors.onDrawContainer,
+                accentColor = colors.draw,
                 modifier = Modifier.weight(1f),
             )
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        ShareBar(statistics = statistics)
+        ManoteShareBar(
+            winCount = statistics.winCount,
+            lossCount = statistics.lossCount,
+            drawCount = statistics.drawCount,
+        )
 
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
-            Metric(
-                label = stringResource(R.string.home_stat_net),
-                value = UiText.signedYuan(statistics.netMinor),
-                valueColor = signedColor(statistics.netMinor),
-                modifier = Modifier.weight(1f),
-            )
             Metric(
                 label = stringResource(R.string.stat_average),
                 value = UiText.signedYuan(statistics.averageNetMinor),
                 valueColor = signedColor(statistics.averageNetMinor),
                 modifier = Modifier.weight(1f),
             )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Metric(
-                label = stringResource(R.string.home_stat_win_rate),
-                value = "${UiText.percent(statistics.winCount, statistics.sessionCount)}%",
-                valueColor = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            Metric(
-                label = stringResource(R.string.home_stat_net_wins),
-                value = "${statistics.winCount - statistics.lossCount}",
-                valueColor = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
             SessionExtremeReadout(
                 label = stringResource(R.string.stat_best_win),
                 extreme = extremes.bestWin,
@@ -312,6 +384,7 @@ private fun RowScope.SessionExtremeReadout(label: String, extreme: DatedNet?) {
  * 分时段战绩：早场 / 下午场 / 晚场各自的场数、胜率与场均。
  *
  * 表头与三行数据共用同一组列权重，右对齐后严格成列。
+ * 时段名沿用列表里那个品牌色标签，于是「下午场」在列表、详情与本表里是同一种符号。
  * 某段没有记录时显示「—」而不是 0% / ¥0.00：
  * 「这一段没打过」和「打了但持平」必须能一眼分开（规格 3.6 的信息诚实原则）。
  */
@@ -365,13 +438,9 @@ private fun SlotStatRow(slot: TimeSlotStatistics) {
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = timeSlotLabel(slot.slot),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            modifier = Modifier.weight(SLOT_NAME_WEIGHT),
-        )
+        Box(modifier = Modifier.weight(SLOT_NAME_WEIGHT)) {
+            TimeSlotTag(slot = slot.slot)
+        }
         SlotValue(
             text = if (slot.isEmpty) placeholder else stringResource(
                 R.string.home_slot_count_format,
@@ -413,6 +482,7 @@ private const val SLOT_METRIC_WEIGHT = 0.9f
 /**
  * 累计净额曲线：本人跨场的累计盈亏走势，外加最新 / 区间最高 / 区间最低三个读数。
  *
+ * 英雄卡上那条迷你走势只给方向，这里给坐标：0 线标出赢输分界，三个读数给出具体数值。
  * 只有一个点时画不出「走势」，这里给出说明而不是画一条毫无意义的直线。
  */
 @Composable
@@ -563,28 +633,12 @@ private fun signedColor(minor: Long): Color {
     }
 }
 
-@Composable
-private fun TotalSessionsBadge(count: Int) {
-    Column(
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.home_overview_total_format, count),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = stringResource(R.string.home_overview_total_label),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
+/**
+ * 一栏统计块：顶部一道结实的结果色短条，下面是标签、场数与金额。
+ *
+ * 那道短条是这张卡里唯一的高饱和色。三块并排时，先看到的是三道红绿黄，
+ * 于是「赢得多还是输得多」在读到数字之前就已经成立。
+ */
 @Composable
 private fun StatTile(
     label: String,
@@ -592,6 +646,7 @@ private fun StatTile(
     amountMinor: Long,
     containerColor: Color,
     contentColor: Color,
+    accentColor: Color,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -600,12 +655,19 @@ private fun StatTile(
             .background(containerColor)
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
+        Box(
+            modifier = Modifier
+                .size(width = 18.dp, height = 3.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(accentColor),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
             color = contentColor,
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = count.toString(),
             style = MaterialTheme.typography.headlineMedium,
@@ -624,46 +686,14 @@ private fun StatTile(
     }
 }
 
-/** 胜 / 负 / 平 占比条。全部为 0 时只画一条空轨道。 */
-@Composable
-private fun ShareBar(statistics: PlayerStatistics) {
-    val colors = MaterialTheme.manote
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(8.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-    ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            if (statistics.winCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .weight(statistics.winCount.toFloat())
-                        .fillMaxHeight()
-                        .background(colors.win),
-                )
-            }
-            if (statistics.lossCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .weight(statistics.lossCount.toFloat())
-                        .fillMaxHeight()
-                        .background(colors.loss),
-                )
-            }
-            if (statistics.drawCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .weight(statistics.drawCount.toFloat())
-                        .fillMaxHeight()
-                        .background(colors.draw),
-                )
-            }
-        }
-    }
-}
-
+/**
+ * 一栏读数：标签在上、数值在下，可再挂一行小字说明（例如单场极值的日期）。
+ *
+ * 本页三栏并排的三处读数（场均 / 单场极值）都用它。
+ * 字号取 titleSmall 而不是 titleMedium：三道栏在窄屏上只剩约 90dp，
+ * 用 titleMedium 时「−¥1,239.00」会被挤掉尾数。
+ * 与 [ManoteReadout] 的区别只有一点：它额外支持 caption。
+ */
 @Composable
 private fun Metric(
     label: String,
@@ -676,14 +706,14 @@ private fun Metric(
     Column(modifier = modifier) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleSmall,
             color = valueColor,
             maxLines = 1,
         )
@@ -777,6 +807,7 @@ private fun HomeContentPreview() {
             onSelectTab = {},
             onRecordSession = {},
             onOpenSessionDetail = {},
+            today = LocalDate.of(2026, 10, 12),
         )
     }
 }
@@ -790,6 +821,7 @@ private fun HomeContentEmptyPreview() {
             onSelectTab = {},
             onRecordSession = {},
             onOpenSessionDetail = {},
+            today = LocalDate.of(2026, 10, 12),
         )
     }
 }

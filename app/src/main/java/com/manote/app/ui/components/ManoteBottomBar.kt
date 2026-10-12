@@ -2,6 +2,7 @@ package com.manote.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -84,7 +85,12 @@ fun ManoteBottomBar(
 
         FloatingActionButton(
             onClick = onNewSession,
-            modifier = Modifier.align(Alignment.TopCenter),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                // 一圈背景色描边把按钮从浅色胶囊上「抬」出来。
+                // 只加 elevation 在浅色底上几乎看不出来，这道环才是它凸出的依据。
+                .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
+                .padding(3.dp),
             shape = CircleShape,
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,

@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -107,17 +108,31 @@ private val ManoteShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp),
 )
 
-/** 字体：在 Material 3 默认排版上把标题类加粗，让区块标题与数字更醒目。 */
+/**
+ * 字体：在 Material 3 默认排版上把标题类加粗，让区块标题与数字更醒目。
+ *
+ * 所有可能承载金额与场数的样式一律开启等宽数字（`tnum`）。
+ * 比例数字里 `1` 比 `8` 窄，同一列上「¥1,113.00」会比「¥888.00」短一截，
+ * 逐行排下来右边缘参差不齐；等宽数字让金额、场数在列表与表格里严格成列。
+ */
 private val ManoteTypography: Typography = Typography().run {
     copy(
-        headlineLarge = headlineLarge.copy(fontWeight = FontWeight.Bold),
-        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.Bold),
-        headlineSmall = headlineSmall.copy(fontWeight = FontWeight.Bold),
-        titleLarge = titleLarge.copy(fontWeight = FontWeight.Bold),
-        titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        titleSmall = titleSmall.copy(fontWeight = FontWeight.SemiBold),
+        headlineLarge = headlineLarge.tabular().copy(fontWeight = FontWeight.Bold),
+        headlineMedium = headlineMedium.tabular().copy(fontWeight = FontWeight.Bold),
+        headlineSmall = headlineSmall.tabular().copy(fontWeight = FontWeight.Bold),
+        titleLarge = titleLarge.tabular().copy(fontWeight = FontWeight.Bold),
+        titleMedium = titleMedium.tabular().copy(fontWeight = FontWeight.SemiBold),
+        titleSmall = titleSmall.tabular().copy(fontWeight = FontWeight.SemiBold),
+        labelLarge = labelLarge.tabular(),
+        labelMedium = labelMedium.tabular(),
+        labelSmall = labelSmall.tabular(),
+        bodyMedium = bodyMedium.tabular(),
+        bodySmall = bodySmall.tabular(),
     )
 }
+
+/** 开启等宽数字。字体缺该特性时系统会忽略，不会让文字变形。 */
+private fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = "tnum")
 
 /**
  * 应用主题。规格 3.5 要求主题跟随系统，因此不使用动态取色，也不提供应用内明暗开关。

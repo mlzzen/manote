@@ -67,6 +67,7 @@ import com.manote.app.domain.SessionRules
 import com.manote.app.domain.TimeSlot
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
+import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.ManotePrimaryButton
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.PlayerAvatar
@@ -480,26 +481,28 @@ private fun SeatEditor(
                     containerColor = if (draft.isSelfSeat) {
                         MaterialTheme.colorScheme.primary
                     } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
+                        MaterialTheme.colorScheme.primaryContainer
                     },
                     contentColor = if (draft.isSelfSeat) {
                         MaterialTheme.colorScheme.onPrimary
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.colorScheme.onPrimaryContainer
                     },
                 )
             } else {
+                // 空位用品牌色的浅底 + 主色加号，而不是一块中性灰：
+                // 四个位置里还没填的那几个应当是「等你来点」，不是「不可用」
                 Box(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                        .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Add,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -524,15 +527,19 @@ private fun SeatEditor(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
+                Spacer(modifier = Modifier.height(4.dp))
+                ManotePill(
                     text = if (recorded) {
                         seatLabel(draft.seat)
                     } else {
                         stringResource(R.string.session_seat_not_recorded, seatLabel(draft.seat))
                     },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = MaterialTheme.shapes.extraSmall,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.labelSmall,
+                    horizontalPadding = 6.dp,
+                    verticalPadding = 1.dp,
                 )
             }
 

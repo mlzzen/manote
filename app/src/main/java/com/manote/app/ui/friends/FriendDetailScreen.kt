@@ -53,6 +53,8 @@ import com.manote.app.R
 import com.manote.app.domain.DatedNet
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
+import com.manote.app.ui.components.ManoteHeroCard
+import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.ManoteReadout
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.ManoteSectionHeader
@@ -198,31 +200,30 @@ fun FriendDetailScreen(
     }
 }
 
-/** 昵称 + 备注；已归档时给出明确说明，避免用户以为历史被清掉了。 */
+/**
+ * 昵称 + 备注；已归档时给出明确说明，避免用户以为历史被清掉了。
+ *
+ * 这块用英雄卡而不是白卡：本页的主角是「这个人」，头像与昵称值得占全页最重的一层底。
+ * 卡上不放任何数字——他所有的数都在下面那张统计卡里，两处重复同一个数
+ * 只会让人先去找它们的差别，而它们并没有差别。
+ */
 @Composable
 private fun FriendProfileCard(detail: FriendDetailUi) {
-    ManoteCard {
+    val heroColors = MaterialTheme.manote
+    ManoteHeroCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             PlayerAvatar(
                 name = detail.nickname,
                 size = 52.dp,
-                containerColor = if (detail.archived) {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
-                } else {
-                    MaterialTheme.colorScheme.primaryContainer
-                },
-                contentColor = if (detail.archived) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                },
+                containerColor = heroColors.heroChip,
+                contentColor = heroColors.onHeroChip,
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = detail.nickname,
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = heroColors.onHero,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -230,7 +231,7 @@ private fun FriendProfileCard(detail: FriendDetailUi) {
                 Text(
                     text = detail.note.ifBlank { stringResource(R.string.common_unavailable) },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = heroColors.onHeroMuted,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -242,7 +243,7 @@ private fun FriendProfileCard(detail: FriendDetailUi) {
             Text(
                 text = stringResource(R.string.friend_detail_archived_note),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = heroColors.onHeroMuted,
             )
         }
     }
@@ -263,10 +264,8 @@ private fun FriendStatisticsCard(detail: FriendDetailUi) {
 
     ManoteCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.friend_detail_stats_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+            ManoteSectionHeader(
+                title = stringResource(R.string.friend_detail_stats_title),
                 modifier = Modifier.weight(1f),
             )
             SessionsBadge(count = statistics.sessionCount)
@@ -424,11 +423,7 @@ private fun signedColor(minor: Long): Color {
 @Composable
 private fun FriendTrendCard(trend: List<TrendPoint>) {
     ManoteCard {
-        Text(
-            text = stringResource(R.string.friend_detail_trend_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        ManoteSectionHeader(title = stringResource(R.string.friend_detail_trend_title))
         Spacer(modifier = Modifier.height(14.dp))
 
         if (trend.size < 2) {
@@ -530,11 +525,15 @@ private fun FriendSessionCard(row: FriendSessionRowUi, onClick: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
+                Spacer(modifier = Modifier.height(4.dp))
+                ManotePill(
                     text = seatLabel(row.seat),
+                    shape = MaterialTheme.shapes.extraSmall,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    horizontalPadding = 6.dp,
+                    verticalPadding = 1.dp,
                 )
             }
 

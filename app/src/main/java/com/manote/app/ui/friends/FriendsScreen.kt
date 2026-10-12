@@ -1,5 +1,6 @@
 package com.manote.app.ui.friends
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -31,8 +33,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +61,7 @@ import com.manote.app.domain.Rivalry
 import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
+import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.components.SignedAmount
@@ -111,6 +116,7 @@ fun FriendsScreen(
 
     ManoteScaffold(
         title = stringResource(R.string.nav_friends),
+        branded = true,
         modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         actions = {
@@ -153,9 +159,19 @@ fun FriendsScreen(
                     singleLine = true,
                     placeholder = { Text(text = stringResource(R.string.friends_search_hint)) },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Filled.Search, contentDescription = null)
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     },
-                    shape = MaterialTheme.shapes.small,
+                    // 与场次页同一个胶囊搜索框，两页的搜索行为看起来是一件事
+                    shape = CircleShape,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    ),
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -314,32 +330,43 @@ private fun HelpLine(text: String, labeled: Boolean = false) {
  *
  * 用文字按钮而不是图标：`material-icons-core` 里没有合适的「排序」图标，
  * 而写出当前排序方式（「场均 ↓」）本身就比一个抽象的图标更好认。
+ * 做成带描边的胶囊而不是纯文字，是为了让它和左边的「N 位牌友」分开——
+ * 之前两者都是同一档灰字，读起来像一句话。
  */
 @Composable
 private fun FriendSortButton(current: FriendSort, onSelect: (FriendSort) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
 
-    Box {
-        Row(
-            modifier = Modifier
-                .heightIn(min = 48.dp)
-                .clip(MaterialTheme.shapes.small)
-                .clickable { expanded = true }
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clip(CircleShape)
+            .clickable { expanded = true },
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.height(32.dp),
         ) {
-            Text(
-                text = current.label(),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-            )
-            Icon(
-                imageVector = Icons.Filled.ArrowDropDown,
-                contentDescription = stringResource(R.string.friends_sort_action),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
+            Row(
+                modifier = Modifier.padding(start = 12.dp, end = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = current.label(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = stringResource(R.string.friends_sort_action),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
 
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -411,14 +438,14 @@ private fun FriendRow(friend: FriendRowUi, onClick: () -> Unit) {
                     )
                     if (friend.archived) {
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(
+                        ManotePill(
                             text = stringResource(R.string.friends_archived_badge),
+                            shape = MaterialTheme.shapes.small,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .clip(MaterialTheme.shapes.small)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                            horizontalPadding = 6.dp,
+                            verticalPadding = 2.dp,
                         )
                     }
                     // 按枚举声明顺序渲染，标签的先后不会随 Set 的实现方式变化
@@ -521,8 +548,8 @@ private fun FriendBadgeChip(badge: FriendBadge) {
         }
 
         FriendBadge.LUCKY_STAR -> {
-            background = colors.gold
-            content = colors.onGold
+            background = colors.goldContainer
+            content = colors.onGoldContainer
         }
 
         FriendBadge.TABLE_KING -> {
@@ -531,15 +558,14 @@ private fun FriendBadgeChip(badge: FriendBadge) {
         }
     }
 
-    Text(
+    ManotePill(
         text = badge.label(),
+        shape = MaterialTheme.shapes.small,
+        containerColor = background,
+        contentColor = content,
         style = MaterialTheme.typography.labelSmall,
-        color = content,
-        maxLines = 1,
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(background)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
+        horizontalPadding = 6.dp,
+        verticalPadding = 2.dp,
     )
 }
 
