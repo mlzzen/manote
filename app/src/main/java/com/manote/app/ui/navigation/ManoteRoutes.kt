@@ -64,6 +64,12 @@ object ManoteRoutes {
     /** 底部导航的四个常驻页签（中心「新建」是动作而非页签）。 */
     val tabRoutes: List<String> = listOf(HOME, SESSIONS, FRIENDS, SETTINGS)
 
+    /**
+     * 子页面路由（详情、编辑、记一场）：转场从右侧滑入滑出，
+     * 与页签间的平级切换（上浮淡入）区分开。转场判断用的就是这一份名单。
+     */
+    val subRoutes: Set<String> = setOf(SESSION_NEW, SESSION_DETAIL, SESSION_EDIT, FRIEND_DETAIL)
+
     /** 起始目的地。 */
     const val START: String = HOME
 }

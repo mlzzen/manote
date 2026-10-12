@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
+import com.manote.app.ui.components.AnimatedSignedYuan
 import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteEmptyState
 import com.manote.app.ui.components.ManoteFilterChip
@@ -46,6 +47,7 @@ import com.manote.app.ui.model.SessionFilter
 import com.manote.app.ui.model.SessionMonthGroup
 import com.manote.app.ui.model.UiText
 import com.manote.app.ui.navigation.ManoteTab
+import com.manote.app.ui.theme.ManoteMotion
 import com.manote.app.ui.theme.manote
 
 /**
@@ -193,15 +195,25 @@ private fun SessionsContent(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    // 按月分组：每组先一个月份小标题，再是本组场次（规格 3.3）
+                    // 按月分组：每组先一个月份小标题，再是本组场次（规格 3.3）。
+                    // animateItem 负责重排与增删：换筛选或搜索后，卡片是「滑」到新位置的，
+                    // 而不是凭空消失再凭空出现 —— 位置感本身就是信息。
                     state.monthGroups.forEach { group ->
                         item(key = "month-${group.yearMonth}") {
-                            SessionMonthHeader(group = group)
+                            SessionMonthHeader(
+                                group = group,
+                                modifier = Modifier.animateItem(
+                                    placementSpec = ManoteMotion.placementSpring(),
+                                ),
+                            )
                         }
                         items(items = group.rows, key = { it.id }) { row ->
                             ManoteSessionRow(
                                 row = row,
                                 onClick = { onOpenSessionDetail(row.id) },
+                                modifier = Modifier.animateItem(
+                                    placementSpec = ManoteMotion.placementSpring(),
+                                ),
                             )
                         }
                     }
@@ -229,15 +241,14 @@ private fun SessionsHeroCard(count: Int, netMinor: Long) {
                     color = colors.onHeroMuted,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = UiText.signedYuan(netMinor),
+                AnimatedSignedYuan(
+                    netMinor = netMinor,
                     style = MaterialTheme.typography.headlineLarge,
                     color = when {
                         netMinor > 0L -> colors.heroWin
                         netMinor < 0L -> colors.heroLoss
                         else -> colors.onHero
                     },
-                    maxLines = 1,
                 )
             }
             ManotePill(
@@ -260,10 +271,10 @@ private fun SessionsHeroCard(count: Int, netMinor: Long) {
  * 它是从 [SessionMonthGroup] 现场累加的，不另存一份月度账本（规格 2.4）。
  */
 @Composable
-private fun SessionMonthHeader(group: SessionMonthGroup) {
+private fun SessionMonthHeader(group: SessionMonthGroup, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.manote
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)

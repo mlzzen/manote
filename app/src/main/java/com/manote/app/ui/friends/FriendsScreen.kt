@@ -71,6 +71,7 @@ import com.manote.app.ui.model.FriendRowUi
 import com.manote.app.ui.model.FriendSort
 import com.manote.app.ui.navigation.ManoteTab
 import com.manote.app.ui.session.CreateFriendDialog
+import com.manote.app.ui.theme.ManoteMotion
 import com.manote.app.ui.theme.manote
 import kotlinx.coroutines.launch
 
@@ -255,7 +256,14 @@ fun FriendsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(items = state.visible, key = { it.id }) { friend ->
-                        FriendRow(friend = friend, onClick = { onOpenFriend(friend.id) })
+                        // 排序切换后卡片滑到新位置，而不是瞬移：位置感让人能跟上排序依据
+                        FriendRow(
+                            friend = friend,
+                            onClick = { onOpenFriend(friend.id) },
+                            modifier = Modifier.animateItem(
+                                placementSpec = ManoteMotion.placementSpring(),
+                            ),
+                        )
                     }
                 }
             }
@@ -405,8 +413,9 @@ private fun FriendSort.label(): String = stringResource(
 
 /** 一行麻友：昵称、备注摘要、场数与净输赢（规格 3.4）。整行可点击进入详情。 */
 @Composable
-private fun FriendRow(friend: FriendRowUi, onClick: () -> Unit) {
+private fun FriendRow(friend: FriendRowUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
     ManoteCard(
+        modifier = modifier,
         contentPadding = PaddingValues(14.dp),
         onClick = onClick,
     ) {

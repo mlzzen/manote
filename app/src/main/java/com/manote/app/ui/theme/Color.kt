@@ -55,6 +55,7 @@ internal val OnGoldContainerLight = Color(0xFF4A3708)
  * 卡内的次级文字用 [OnHeroMutedLight] 而不是半透明白 —— 换主题时不必再算透明度。
  */
 internal val HeroSurfaceLight = Color(0xFF14352A)
+internal val HeroSurfaceTopLight = Color(0xFF1C4636)
 internal val OnHeroLight = Color(0xFFFFFFFF)
 internal val OnHeroMutedLight = Color(0xFF9FD3B8)
 internal val HeroChipLight = Color(0xFF1F5E45)
@@ -107,6 +108,7 @@ internal val OnGoldContainerDark = Color(0xFFF3E4B8)
  * 因此改成比画布亮的墨绿，让同一套版式在两个主题下都还看得出是一块独立的卡。
  */
 internal val HeroSurfaceDark = Color(0xFF1B4433)
+internal val HeroSurfaceTopDark = Color(0xFF215139)
 internal val OnHeroDark = Color(0xFFEAF6EF)
 internal val OnHeroMutedDark = Color(0xFF9FD3B8)
 internal val HeroChipDark = Color(0xFF27543F)
@@ -163,6 +165,8 @@ data class ManoteExtendedColors(
     val onHeroMuted: Color,
     val heroChip: Color,
     val onHeroChip: Color,
+    /** 英雄卡的纵向渐变顶端色：比 [heroSurface] 亮半档，给卡面一层「光照」。 */
+    val heroSurfaceTop: Color,
     /**
      * 英雄卡里的输赢三色。
      *
@@ -200,6 +204,7 @@ internal val LightExtendedColors = ManoteExtendedColors(
     onHeroMuted = OnHeroMutedLight,
     heroChip = HeroChipLight,
     onHeroChip = OnHeroChipLight,
+    heroSurfaceTop = HeroSurfaceTopLight,
     heroWin = WinDark,
     heroLoss = LossDark,
     heroDraw = DrawDark,
@@ -230,6 +235,7 @@ internal val DarkExtendedColors = ManoteExtendedColors(
     onHeroMuted = OnHeroMutedDark,
     heroChip = HeroChipDark,
     onHeroChip = OnHeroChipDark,
+    heroSurfaceTop = HeroSurfaceTopDark,
     heroWin = WinDark,
     heroLoss = LossDark,
     heroDraw = DrawDark,

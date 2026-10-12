@@ -44,6 +44,7 @@ import com.manote.app.domain.TimeSlotStatistics
 import com.manote.app.domain.TrendPoint
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.components.ManoteBottomBar
+import com.manote.app.ui.components.AnimatedSignedYuan
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
 import com.manote.app.ui.components.ManoteHeroCard
@@ -221,11 +222,11 @@ private fun HeroCard(
             color = colors.onHeroMuted,
         )
         Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = UiText.signedYuan(statistics.netMinor),
+        // 记完一场回到首页，这个数是从旧值「长」出来的：变化本身也是一条信息
+        AnimatedSignedYuan(
+            netMinor = statistics.netMinor,
             style = MaterialTheme.typography.headlineLarge,
             color = colors.onHero,
-            maxLines = 1,
         )
 
         if (statistics.sessionCount == 0) {

@@ -1,7 +1,9 @@
 package com.manote.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,9 +51,13 @@ fun ManoteSessionRow(
         else -> colors.draw
     }
     val shape = MaterialTheme.shapes.large
+    val interaction = remember { MutableInteractionSource() }
 
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            // 整张行一起缩放：结果色边、头像与金额是一块内容，按下时同进同退。
+            .manotePress(interaction),
         shape = shape,
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -59,7 +66,11 @@ fun ManoteSessionRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(shape)
-                .clickable(onClick = onClick)
+                .clickable(
+                    interactionSource = interaction,
+                    indication = LocalIndication.current,
+                    onClick = onClick,
+                )
                 // 画在内容之下、按当前节点（含内边距）的完整高度铺满，
                 // 并被上面的 clip 裁成左侧的圆角边，不必额外的容器去承载它。
                 .drawBehind {

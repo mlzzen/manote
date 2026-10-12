@@ -1,5 +1,11 @@
 package com.manote.app.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -17,12 +23,19 @@ import com.manote.app.ui.session.SessionEditMode
 import com.manote.app.ui.session.SessionEditScreen
 import com.manote.app.ui.sessions.SessionsScreen
 import com.manote.app.ui.settings.SettingsScreen
+import com.manote.app.ui.theme.ManoteMotion
 
 /**
  * 单 Activity 的导航图。页面只接收 ID 与回调，不接收业务对象（规格 4）。
  *
  * 底部导航的四个页签与「记一场」共用同一个返回栈：
  * 切换页签时用 `saveState` / `restoreState` 保留各页滚动位置，且不会把栈堆起来。
+ *
+ * 转场分两种语感，都取 [ManoteMotion] 的令牌：
+ * - 页签之间（四个根页面）：新页轻微上浮 + 淡入，旧页快速淡出 ——
+ *   它们是平级的，转场只做「翻了一面」的暗示，不制造进深。
+ * - 子页面（详情、编辑、记一场）：从右侧滑入，返回时滑回右侧 ——
+ *   与系统返回手势同一个方向，「这是一层子页面」的进深感由滑动方向给出。
  */
 @Composable
 fun ManoteNavHost(
@@ -33,6 +46,38 @@ fun ManoteNavHost(
         navController = navController,
         startDestination = ManoteRoutes.START,
         modifier = modifier,
+        enterTransition = {
+            if (targetState.destination.route in ManoteRoutes.subRoutes) {
+                slideInHorizontally(
+                    tween(ManoteMotion.DURATION_SLOW, easing = ManoteMotion.EASING_STANDARD),
+                ) { it / 4 } + fadeIn(
+                    tween(ManoteMotion.DURATION_SLOW, easing = ManoteMotion.EASING_STANDARD),
+                )
+            } else {
+                slideInVertically(
+                    tween(ManoteMotion.DURATION_SLOW, easing = ManoteMotion.EASING_STANDARD),
+                ) { it / 24 } + fadeIn(
+                    tween(ManoteMotion.DURATION_SLOW, easing = ManoteMotion.EASING_STANDARD),
+                )
+            }
+        },
+        exitTransition = {
+            fadeOut(tween(ManoteMotion.DURATION_FAST, easing = ManoteMotion.EASING_EXIT))
+        },
+        popEnterTransition = {
+            fadeIn(tween(ManoteMotion.DURATION_SLOW, easing = ManoteMotion.EASING_STANDARD))
+        },
+        popExitTransition = {
+            if (targetState.destination.route in ManoteRoutes.subRoutes) {
+                slideOutHorizontally(
+                    tween(ManoteMotion.DURATION_NORMAL, easing = ManoteMotion.EASING_EXIT),
+                ) { it / 4 } + fadeOut(
+                    tween(ManoteMotion.DURATION_NORMAL, easing = ManoteMotion.EASING_EXIT),
+                )
+            } else {
+                fadeOut(tween(ManoteMotion.DURATION_FAST, easing = ManoteMotion.EASING_EXIT))
+            }
+        },
     ) {
         composable(ManoteRoutes.HOME) {
             HomeScreen(

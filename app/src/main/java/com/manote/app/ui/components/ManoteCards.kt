@@ -3,6 +3,8 @@ package com.manote.app.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -22,9 +24,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.manote.app.ui.theme.manote
@@ -45,10 +51,23 @@ fun ManoteCard(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .manotePress(interaction)
+                        .clickable(
+                            interactionSource = interaction,
+                            indication = LocalIndication.current,
+                            onClick = onClick,
+                        )
+                } else {
+                    Modifier
+                },
+            ),
         shape = MaterialTheme.shapes.large,
         color = containerColor,
         border = BorderStroke(1.dp, borderColor),
@@ -64,6 +83,9 @@ fun ManoteCard(
  * 不必每翻一页重新找。卡内文字默认走 [ManoteExtendedColors.onHero]，
  * 调用方只在需要次级色（如小标签）时才显式指定 [ManoteExtendedColors.onHeroMuted]。
  *
+ * 卡面不是一块死色：顶端到卡底铺一道由 [ManoteExtendedColors.heroSurfaceTop]
+ * 渐回 [ManoteExtendedColors.heroSurface] 的纵向渐变，像一束顶光落在牌桌上；
+ * 右上角两枚淡淡的圆是「二筒」的水印，与顶栏的品牌标记、空态里的牌面同一意象。
  * 与 [ManoteCard] 一样不投阴影：深色底本身已经是最强的一层对比，
  * 再叠阴影只会在深色主题下糊成一团。
  */
@@ -80,7 +102,33 @@ fun ManoteHeroCard(
         color = colors.heroSurface,
         contentColor = colors.onHero,
     ) {
-        Column(modifier = Modifier.padding(contentPadding), content = content)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            listOf(colors.heroSurfaceTop, colors.heroSurface),
+                        ),
+                    )
+                    // 二筒水印：两枚圆压在右上角，超出边界的部分被 Surface 的圆角裁掉。
+                    // 颜色从 onHeroMuted 压低透明度派生，两个主题共用同一份参数。
+                    val watermark = colors.onHeroMuted.copy(alpha = 0.10f)
+                    val radius = 46.dp.toPx()
+                    drawCircle(
+                        color = watermark,
+                        radius = radius,
+                        center = Offset(size.width - radius * 0.7f, -radius * 0.35f),
+                    )
+                    drawCircle(
+                        color = watermark,
+                        radius = radius,
+                        center = Offset(size.width - radius * 2.0f, radius * 0.55f),
+                    )
+                }
+                .padding(contentPadding),
+            content = content,
+        )
     }
 }
 

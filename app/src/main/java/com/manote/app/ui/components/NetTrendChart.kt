@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -58,21 +59,17 @@ fun NetTrendChart(
     val zeroLineColor = zeroLineColorOverride ?: MaterialTheme.colorScheme.outlineVariant
     val dotRingColor = dotRingColorOverride ?: MaterialTheme.colorScheme.surface
 
+    // 纵轴范围与各点数值只跟数据有关，与画布尺寸无关：
+    // 记在这里之后，滚动、重绘（尺寸不变）都不再重复做这份映射。
+    val scale = remember(points) { computeScale(points) }
+
     Canvas(
         modifier = modifier
             .fillMaxWidth()
             .height(height),
     ) {
-        val values = points.map { it.cumulativeMinor.toFloat() }
-        // 纵轴范围必须含 0（否则 0 线无从画起）
-        val rawLow = minOf(values.minOrNull() ?: 0f, 0f)
-        val rawHigh = maxOf(values.maxOrNull() ?: 0f, 0f)
-        // 全程持平时（连着几场都打平）上下各撑开一点，
-        // 让曲线落在图中央，而不是贴着上边缘或下边缘。
-        val flat = rawHigh - rawLow == 0f
-        val lo = if (flat) rawLow - 1f else rawLow
-        val hi = if (flat) rawHigh + 1f else rawHigh
-        val range = hi - lo
+        val values = scale.values
+        val range = scale.range
 
         val inset = verticalInset.toPx()
         val usable = (size.height - inset * 2).coerceAtLeast(1f)
@@ -81,7 +78,7 @@ fun NetTrendChart(
         fun xOf(index: Int): Float =
             if (points.size > 1) index * xStep else size.width / 2f
 
-        fun yOf(value: Float): Float = inset + (hi - value) / range * usable
+        fun yOf(value: Float): Float = inset + (scale.hi - value) / range * usable
 
         val zeroY = yOf(0f)
 
@@ -140,3 +137,27 @@ fun NetTrendChart(
 
 /** 面积填充的不透明度：够看出方向，又不至于盖住 0 线与终点。 */
 private const val AREA_ALPHA = 0.18f
+
+/** 纵轴映射的缓存载体：各点数值与上下界，换数据才算一遍。 */
+private class TrendScale(
+    val values: List<Float>,
+    val lo: Float,
+    val hi: Float,
+) {
+    val range: Float = hi - lo
+}
+
+/**
+ * 由数据算纵轴范围：必须含 0（否则 0 线无从画起）；
+ * 全程持平时（连着几场都打平）上下各撑开一点，
+ * 让曲线落在图中央，而不是贴着上边缘或下边缘。
+ */
+private fun computeScale(points: List<TrendPoint>): TrendScale {
+    val values = points.map { it.cumulativeMinor.toFloat() }
+    val rawLow = minOf(values.minOrNull() ?: 0f, 0f)
+    val rawHigh = maxOf(values.maxOrNull() ?: 0f, 0f)
+    val flat = rawHigh - rawLow == 0f
+    val lo = if (flat) rawLow - 1f else rawLow
+    val hi = if (flat) rawHigh + 1f else rawHigh
+    return TrendScale(values, lo, hi)
+}

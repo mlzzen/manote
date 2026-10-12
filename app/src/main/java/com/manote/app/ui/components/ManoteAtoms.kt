@@ -1,7 +1,9 @@
 package com.manote.app.ui.components
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -202,10 +205,16 @@ fun ManoteFilterChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .clickable(onClick = onClick)
+            .manotePress(interaction, pressedScale = 0.95f)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
             .wrapContentHeight(Alignment.CenterVertically),
     ) {
         Surface(
@@ -236,7 +245,7 @@ fun ManoteFilterChip(
     }
 }
 
-/** 主操作按钮。最小高度 52dp，禁用态由调用方通过 [enabled] 控制。 */
+/** 主操作按钮。最小高度 52dp，禁用态由调用方通过 [enabled] 控制。按下时轻微回缩。 */
 @Composable
 fun ManotePrimaryButton(
     text: String,
@@ -244,12 +253,15 @@ fun ManotePrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled,
+        interactionSource = interaction,
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp),
+            .heightIn(min = 52.dp)
+            .manotePress(interaction, pressedScale = 0.98f),
         shape = MaterialTheme.shapes.medium,
     ) {
         Text(
