@@ -1,7 +1,6 @@
 package com.manote.app.ui.friends
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,7 +49,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,7 +70,6 @@ import com.manote.app.ui.model.FriendSort
 import com.manote.app.ui.navigation.ManoteTab
 import com.manote.app.ui.session.CreateFriendDialog
 import com.manote.app.ui.theme.ManoteMotion
-import com.manote.app.ui.theme.manote
 import kotlinx.coroutines.launch
 
 /**
@@ -537,58 +534,3 @@ private fun friendSubtitle(friend: FriendRowUi): String {
         friend.note + " · " + count
     }
 }
-
-/**
- * 标签小胶囊。
- *
- * 文案本身就是含义（最苦主 / 福星 / 牌王），颜色只负责让它在名单里跳出来，
- * 与全应用「不靠颜色单独表达信息」的做法一致。
- * 配色各挑一个语义：最苦主用中性的米黄、福星用金黄（好事）、牌王用品牌墨绿的浅底。
- */
-@Composable
-private fun FriendBadgeChip(badge: FriendBadge) {
-    val colors = MaterialTheme.manote
-    val background: Color
-    val content: Color
-    when (badge) {
-        FriendBadge.WORST_RIVAL -> {
-            background = MaterialTheme.colorScheme.tertiaryContainer
-            content = MaterialTheme.colorScheme.onTertiaryContainer
-        }
-
-        FriendBadge.LUCKY_STAR -> {
-            background = colors.goldContainer
-            content = colors.onGoldContainer
-        }
-
-        FriendBadge.TABLE_KING -> {
-            background = MaterialTheme.colorScheme.primaryContainer
-            content = MaterialTheme.colorScheme.onPrimaryContainer
-        }
-    }
-
-    ManotePill(
-        text = badge.label(),
-        shape = MaterialTheme.shapes.small,
-        containerColor = background,
-        contentColor = content,
-        style = MaterialTheme.typography.labelSmall,
-        horizontalPadding = 6.dp,
-        verticalPadding = 2.dp,
-    )
-}
-
-/**
- * 标签 → 文案。
- *
- * 只有 @Composable 里才能调 stringResource，因此不能直接给枚举加一个属性；
- * 这里用穷尽 `when`，将来加标签时编译期就会提醒补文案。
- */
-@Composable
-private fun FriendBadge.label(): String = stringResource(
-    when (this) {
-        FriendBadge.WORST_RIVAL -> R.string.friends_worst_rival_badge
-        FriendBadge.LUCKY_STAR -> R.string.friends_lucky_badge
-        FriendBadge.TABLE_KING -> R.string.friends_table_king_badge
-    },
-)

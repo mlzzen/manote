@@ -62,6 +62,7 @@ import com.manote.app.ui.components.NetTrendChart
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.components.SignedAmount
 import com.manote.app.ui.manoteViewModel
+import com.manote.app.ui.model.FriendBadge
 import com.manote.app.ui.model.FriendDetailUi
 import com.manote.app.ui.model.FriendSessionRowUi
 import com.manote.app.ui.model.UiText
@@ -74,7 +75,8 @@ import kotlinx.coroutines.launch
  * 麻友详情（规格 3.4）。
  *
  * 展示当前昵称、备注、累计赢钱、累计输钱、净输赢、场均、场数、单场赢最多 / 输最多，
- * 以及同场时我的净输赢与场均；
+ * 以及同场时我的净输赢与场均；牌友列表上挂的标签（最苦主 / 福星 / 牌王）也一并重现——
+ * 两页用的是同一处判定，不会出现「列表标了他、详情页却没有」。
  * 逐场列出日期、这位麻友所在位置，以及他与本人各自的本场结果，点按进入完整四人详情。
  * 菜单提供编辑与归档/取消归档。
  */
@@ -201,11 +203,12 @@ fun FriendDetailScreen(
 }
 
 /**
- * 昵称 + 备注；已归档时给出明确说明，避免用户以为历史被清掉了。
+ * 昵称 + 备注 + 牌友列表上的那几个标签；已归档时给出明确说明，避免用户以为历史被清掉了。
  *
  * 这块用英雄卡而不是白卡：本页的主角是「这个人」，头像与昵称值得占全页最重的一层底。
  * 卡上不放任何数字——他所有的数都在下面那张统计卡里，两处重复同一个数
  * 只会让人先去找它们的差别，而它们并没有差别。
+ * 标签也不放数字，说的是「他对我意味着什么」，正属于这张卡在讲的事。
  */
 @Composable
 private fun FriendProfileCard(detail: FriendDetailUi) {
@@ -235,6 +238,22 @@ private fun FriendProfileCard(detail: FriendDetailUi) {
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
+        }
+
+        if (detail.badges.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            // 与列表同一个顺序（按枚举声明序），同一个标签在两页的排列一致；
+            // 深底上另配一组亮色，见 FriendBadgeChip 的 onHero
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                FriendBadge.entries.forEach { badge ->
+                    if (badge in detail.badges) {
+                        FriendBadgeChip(badge = badge, onHero = true)
+                    }
+                }
             }
         }
 

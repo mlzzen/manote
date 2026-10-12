@@ -7,7 +7,9 @@ import com.manote.app.data.repository.PlayerRepository
 import com.manote.app.data.repository.SessionRepository
 import com.manote.app.domain.ManoteResult
 import com.manote.app.ui.model.FriendDetailUi
+import com.manote.app.ui.model.friendBadges
 import com.manote.app.ui.model.messageRes
+import com.manote.app.ui.model.opponentMatches
 import com.manote.app.ui.model.toDetailUi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,9 +40,12 @@ sealed interface FriendDetailEvent {
 /**
  * 麻友详情 ViewModel（规格 3.4）。
  *
- * 三份数据各订阅一份再在内存里合并：档案、跨场统计、参与的场次。
+ * 四份数据各订阅一份再在内存里合并：档案、跨场统计、参与的场次，以及**全部场次**。
  * 统计与逐场结果都实时派生自 `session_result`，所以任何一场被修改或删除后
  * 这里的数字会立刻跟着变，不存在对不上的第二份累计值。
+ *
+ * 全部场次只为一件事而订阅：本页要显示与牌友列表相同的三个标签，
+ * 而它们要横比所有牌友，光看这位麻友自己的场次判不出来（见 `friendBadges`）。
  */
 class FriendDetailViewModel(
     private val playerRepository: PlayerRepository,
@@ -63,11 +68,18 @@ class FriendDetailViewModel(
         playerRepository.observeById(playerId),
         playerRepository.observeStatistics(playerId),
         sessionRepository.observeSessionsByPlayer(playerId),
+        sessionRepository.observeSessions(),
         flags,
-    ) { player, statistics, sessions, current ->
+    ) { player, statistics, sessions, allSessions, current ->
         FriendDetailUiState(
             loading = false,
-            detail = player?.toDetailUi(statistics, sessions),
+            detail = player?.toDetailUi(
+                statistics = statistics,
+                sessionsWithResults = sessions,
+                // 与牌友列表同一处判定，因此两页的标签不可能分叉
+                badges = friendBadges(allSessions.flatMap { it.opponentMatches() })[playerId]
+                    .orEmpty(),
+            ),
             editVisible = current.editVisible,
             archiveConfirmVisible = current.archiveConfirmVisible,
             working = current.working,

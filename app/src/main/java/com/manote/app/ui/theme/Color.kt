@@ -126,6 +126,23 @@ internal val TextPrimaryDark = Color(0xFFE8ECE8)
 internal val TextSecondaryDark = Color(0xFF9AA39C)
 internal val TextTertiaryDark = Color(0xFF7A837C)
 
+// ————————————————————— 两个主题共用（深底上的颜色） —————————————————————
+
+/**
+ * 英雄卡上的标签底色（最苦主 / 福星 / 牌王）。
+ *
+ * 与 [WinDark] 被借去当英雄卡的亮色是同一个理由：列表上那三个标签都是「浅底深字」，
+ * 压在深墨绿上要么糊进卡面（深色主题的容器色本就偏暗，品牌容器色更是与卡面几乎同色），
+ * 要么与卡面糊成一片。英雄卡在两个主题下都是深底，需要的也就是同一组亮色，
+ * 因此这里只写一份，不按主题各配一套。
+ */
+internal val HeroBadgeNeutral = Color(0xFF4A3F22)
+internal val OnHeroBadgeNeutral = Color(0xFFF0E4C0)
+internal val HeroBadgeGold = Color(0xFF54401A)
+internal val OnHeroBadgeGold = Color(0xFFF7E3B0)
+internal val HeroBadgeBrand = Color(0xFF22523C)
+internal val OnHeroBadgeBrand = Color(0xFFD6F0E2)
+
 /**
  * Material 3 配色之外、本应用特有的语义色。
  *
@@ -177,6 +194,17 @@ data class ManoteExtendedColors(
     val heroWin: Color,
     val heroLoss: Color,
     val heroDraw: Color,
+    /**
+     * 英雄卡上的标签胶囊（最苦主 / 福星 / 牌王）。
+     *
+     * 同 [heroWin] 的道理：列表上那套浅底容器色压在深墨绿上看不见，这里另给一组。
+     */
+    val heroBadgeNeutral: Color,
+    val onHeroBadgeNeutral: Color,
+    val heroBadgeGold: Color,
+    val onHeroBadgeGold: Color,
+    val heroBadgeBrand: Color,
+    val onHeroBadgeBrand: Color,
 )
 
 internal val LightExtendedColors = ManoteExtendedColors(
@@ -208,6 +236,12 @@ internal val LightExtendedColors = ManoteExtendedColors(
     heroWin = WinDark,
     heroLoss = LossDark,
     heroDraw = DrawDark,
+    heroBadgeNeutral = HeroBadgeNeutral,
+    onHeroBadgeNeutral = OnHeroBadgeNeutral,
+    heroBadgeGold = HeroBadgeGold,
+    onHeroBadgeGold = OnHeroBadgeGold,
+    heroBadgeBrand = HeroBadgeBrand,
+    onHeroBadgeBrand = OnHeroBadgeBrand,
 )
 
 internal val DarkExtendedColors = ManoteExtendedColors(
@@ -239,6 +273,12 @@ internal val DarkExtendedColors = ManoteExtendedColors(
     heroWin = WinDark,
     heroLoss = LossDark,
     heroDraw = DrawDark,
+    heroBadgeNeutral = HeroBadgeNeutral,
+    onHeroBadgeNeutral = OnHeroBadgeNeutral,
+    heroBadgeGold = HeroBadgeGold,
+    onHeroBadgeGold = OnHeroBadgeGold,
+    heroBadgeBrand = HeroBadgeBrand,
+    onHeroBadgeBrand = OnHeroBadgeBrand,
 )
 
 internal val LocalManoteExtendedColors = staticCompositionLocalOf { LightExtendedColors }

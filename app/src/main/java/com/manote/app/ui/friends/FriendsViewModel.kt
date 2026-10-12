@@ -7,10 +7,10 @@ import com.manote.app.data.repository.PlayerRepository
 import com.manote.app.data.repository.SessionRepository
 import com.manote.app.domain.ManoteResult
 import com.manote.app.domain.Rivalry
-import com.manote.app.ui.model.FriendBadge
 import com.manote.app.ui.model.FriendFiltering
 import com.manote.app.ui.model.FriendRowUi
 import com.manote.app.ui.model.FriendSort
+import com.manote.app.ui.model.friendBadges
 import com.manote.app.ui.model.messageRes
 import com.manote.app.ui.model.opponentMatches
 import com.manote.app.ui.model.toRowUi
@@ -87,9 +87,7 @@ class FriendsViewModel(
         // 三个标签都要横比所有同场账才能判定，因此在内存里一次算完，
         // 而不是交给每一行自己去比——那样既重复计算，也容易出现口径分歧。
         val matches = sessions.flatMap { it.opponentMatches() }
-        val worstRivalId = Rivalry.worstRival(matches)?.playerId
-        val bestRivalId = Rivalry.bestRival(matches)?.playerId
-        val tableKingId = Rivalry.strongestOpponent(matches)?.playerId
+        val badgesByPlayer = friendBadges(matches)
         // 每行还要带上「我与他的同场场均」给排序与显示用，所以要拿到全部同场账。
         // 这里多聚合一遍（上面三个判定各自也会聚一次）：match 数在千级以内，
         // 一次 groupBy 的开销可以忽略，比把这套判定逻辑复制到第二处划算得多。
@@ -97,11 +95,7 @@ class FriendsViewModel(
         val rows = friends.map { friend ->
             friend.toRowUi(
                 aggregate = aggregateByPlayer[friend.id],
-                badges = buildSet {
-                    if (friend.id == worstRivalId) add(FriendBadge.WORST_RIVAL)
-                    if (friend.id == bestRivalId) add(FriendBadge.LUCKY_STAR)
-                    if (friend.id == tableKingId) add(FriendBadge.TABLE_KING)
-                },
+                badges = badgesByPlayer[friend.id].orEmpty(),
                 myAverageTogetherMinor = recordByPlayer[friend.id]?.myAverageMinor,
             )
         }

@@ -71,6 +71,30 @@ data class FriendRowUi(
         get() = if (sessionCount == 0) 0L else divideRounded(netMinor, sessionCount.toLong())
 }
 
+/**
+ * 全场同场账 → 每位牌友的标签。
+ *
+ * 三个标签都要横比**所有**牌友才判得出来（见 [Rivalry]），一行或一个人的数据给不出结论，
+ * 所以这里一次算完，调用方按 playerId 取用。牌友列表与牌友详情共用这一处结论：
+ * 两页各算各的，迟早会出现「列表上标着他、详情页却什么都没有」。
+ */
+fun friendBadges(matches: List<OpponentMatch>): Map<String, Set<FriendBadge>> {
+    val worstRivalId = Rivalry.worstRival(matches)?.playerId
+    val luckyStarId = Rivalry.bestRival(matches)?.playerId
+    val tableKingId = Rivalry.strongestOpponent(matches)?.playerId
+    if (worstRivalId == null && luckyStarId == null && tableKingId == null) return emptyMap()
+
+    // 三个标签可以同时落在同一个人身上，因此按 playerId 攒成集合而不是一人一条
+    val badges = mutableMapOf<String, MutableSet<FriendBadge>>()
+    fun add(playerId: String?, badge: FriendBadge) {
+        if (playerId != null) badges.getOrPut(playerId) { mutableSetOf() }.add(badge)
+    }
+    add(worstRivalId, FriendBadge.WORST_RIVAL)
+    add(luckyStarId, FriendBadge.LUCKY_STAR)
+    add(tableKingId, FriendBadge.TABLE_KING)
+    return badges.mapValues { it.value.toSet() }
+}
+
 /** 麻友详情里的「逐场」一行：这一场他在哪个位置、他和本人各是什么结果。 */
 data class FriendSessionRowUi(
     val sessionId: String,
@@ -93,6 +117,13 @@ data class FriendDetailUi(
     val nickname: String,
     val note: String,
     val archived: Boolean,
+    /**
+     * 挂在牌友列表上的标签，在这里原样重现。
+     *
+     * 判定要横比所有牌友，因此由调用方用 [friendBadges] 算好传入——
+     * 与列表用的是同一个结论，详情页不会与列表各说各话。
+     */
+    val badges: Set<FriendBadge> = emptySet(),
     val statistics: PlayerStatistics,
     /**
      * 这位麻友自己的单场赢最多 / 输最多。
@@ -180,10 +211,14 @@ fun SessionWithResults.opponentMatches(): List<OpponentMatch> {
  *
  * 「同场时我的场均」也在这里算，且与牌友列表判定「最苦主」用的是同一个函数：
  * 两处若各算各的，迟早会出现「列表标了他，详情页的数字却对不上」。
+ *
+ * [badges] 由调用方用 [friendBadges] 算好传入：那三个标签要横比所有牌友，
+ * 光有这位麻友自己的场次是判不出来的。
  */
 fun PlayerEntity.toDetailUi(
     statistics: PlayerStatistics,
     sessionsWithResults: List<SessionWithResults>,
+    badges: Set<FriendBadge> = emptySet(),
 ): FriendDetailUi {
     val rows = sessionsWithResults.mapNotNull { item ->
         val mine = item.results.firstOrNull { it.playerId == id } ?: return@mapNotNull null
@@ -206,6 +241,7 @@ fun PlayerEntity.toDetailUi(
         nickname = nickname,
         note = note,
         archived = archivedAt != null,
+        badges = badges,
         statistics = statistics,
         extremes = SessionExtremes.of(dated),
         // 走势按时间升序累加（图从左到右即时间先后），而逐场记录是倒序的

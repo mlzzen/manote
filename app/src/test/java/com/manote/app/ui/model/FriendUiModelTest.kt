@@ -144,6 +144,74 @@ class FriendUiModelTest {
         assertNull(player("f1", "阿明").toRowUi(aggregate = null).myAverageTogetherMinor)
     }
 
+    // ————————————————————— 标签（列表与详情共用） —————————————————————
+
+    /** 一场只有本人与一位牌友的对局；两人的净额相反，方便读出「我在他面前打成什么样」。 */
+    private fun duel(
+        id: String,
+        playedAt: Long,
+        friendId: String,
+        myNetMinor: Long,
+    ) = session(
+        id = id,
+        title = "",
+        playedAt = playedAt,
+        results = listOf(
+            result(id, 0, "self", "我", myNetMinor),
+            result(id, 1, friendId, friendId, -myNetMinor),
+        ),
+    )
+
+    private fun badgesOf(sessions: List<SessionWithResults>): Map<String, Set<FriendBadge>> =
+        friendBadges(sessions.flatMap { it.opponentMatches() })
+
+    @Test
+    fun friendBadgesHonoursTheMinimumCommonSessions() {
+        // 只同场 2 场：不够门槛。哪怕场场惨败也不挂标签——那更像抽样噪声
+        val sessions = (1..2).map { duel("s-$it", it * 1_000L, "f1", -600L) }
+
+        assertEquals(emptyMap<String, Set<FriendBadge>>(), badgesOf(sessions))
+    }
+
+    @Test
+    fun friendBadgesPutsSeveralBadgesOnTheSameFriend() {
+        // 只有他一个人够门槛：三顶帽子只好都落在他头上，界面得能同时显示
+        val sessions = (1..3).map { duel("s-$it", it * 1_000L, "f1", -600L) }
+
+        assertEquals(
+            mapOf(
+                "f1" to setOf(
+                    FriendBadge.WORST_RIVAL,
+                    FriendBadge.LUCKY_STAR,
+                    FriendBadge.TABLE_KING,
+                ),
+            ),
+            badgesOf(sessions),
+        )
+    }
+
+    @Test
+    fun friendBadgesTellsWorstRivalLuckyStarAndTableKingApart() {
+        // 在 f1 面前我场均 -600（最低），他自己场均 +600（最高）；
+        // 在 f2 面前我场均 +300（最高），他自己场均 -300。
+        // 于是「最苦主」与「牌王」都归 f1，「福星」归 f2——同一个标签表里可以两顶帽子落在一个人身上。
+        val sessions = (1..3).map { duel("f1-$it", it * 1_000L, "f1", -600L) } +
+            (1..3).map { duel("f2-$it", 10_000L + it * 1_000L, "f2", 300L) }
+
+        assertEquals(
+            mapOf(
+                "f1" to setOf(FriendBadge.WORST_RIVAL, FriendBadge.TABLE_KING),
+                "f2" to setOf(FriendBadge.LUCKY_STAR),
+            ),
+            badgesOf(sessions),
+        )
+    }
+
+    @Test
+    fun friendBadgesIsEmptyWithoutAnySession() {
+        assertEquals(emptyMap<String, Set<FriendBadge>>(), friendBadges(emptyList()))
+    }
+
     // ————————————————————— 麻友详情 —————————————————————
 
     @Test
@@ -291,5 +359,26 @@ class FriendUiModelTest {
             .toDetailUi(PlayerStatistics.EMPTY, emptyList())
 
         assertEquals(true, detail.archived)
+    }
+
+    @Test
+    fun detailUiRepeatsTheBadgesShownOnTheList() {
+        // 判定本身横比所有牌友，所以由调用方（ViewModel）算好传入；
+        // 这里只确认详情页会原样带出去，界面才有东西可显示。
+        val detail = player("f1", "阿明").toDetailUi(
+            statistics = PlayerStatistics.EMPTY,
+            sessionsWithResults = emptyList(),
+            badges = setOf(FriendBadge.WORST_RIVAL, FriendBadge.TABLE_KING),
+        )
+
+        assertEquals(
+            setOf(FriendBadge.WORST_RIVAL, FriendBadge.TABLE_KING),
+            detail.badges,
+        )
+        // 没人给他挂标签时是空集，界面据此整行不画
+        assertEquals(
+            emptySet<FriendBadge>(),
+            player("f1", "阿明").toDetailUi(PlayerStatistics.EMPTY, emptyList()).badges,
+        )
     }
 }
