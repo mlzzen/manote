@@ -14,6 +14,7 @@ import com.manote.app.ui.model.friendBadges
 import com.manote.app.ui.model.messageRes
 import com.manote.app.ui.model.opponentMatches
 import com.manote.app.ui.model.toRowUi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -113,7 +115,11 @@ class FriendsViewModel(
             totalActive = rows.count { !it.archived },
             totalArchived = rows.count { it.archived },
         )
-    }.stateIn(
+    }
+        // 这里要为三个标签横比全部同场账（flatMap + Rivalry + 分组），
+        // 是全应用最重的一处聚合，放到 Default 线程执行。
+        .flowOn(Dispatchers.Default)
+        .stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
         initialValue = FriendsUiState(),
@@ -132,9 +138,11 @@ class FriendsViewModel(
     fun createFriend(rawNickname: String, rawNote: String) {
         viewModelScope.launch {
             when (val result = playerRepository.createFriend(rawNickname, rawNote)) {
-                is ManoteResult.Success -> _events.tryEmit(FriendsEvent.Created)
+                // 用挂起的 emit 而不是 tryEmit：buffer 满时 tryEmit 会静默丢弃事件，
+                // 快速连点会吞掉提示。这里本来就在协程里，挂起等待即可。
+                is ManoteResult.Success -> _events.emit(FriendsEvent.Created)
                 is ManoteResult.Failure ->
-                    _events.tryEmit(FriendsEvent.Failed(result.error.messageRes()))
+                    _events.emit(FriendsEvent.Failed(result.error.messageRes()))
             }
         }
     }

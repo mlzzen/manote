@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.Locale
 
 /**
  * 场次列表的按月分组（规格 3.3）。
@@ -19,7 +20,7 @@ class SessionGroupingTest {
 
     @Test
     fun emptyInputProducesNoGroups() {
-        assertTrue(SessionGrouping.byMonth(emptyList(), zone).isEmpty())
+        assertTrue(SessionGrouping.byMonth(emptyList(), zone, Locale.CHINA).isEmpty())
     }
 
     @Test
@@ -31,7 +32,7 @@ class SessionGroupingTest {
             row("d", at(2026, 8, 1, 19, 0), selfNet = 0L),
         )
 
-        val groups = SessionGrouping.byMonth(rows, zone)
+        val groups = SessionGrouping.byMonth(rows, zone, Locale.CHINA)
 
         assertEquals(3, groups.size)
         assertEquals(listOf("2026年10月", "2026年9月", "2026年8月"), groups.map { it.label })
@@ -46,7 +47,7 @@ class SessionGroupingTest {
             row("sep", at(2026, 9, 30, 23, 59), selfNet = 2000L),
         )
 
-        val groups = SessionGrouping.byMonth(rows, zone)
+        val groups = SessionGrouping.byMonth(rows, zone, Locale.CHINA)
 
         assertEquals(listOf("2026年10月", "2026年9月"), groups.map { it.label })
     }
@@ -59,7 +60,7 @@ class SessionGroupingTest {
             row("c", at(2026, 9, 28, 22, 0), selfNet = -500L),
         )
 
-        val groups = SessionGrouping.byMonth(rows, zone)
+        val groups = SessionGrouping.byMonth(rows, zone, Locale.CHINA)
 
         assertEquals(2, groups[0].sessionCount)
         assertEquals(2000L, groups[0].selfNetMinor)
@@ -76,12 +77,21 @@ class SessionGroupingTest {
             row("c", at(2026, 10, 1, 21, 30), selfNet = 300L),
         )
 
-        val groups = SessionGrouping.byMonth(rows, zone)
+        val groups = SessionGrouping.byMonth(rows, zone, Locale.CHINA)
 
         assertEquals(2, groups.size)
         assertEquals("2026年10月", groups[0].label)
         assertEquals(listOf("a", "c"), groups[0].rows.map { it.id })
         assertEquals(400L, groups[0].selfNetMinor)
+    }
+
+    @Test
+    fun monthLabelFollowsTheRequestedLocale() {
+        // 界面已经是英文时，分组标题不该还是「2026年10月」
+        val rows = listOf(row("a", at(2026, 10, 8, 21, 30), selfNet = 100L))
+
+        assertEquals("2026年10月", SessionGrouping.byMonth(rows, zone, Locale.CHINA).single().label)
+        assertEquals("October 2026", SessionGrouping.byMonth(rows, zone, Locale.ENGLISH).single().label)
     }
 
     private fun at(year: Int, month: Int, day: Int, hour: Int, minute: Int): Long =

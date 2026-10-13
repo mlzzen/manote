@@ -37,6 +37,9 @@ object ManoteRoutes {
     /** 麻友详情。实际跳转请用 [friendDetail] 生成完整路由。 */
     const val FRIEND_DETAIL = "friend/{playerId}"
 
+    /** 回收站：删除的场次暂存在这里，可还原或彻底删除。 */
+    const val BIN = "bin"
+
     /** 生成某个场次的详情路由。 */
     fun sessionDetail(sessionId: String): String = "session/$sessionId"
 
@@ -59,6 +62,7 @@ object ManoteRoutes {
         SESSION_DETAIL,
         SESSION_EDIT,
         FRIEND_DETAIL,
+        BIN,
     )
 
     /** 底部导航的四个常驻页签（中心「新建」是动作而非页签）。 */
@@ -68,7 +72,8 @@ object ManoteRoutes {
      * 子页面路由（详情、编辑、记一场）：转场从右侧滑入滑出，
      * 与页签间的平级切换（上浮淡入）区分开。转场判断用的就是这一份名单。
      */
-    val subRoutes: Set<String> = setOf(SESSION_NEW, SESSION_DETAIL, SESSION_EDIT, FRIEND_DETAIL)
+    val subRoutes: Set<String> =
+        setOf(SESSION_NEW, SESSION_DETAIL, SESSION_EDIT, FRIEND_DETAIL, BIN)
 
     /** 起始目的地。 */
     const val START: String = HOME

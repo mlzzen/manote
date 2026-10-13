@@ -13,6 +13,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.Executors
 
 /**
  * v1 → v2 的升级（规格 5.1）。
@@ -30,8 +31,15 @@ class ManoteMigration1To2Test {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
 
+    // 自带线程池：不用 ArchTaskExecutor 的全局 IO 线程，避免 close 之后仍有失效通知
+    // 在后台访问已关闭的连接（详情见 RoomTestCase 里的同一段说明）。
+    private val queryExecutor = Executors.newSingleThreadExecutor { Thread(it, "manote-migration-query") }
+    private val transactionExecutor = Executors.newSingleThreadExecutor { Thread(it, "manote-migration-tx") }
+
     @After
     fun deleteDatabase() {
+        queryExecutor.shutdownNow()
+        transactionExecutor.shutdownNow()
         context.deleteDatabase(DB_NAME)
     }
 
@@ -123,6 +131,8 @@ class ManoteMigration1To2Test {
         .databaseBuilder(context, ManoteDatabase::class.java, DB_NAME)
         .addMigrations(*ManoteMigrations.ALL)
         .allowMainThreadQueries()
+        .setQueryExecutor(queryExecutor)
+        .setTransactionExecutor(transactionExecutor)
         .build()
 
     private companion object {

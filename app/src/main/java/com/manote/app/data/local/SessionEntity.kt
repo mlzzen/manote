@@ -32,4 +32,12 @@ data class SessionEntity(
     val updatedAt: Long,
     /** 乐观并发控制：创建为 1，每次成功编辑 +1。 */
     val revision: Long,
+    /**
+     * 移入回收站的时间（UTC epoch ms）；`null` 表示这一场正常存在于场次列表里。
+     *
+     * 删除做成软删除：任何普通查询都带上 `deletedAt IS NULL`，于是这一场立刻
+     * 从列表、统计与牌友战绩里消失，但结果行还在，可以随时还原（规格 3.3）。
+     * 回收站里的行不带进 JSON 备份，也不会占用「1,000 场」的名额。
+     */
+    val deletedAt: Long? = null,
 )

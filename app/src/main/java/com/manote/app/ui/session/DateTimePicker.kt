@@ -233,7 +233,9 @@ private fun WheelColumn(
             horizontalAlignment = Alignment.CenterHorizontally,
             flingBehavior = rememberSnapFlingBehavior(state),
         ) {
-            itemsIndexed(items = items) { index, label ->
+            // 用下标做 key：滚轮项的文本本身可能重复（例如不同列），
+            // 下标稳定且唯一，滚动重排时才能稳定复用同一格。
+            itemsIndexed(items = items, key = { index, _ -> index }) { index, label ->
                 val distance = abs(index - centerFraction)
                 val itemAlpha = (1f - distance * 0.45f).coerceIn(0.25f, 1f)
                 val itemScale = (1f - distance * 0.12f).coerceIn(0.7f, 1f)

@@ -56,7 +56,7 @@ class BackupRoundTripTest : RoomTestCase() {
         assertTrue("导出的文件必须能通过自己的校验：$inspected", inspected is BackupCheck.Passed)
 
         // 把库改乱，确保后面的导入确实起了作用，而不是「什么都没做也算通过」
-        sessionRepository.deleteSession(uuidFor(101)).value()
+        sessionRepository.moveSessionToTrash(uuidFor(101)).value()
         playerRepository.renameSelf("乱改").value()
         playerRepository.unarchiveFriend(friend2).value()
 
@@ -153,8 +153,8 @@ class BackupRoundTripTest : RoomTestCase() {
             backupRepository.inspect(json.toByteArray(Charsets.UTF_8)) is BackupCheck.Passed,
         )
 
-        sessionRepository.deleteSession(uuidFor(101)).value()
-        sessionRepository.deleteSession(uuidFor(102)).value()
+        sessionRepository.moveSessionToTrash(uuidFor(101)).value()
+        sessionRepository.moveSessionToTrash(uuidFor(102)).value()
         assertEquals(0, sessionCount())
 
         assertTrue(backupRepository.importBackup(exported) is BackupCheck.Passed)

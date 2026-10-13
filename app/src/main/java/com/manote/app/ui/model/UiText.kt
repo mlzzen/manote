@@ -88,9 +88,24 @@ object UiText {
     fun monthDay(date: LocalDate): String =
         String.format(Locale.US, "%02d.%02d", date.monthValue, date.dayOfMonth)
 
-    /** `2026年10月`，用于场次列表的月份分组标题（规格 3.3）。 */
-    fun monthLabel(yearMonth: YearMonth): String =
-        String.format(Locale.US, "%d年%d月", yearMonth.year, yearMonth.monthValue)
+    /**
+     * 场次列表的月份分组标题（规格 3.3）：中文下是 `2026年10月`，其它语言下是 `October 2026`。
+     *
+     * [locale] 默认取设备语言，与界面文案同一套语言——界面已经是英文了，
+     * 分组标题却还是「2026年10月」，读起来像是漏翻。
+     * 中文分支刻意保持原来的字面输出，不改动既有观感。
+     */
+    fun monthLabel(yearMonth: YearMonth, locale: Locale = Locale.getDefault()): String =
+        if (locale.language == Locale.CHINESE.language) {
+            String.format(Locale.US, "%d年%d月", yearMonth.year, yearMonth.monthValue)
+        } else {
+            String.format(
+                locale,
+                "%s %d",
+                yearMonth.month.getDisplayName(TextStyle.FULL, locale),
+                yearMonth.year,
+            )
+        }
 
     /**
      * 把 Material 日期选择器给出的 UTC 零点毫秒 + 时/分，合成为设备时区下的真实时间戳。
@@ -149,11 +164,11 @@ fun timeSlotLabel(slot: TimeSlot): String = stringResource(
 )
 
 /**
- * 顶栏上的「今天」，例如 `10.12 · 周一`。
+ * 顶栏上的「今天」，例如中文下 `10.12 · 周一`、英文下 `10.12 · Mon`。
  *
- * 取设备时区的当天，与全应用的时间显示同源。星期名固定用中文取，
- * 不跟随系统语言——本应用的界面文案只有中文一套，若跟随系统语言，
- * 日文或英文系统上会出现「10.12 · Mon」这样的混排。
+ * 取设备时区的当天，与全应用的时间显示同源。星期名跟随设备语言：
+ * 界面文案已经按语言分了两套，星期名也该跟着走——否则英文界面上会出现
+ * `10.12 · 周一` 这样半中半英的一行。
  *
  * [today] 可显式传入，便于预览与测试钉死日期，与本文件其它格式化函数的
  * `zoneId` 参数是同一个用意：默认取环境，需要确定性时由调用方给死。
@@ -162,7 +177,7 @@ fun timeSlotLabel(slot: TimeSlot): String = stringResource(
 fun todayLabel(today: LocalDate = LocalDate.now()): String = stringResource(
     R.string.common_today_format,
     UiText.monthDay(today),
-    today.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.CHINA),
+    today.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
 )
 
 /**

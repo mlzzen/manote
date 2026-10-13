@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  桌面快捷方式「记一场」的图标：墨绿圆角牌面 + 三枚浅绿筒子，
+  与顶栏的品牌标记（二筒）同一种形状语言，一眼能认出是同一个应用。
+  纯矢量，不依赖任何位图。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 牌底：铺满整块，保证在任何启动器底色上都看得清 -->
+    <path
+        android:fillColor="#1B5E4A"
+        android:pathData="M20,0 h68 a20,20 0 0 1 20,20 v68 a20,20 0 0 1 -20,20 h-68 a20,20 0 0 1 -20,-20 v-68 a20,20 0 0 1 20,-20 z" />
+
+    <!-- 筒子：三枚自下而上排列的圆点 -->
+    <path
+        android:fillColor="#9FD9C2"
+        android:pathData="M43,34 a11,11 0 1 0 22,0 a11,11 0 1 0 -22,0 z" />
+    <path
+        android:fillColor="#9FD9C2"
+        android:pathData="M43,54 a11,11 0 1 0 22,0 a11,11 0 1 0 -22,0 z" />
+    <path
+        android:fillColor="#9FD9C2"
+        android:pathData="M43,74 a11,11 0 1 0 22,0 a11,11 0 1 0 -22,0 z" />
+</vector>

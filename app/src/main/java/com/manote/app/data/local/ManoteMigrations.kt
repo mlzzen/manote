@@ -27,6 +27,18 @@ object ManoteMigrations {
         }
     }
 
+    /**
+     * v2 → v3：`session` 增加 `deletedAt`（移入回收站的时间，可空）。
+     *
+     * 可空且默认 NULL，已有行一次性拿到 NULL，语义正好是「都没有被删除」——
+     * 升级后所有旧场次照常在列表里，不需要任何回填。
+     */
+    val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE session ADD COLUMN deletedAt INTEGER DEFAULT NULL")
+        }
+    }
+
     /** 全部 migration，按版本顺序排列；构建数据库时一次性注册。 */
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2)
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 }

@@ -16,7 +16,7 @@ import androidx.room.TypeConverters
         SessionEntity::class,
         SessionResultEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(ManoteConverters::class)

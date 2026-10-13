@@ -182,6 +182,12 @@ class SessionRepository(
 
         val session = sessionDao.findById(edit.id)
             ?: return ManoteResult.Failure(ManoteError.SESSION_NOT_FOUND)
+        // 已在回收站里的场次视同已删除：不允许再编辑一份不在列表里的记录。
+        // 单独判一次而不是只靠 update 语句的 `deletedAt IS NULL`，是为了给出
+        // 「已删除」而不是「版本冲突」——后者会让用户以为重新加载就能救回来。
+        if (session.deletedAt != null) {
+            return ManoteResult.Failure(ManoteError.SESSION_NOT_FOUND)
+        }
 
         SessionValidator.validatePlayedAt(edit.playedAt, now)?.let {
             return ManoteResult.Failure(it)
@@ -244,18 +250,78 @@ class SessionRepository(
         return ManoteResult.Success(edit.expectedRevision + 1L)
     }
 
-    /** 删除整场：清掉四条结果，保留 Player 档案，应用内不提供恢复。 */
-    suspend fun deleteSession(sessionId: String): ManoteResult<Unit> =
+    /**
+     * 删除整场 → **移入回收站**（软删除，规格 3.3）。
+     *
+     * 只打上删除时间，结果行原样保留：这一场立刻从列表、统计与牌友战绩里消失，
+     * 但在回收站里还能还原。Player 档案不受影响。真正不可逆的清除只有
+     * [purgeSession] 与 [emptyTrash] 两条路。
+     */
+    suspend fun moveSessionToTrash(sessionId: String): ManoteResult<Unit> =
         writeSerializer.withWriteLock {
             database.withTransaction {
-                sessionDao.findById(sessionId)
-                    ?: return@withTransaction ManoteResult.Failure(ManoteError.SESSION_NOT_FOUND)
-
-                sessionResultDao.deleteBySession(sessionId)
-                sessionDao.deleteById(sessionId)
+                val now = clock()
+                if (sessionDao.moveToTrash(sessionId, deletedAt = now, updatedAt = now) == 0) {
+                    return@withTransaction ManoteResult.Failure(ManoteError.SESSION_NOT_FOUND)
+                }
                 ManoteResult.Success(Unit)
             }
         }
+
+    /**
+     * 从回收站还原整场。
+     *
+     * 还原会重新占用一个在场名额，因此这里复查 1,000 场上限：满额时明确失败，
+     * 而不是先把它放回来再让下一次记一场撞上限。
+     */
+    suspend fun restoreSession(sessionId: String): ManoteResult<Unit> =
+        writeSerializer.withWriteLock {
+            database.withTransaction {
+                if (sessionDao.count() >= SessionRules.MAX_SESSIONS) {
+                    return@withTransaction ManoteResult.Failure(ManoteError.SESSION_LIMIT_REACHED)
+                }
+                if (sessionDao.restoreFromTrash(sessionId, updatedAt = clock()) == 0) {
+                    return@withTransaction ManoteResult.Failure(ManoteError.SESSION_NOT_FOUND)
+                }
+                ManoteResult.Success(Unit)
+            }
+        }
+
+    /** 从回收站彻底删除一场：清掉结果行再删场次，之后无法再还原。 */
+    suspend fun purgeSession(sessionId: String): ManoteResult<Unit> =
+        writeSerializer.withWriteLock {
+            database.withTransaction {
+                if (sessionDao.deleteFromTrashById(sessionId) == 0) {
+                    return@withTransaction ManoteResult.Failure(ManoteError.SESSION_NOT_FOUND)
+                }
+                sessionResultDao.deleteBySession(sessionId)
+                ManoteResult.Success(Unit)
+            }
+        }
+
+    /** 清空回收站，返回被彻底删除的场次数。 */
+    suspend fun emptyTrash(): ManoteResult<Int> =
+        writeSerializer.withWriteLock {
+            database.withTransaction { ManoteResult.Success(purgeTrashWhere(sessionDao.findTrashedIds())) }
+        }
+
+    /**
+     * 清理移入回收站超过 [retentionMillis] 的场次，返回清掉的场次数。
+     * 由应用启动时调用一次，保证回收站不会无限增长。
+     */
+    suspend fun purgeExpiredTrash(retentionMillis: Long = TRASH_RETENTION_MILLIS): Int =
+        writeSerializer.withWriteLock {
+            database.withTransaction {
+                purgeTrashWhere(sessionDao.findTrashedIdsBefore(clock() - retentionMillis))
+            }
+        }
+
+    /** 结果行先删、场次后删：顺序由外键决定，且必须在同一个事务里完成。 */
+    private suspend fun purgeTrashWhere(ids: List<String>): Int {
+        ids.forEach { sessionResultDao.deleteBySession(it) }
+        ids.forEach { sessionDao.deleteById(it) }
+        return ids.size
+    }
 
     /** 读取场次详情；只读，不参与写串行。 */
     suspend fun getSessionDetail(sessionId: String): ManoteResult<SessionDetail> {
@@ -287,6 +353,18 @@ class SessionRepository(
         sessionDao.observeByPlayerWithResults(playerId)
 
     /**
+     * 订阅回收站里的场次及其结果，按移入时间倒序（规格 3.3）。
+     * 与 [observeSessions] 互补：两者互不重叠，加起来才是库里的全部行。
+     */
+    fun observeTrash(): Flow<List<SessionWithResults>> = sessionDao.observeTrashWithResults()
+
+    /** 回收站里的场次数，用于「我的」页上的入口摘要。 */
+    suspend fun trashCount(): Int = sessionDao.trashCount()
+
+    /** 订阅回收站场次数，供「我的」页上的入口摘要实时刷新。 */
+    fun observeTrashCount(): Flow<Int> = sessionDao.observeTrashCount()
+
+    /**
      * 座位必须是 0～3 中互不相同的一个集合（1～4 个、必含 seat 0），
      * 且同一场里四个 playerId 互不相同。
      */
@@ -308,4 +386,14 @@ class SessionRepository(
                 .takeIf { it.size == ids.toSet().size }
                 ?.associateBy { it.id }
         }
+
+    companion object {
+        /**
+         * 回收站保留时长：30 天。
+         *
+         * 回收站是一个「刚删错、还来得及」的缓冲，不是一个归档区；
+         * 超过这个时间的记录在下次启动时被清掉，免得它无限增长。
+         */
+        const val TRASH_RETENTION_MILLIS: Long = 30L * 24L * 60L * 60L * 1000L
+    }
 }

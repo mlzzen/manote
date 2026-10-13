@@ -21,12 +21,20 @@ class ManoteApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // 桌面快捷方式「记一场」：每次启动刷新一次，保证升级、换变体后依然存在。
+        ManoteShortcuts.installRecordSessionShortcut(this)
+
         applicationScope.launch {
             val result = container.playerRepository.ensureSelfPlayer()
             if (result is ManoteResult.Failure) {
                 // 只记录技术错误码，不输出昵称、金额等业务数据（规格 5.2）。
                 Log.e(TAG, "首次启动创建本人档案失败，错误码=${result.error}")
             }
+        }
+
+        applicationScope.launch {
+            // 回收站只保留 30 天：每次启动顺手清一次，避免它无限增长。
+            runCatching { container.sessionRepository.purgeExpiredTrash() }
         }
     }
 

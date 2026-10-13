@@ -12,6 +12,7 @@ import com.manote.app.data.repository.BackupRepository
 import com.manote.app.data.repository.BackupSummary
 import com.manote.app.data.repository.DataCounts
 import com.manote.app.data.repository.PlayerRepository
+import com.manote.app.data.repository.SessionRepository
 import com.manote.app.domain.ManoteResult
 import com.manote.app.ui.model.messageRes
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -38,6 +39,8 @@ data class SettingsUiState(
     val working: Boolean = false,
     /** 非空表示有一份已通过校验、等待用户确认覆盖的备份。 */
     val pendingImport: BackupSummary? = null,
+    /** 回收站里的场次数；为 0 时「我的」页照常显示回收站入口，只是说一句它是空的。 */
+    val trashCount: Int = 0,
 )
 
 /** 「我的」页的一次性事件。 */
@@ -69,6 +72,8 @@ class SettingsViewModel(
     private val playerRepository: PlayerRepository,
     private val backupRepository: BackupRepository,
     private val fileStore: BackupFileStore,
+    /** 只为回收站入口上那个场次数而订阅；本页不读其它场次数据。 */
+    private val sessionRepository: SessionRepository,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
 
@@ -93,8 +98,9 @@ class SettingsViewModel(
 
     val uiState: StateFlow<SettingsUiState> = combine(
         playerRepository.observeSelf(),
+        sessionRepository.observeTrashCount(),
         flags,
-    ) { self, current ->
+    ) { self, trashCount, current ->
         SettingsUiState(
             loading = false,
             selfNickname = self?.nickname,
@@ -103,6 +109,7 @@ class SettingsViewModel(
             counts = current.counts,
             working = current.working,
             pendingImport = current.pendingImport,
+            trashCount = trashCount,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -222,8 +229,9 @@ class SettingsViewModel(
         }
     }
 
-    private fun emit(event: SettingsEvent) {
-        _events.tryEmit(event)
+    private suspend fun emit(event: SettingsEvent) {
+        // 挂起式发送：buffer 满时排队而不是静默丢弃提示。
+        _events.emit(event)
     }
 
     private companion object {

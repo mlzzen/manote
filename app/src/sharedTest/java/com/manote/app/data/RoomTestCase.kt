@@ -17,6 +17,7 @@ import com.manote.app.domain.SessionDuration
 import org.junit.After
 import org.junit.Before
 import org.junit.runner.RunWith
+import java.util.concurrent.Executors
 
 /**
  * Room 事务测试基类。
@@ -39,12 +40,29 @@ abstract class RoomTestCase {
 
     private var idCounter = 0
 
+    /**
+     * 自带的查询/事务线程池。
+     *
+     * 不用 Room 默认的 `ArchTaskExecutor` 那条全局 IO 线程：它在 `database.close()`
+     * 之后仍可能在后台跑一次失效通知，撞上已经关闭的连接就抛
+     * `IllegalStateException: Illegal connection pointer`。这条异常在普通 JUnit 测试里
+     * 只是被丢掉，但在同 JVM 里后跑的 Compose 测试中会被 kotlinx-coroutines 的
+     * TestScope 捕获成 `UncaughtExceptionsBeforeTest` —— 表现为**随机某个 UI 测试挂掉**。
+     * 自带线程池并在 `@After` 里关掉它，泄漏从根上就没有了。
+     */
+    private val queryExecutor = Executors.newSingleThreadExecutor { Thread(it, "manote-test-db-query") }
+    private val transactionExecutor = Executors.newSingleThreadExecutor { Thread(it, "manote-test-db-tx") }
+
     @Before
     fun createInMemoryDatabase() {
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
             ManoteDatabase::class.java,
-        ).allowMainThreadQueries().build()
+        )
+            .allowMainThreadQueries()
+            .setQueryExecutor(queryExecutor)
+            .setTransactionExecutor(transactionExecutor)
+            .build()
 
         // 三个仓库共享同一个写入闸门，与生产环境的装配方式一致。
         val writeSerializer = WriteSerializer()
@@ -73,6 +91,8 @@ abstract class RoomTestCase {
     @After
     fun closeInMemoryDatabase() {
         database.close()
+        queryExecutor.shutdownNow()
+        transactionExecutor.shutdownNow()
     }
 
     /** 建好本人与三位麻友，返回 [自己, 上家, 对家, 下家] 的 ID。 */
@@ -107,7 +127,11 @@ abstract class RoomTestCase {
     protected suspend fun resultsOf(sessionId: String) =
         database.sessionResultDao().findBySession(sessionId)
 
+    /** 在场场次数（不含回收站）。 */
     protected suspend fun sessionCount(): Int = database.sessionDao().count()
+
+    /** 回收站里的场次数。 */
+    protected suspend fun trashCount(): Int = database.sessionDao().trashCount()
 }
 
 /**

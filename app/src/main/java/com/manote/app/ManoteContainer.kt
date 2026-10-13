@@ -37,7 +37,13 @@ class ManoteContainer(context: Context) {
     /** 备份恢复成功后用于通知已打开的编辑表单作废（规格 2.3、T24）。 */
     val dataReset: DataResetSignal get() = dataResetSignal
 
-    val playerRepository: PlayerRepository = PlayerRepository(database, writeSerializer)
+    // 本人默认昵称随界面语言：中文设备是「我」，英文设备是 "Me"。
+    // 昵称在创建时落库，因此这里注入一次文案即可，不需要在读取处再翻译。
+    val playerRepository: PlayerRepository = PlayerRepository(
+        database = database,
+        writeSerializer = writeSerializer,
+        defaultSelfNickname = context.getString(R.string.default_self_nickname),
+    )
 
     val sessionRepository: SessionRepository = SessionRepository(database, writeSerializer)
 

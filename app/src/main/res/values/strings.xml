@@ -2,6 +2,10 @@
 <resources>
     <string name="app_name">麻记</string>
 
+    <!-- 桌面快捷方式：长按图标直接进入「记一场」 -->
+    <string name="shortcut_record_short">记一场</string>
+    <string name="shortcut_record_long">记一场新的麻将局</string>
+
     <!-- 通用动作 -->
     <string name="action_back">返回</string>
     <string name="action_cancel">取消</string>
@@ -20,6 +24,8 @@
     <!-- 顶栏上的今天：日期 · 星期 -->
     <string name="common_today_format">%1$s · %2$s</string>
     <string name="stat_average">场均</string>
+    <!-- 新建本人档案时的默认昵称，随界面语言 -->
+    <string name="default_self_nickname">我</string>
     <!-- 单场极值：首页战绩概览与牌友详情共用同一组标签 -->
     <string name="stat_best_win">单场赢最多</string>
     <string name="stat_worst_loss">单场输最多</string>
@@ -107,8 +113,25 @@
     <string name="detail_action_edit">修改</string>
     <string name="detail_action_delete">删除</string>
     <string name="detail_delete_title">删除这一场？</string>
-    <string name="detail_delete_message">本场已记录的结果会一并移除，本人与牌友的统计会立即重新计算；牌友档案会保留。删除后无法恢复。</string>
+    <string name="detail_delete_message">本场会移入回收站：它立刻从场次列表、统计与牌友战绩里消失，牌友档案保留。随时可以在「回收站」里还原，或在那里彻底删除。</string>
     <string name="detail_delete_confirm">删除</string>
+
+    <!-- 回收站 -->
+    <string name="bin_title">回收站</string>
+    <string name="bin_retention_note">回收站里的场次不参与任何统计；超过 30 天会在下次启动时自动清除。</string>
+    <string name="bin_empty_title">回收站是空的</string>
+    <string name="bin_empty_desc">在场次详情里删除的场次会先放到这里，可以随时还原。</string>
+    <string name="bin_restore_action">还原</string>
+    <string name="bin_purge_action">彻底删除</string>
+    <string name="bin_empty_action">清空回收站</string>
+    <string name="bin_purge_confirm_title">彻底删除这一场？</string>
+    <string name="bin_purge_confirm_message">这一场及其结果将被永久删除，之后无法还原。</string>
+    <string name="bin_empty_confirm_title">清空回收站？</string>
+    <string name="bin_empty_confirm_message">回收站里的 %1$d 场将被永久删除，之后无法还原。</string>
+    <string name="bin_restore_success">已还原，可以在场次列表里看到它</string>
+    <string name="bin_purge_success">已彻底删除</string>
+    <string name="bin_empty_success_format">已彻底删除 %1$d 场</string>
+    <string name="bin_purge_failed">删除失败，可以重试</string>
 
     <!-- 记一场 -->
     <string name="session_played_at">结束时间</string>
@@ -123,7 +146,7 @@
     <string name="session_pick_friend">点此选择牌友</string>
     <string name="session_seat_not_recorded">%1$s · 不记录本场</string>
     <string name="session_title_label">标题</string>
-    <string name="session_title_hint">留空则为「麻将对局」</string>
+    <string name="session_title_hint">留空使用默认名称</string>
     <string name="session_duration_label">时长</string>
     <string name="session_duration_hint">留空按 4 小时计</string>
     <string name="session_duration_unit">小时</string>
@@ -237,6 +260,8 @@
     <string name="settings_data_desc">备份是明文 JSON 文件，包含全部场次、牌友与本人档案；恢复会整体覆盖本机数据，请妥善保管。</string>
     <string name="settings_data_current_format">本机现有 %1$d 场、%2$d 位牌友</string>
     <string name="settings_data_working">正在处理…</string>
+    <string name="settings_recycle_bin_desc">回收站里有 %1$d 场；删掉的场次会先放在那里，可以还原或彻底删除。</string>
+    <string name="settings_recycle_bin_action">打开回收站</string>
     <string name="settings_export_action">导出备份</string>
     <string name="settings_import_action">导入备份</string>
     <string name="settings_export_success">备份已导出</string>

@@ -206,7 +206,7 @@ class SessionEditTest : RoomTestCase() {
     fun editAfterDeleteIsRejectedInsteadOfRecreating() = runBlocking {
         // T19：场次已删除后保存 → 拒绝并提示重新加载，不重建场次
         givenSavedSession()
-        sessionRepository.deleteSession("session-1").value()
+        sessionRepository.moveSessionToTrash("session-1").value()
 
         val error = sessionRepository.updateSession(
             editOf(listOf(6000L, -2000L, -2000L, -2000L), expectedRevision = 1L),
@@ -256,26 +256,39 @@ class SessionEditTest : RoomTestCase() {
     }
 
     @Test
-    fun deleteRemovesResultsButKeepsPlayers() = runBlocking {
-        // T11：确认后统计移除且无孤立结果，Player 保留
+    fun deleteMovesSessionToTrashAndKeepsPlayers() = runBlocking {
+        // T11：确认后统计移除；结果行与 Player 都保留，随时可以还原（规格 3.3）
         val players = givenSavedSession()
 
-        sessionRepository.deleteSession("session-1").value()
+        sessionRepository.moveSessionToTrash("session-1").value()
 
+        // 在场场次清零、统计清零，但结果行还在回收站里（软删除的关键差别）
         assertEquals(0, sessionCount())
-        assertEquals(0, resultsOf("session-1").size)
+        assertEquals(1, trashCount())
+        assertEquals(4, resultsOf("session-1").size)
         assertEquals(0, playerRepository.statistics(players[0]).sessionCount)
+        assertEquals(0L, playerRepository.statistics(players[0]).netMinor)
         assertNotNull(playerRepository.findById(players[1]))
         // 档案并未被归档，仍可用于新建场次
         assertNull(playerRepository.findById(players[1])!!.archivedAt)
+
+        // 还原后一切回到删除前的样子
+        sessionRepository.restoreSession("session-1").value()
+        assertEquals(1, sessionCount())
+        assertEquals(0, trashCount())
+        assertEquals(3000L, playerRepository.statistics(players[0]).netMinor)
     }
 
     @Test
     fun deleteUnknownSessionFails() = runBlocking {
         givenSelfAndThreeFriends()
 
-        assertEquals(ManoteError.SESSION_NOT_FOUND, sessionRepository.deleteSession("session-1").error())
+        assertEquals(
+            ManoteError.SESSION_NOT_FOUND,
+            sessionRepository.moveSessionToTrash("session-1").error(),
+        )
         assertEquals(0, sessionCount())
+        assertEquals(0, trashCount())
     }
 
     @Test

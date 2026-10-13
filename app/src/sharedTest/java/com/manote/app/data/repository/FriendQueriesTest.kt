@@ -197,7 +197,7 @@ class FriendQueriesTest : RoomTestCase() {
         assertEquals("本人本场 +30", 3000L, aggregateOf(self)!!.netMinor)
         assertEquals("麻友1 本场 -10", -1000L, aggregateOf(friend1)!!.netMinor)
 
-        sessionRepository.deleteSession("s-1").value()
+        sessionRepository.moveSessionToTrash("s-1").value()
 
         assertNull("删完后该麻友不应再有聚合行", aggregateOf(friend1))
         assertEquals(emptyList<String>(), sessionRepository.observeSessionsByPlayer(friend1).first().map { it.session.id })

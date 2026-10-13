@@ -7,6 +7,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -18,6 +23,7 @@ import androidx.navigation.navArgument
 import com.manote.app.ui.friends.FriendDetailScreen
 import com.manote.app.ui.friends.FriendsScreen
 import com.manote.app.ui.home.HomeScreen
+import com.manote.app.ui.recyclebin.RecycleBinScreen
 import com.manote.app.ui.session.SessionDetailScreen
 import com.manote.app.ui.session.SessionEditMode
 import com.manote.app.ui.session.SessionEditScreen
@@ -41,7 +47,23 @@ import com.manote.app.ui.theme.ManoteMotion
 fun ManoteNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
+    /**
+     * 由桌面快捷方式唤醒时为 true：起始页落在「记一场」而不是首页。
+     *
+     * 只在首次组合时消费一次（下面那个 [rememberSaveable] 的闸门），
+     * 否则转屏重建会再入栈一层表单。
+     */
+    startWithRecordSession: Boolean = false,
 ) {
+    // 快捷方式只消费一次：转屏、进程重建都靠这个已保存的布尔值挡住重复入栈。
+    var shortcutConsumed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(startWithRecordSession) {
+        if (startWithRecordSession && !shortcutConsumed) {
+            shortcutConsumed = true
+            navController.navigateTo(ManoteRoutes.SESSION_NEW)
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = ManoteRoutes.START,
@@ -107,9 +129,14 @@ fun ManoteNavHost(
             SettingsScreen(
                 onSelectTab = navController::switchTab,
                 onRecordSession = { navController.navigateTo(ManoteRoutes.SESSION_NEW) },
+                onOpenRecycleBin = { navController.navigateTo(ManoteRoutes.BIN) },
                 // 规格 6.1：导入成功后清除旧页面草稿、回到首页，统计从新库刷新
                 onImportCompleted = { navController.popBackTo(ManoteRoutes.HOME) },
             )
+        }
+
+        composable(ManoteRoutes.BIN) {
+            RecycleBinScreen(onNavigateBack = { navController.navigateUp() })
         }
 
         composable(ManoteRoutes.SESSION_NEW) {

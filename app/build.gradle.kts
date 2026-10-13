@@ -212,6 +212,11 @@ dependencies {
     testImplementation(libs.androidx.junit)
     testImplementation(libs.androidx.test.core.ktx)
     testImplementation(libs.androidx.test.runner)
+    // Compose 组件与页面可以在 JVM 上通过 Robolectric 渲染并断言（规格 8 的补充）：
+    // 真机仪器测试在开发环境跑不起来，UI 层至少要有能在本机执行的回归网。
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.androidx.ui.test.manifest)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.junit)

@@ -305,7 +305,7 @@ class SessionEditViewModel(
         if (state.saving || state.loadFailed) return
         val error = preflight(state)
         if (error != null) {
-            emit(SessionEditEvent.Failed(error))
+            viewModelScope.launch { emit(SessionEditEvent.Failed(error)) }
             return
         }
         _uiState.update { it.copy(previewVisible = true) }
@@ -323,7 +323,7 @@ class SessionEditViewModel(
         val error = preflight(state)
         if (error != null) {
             _uiState.update { it.copy(previewVisible = false) }
-            emit(SessionEditEvent.Failed(error))
+            viewModelScope.launch { emit(SessionEditEvent.Failed(error)) }
             return
         }
 
@@ -338,7 +338,9 @@ class SessionEditViewModel(
         }
         if (inputs.isEmpty()) {
             _uiState.update { it.copy(previewVisible = false) }
-            emit(SessionEditEvent.Failed(R.string.error_invalid_seat_set))
+            viewModelScope.launch {
+                emit(SessionEditEvent.Failed(R.string.error_invalid_seat_set))
+            }
             return
         }
 
@@ -409,7 +411,7 @@ class SessionEditViewModel(
      * 整库被替换：草稿里保存的 playerId、场次 ID 都属于导入前的库，
      * 留着只会让用户填完才发现写不进去，因此立即清空并让界面离开本页（规格 2.3、T24）。
      */
-    private fun onDataReplaced() {
+    private suspend fun onDataReplaced() {
         clearDraft()
         emit(SessionEditEvent.Invalidated)
     }
@@ -735,8 +737,9 @@ class SessionEditViewModel(
         is SessionEditMode.Edit -> "edit_${current.sessionId}_$base"
     }
 
-    private fun emit(event: SessionEditEvent) {
-        _events.tryEmit(event)
+    private suspend fun emit(event: SessionEditEvent) {
+        // 挂起式发送：buffer 满时排队而不是静默丢弃提示。
+        _events.emit(event)
     }
 
     private data class SeatFormValue(val isWin: Boolean, val amountText: String)

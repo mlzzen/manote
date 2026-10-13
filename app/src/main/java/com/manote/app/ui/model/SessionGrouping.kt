@@ -3,6 +3,7 @@ package com.manote.app.ui.model
 import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
+import java.util.Locale
 
 /** 场次列表按月分组后的一组。 */
 data class SessionMonthGroup(
@@ -27,12 +28,16 @@ data class SessionMonthGroup(
  *
  * 月份按设备时区判定，与显示时间用同一个时区，
  * 不会出现列表显示 10 月却被分到 9 月的情况。
+ *
+ * [locale] 只影响分组标题的写法（详见 [UiText.monthLabel]），
+ * 默认取设备语言；测试要钉死标题文案时显式传入。
  */
 object SessionGrouping {
 
     fun byMonth(
         rows: List<SessionRowUi>,
         zoneId: ZoneId = ZoneId.systemDefault(),
+        locale: Locale = Locale.getDefault(),
     ): List<SessionMonthGroup> {
         // LinkedHashMap 保留「首次出现的月份」的顺序，因此组本身也是 playedAt 由近到远。
         val grouped = LinkedHashMap<YearMonth, MutableList<SessionRowUi>>()
@@ -42,7 +47,7 @@ object SessionGrouping {
         return grouped.map { (yearMonth, monthRows) ->
             SessionMonthGroup(
                 yearMonth = yearMonth,
-                label = UiText.monthLabel(yearMonth),
+                label = UiText.monthLabel(yearMonth, locale),
                 rows = monthRows.toList(),
             )
         }

@@ -8,10 +8,12 @@ import com.manote.app.ui.model.SessionFiltering
 import com.manote.app.ui.model.SessionGrouping
 import com.manote.app.ui.model.SessionMonthGroup
 import com.manote.app.ui.model.toRowUi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
 /** 场次列表状态。 */
@@ -63,7 +65,11 @@ class SessionsViewModel(
             monthGroups = SessionGrouping.byMonth(visible),
             hasAny = rows.isNotEmpty(),
         )
-    }.stateIn(
+    }
+        // 过滤、搜索与按月分组都是全量遍历，每次数据变更都会跑一遍；
+        // 放到 Default 线程，键盘输入时才不会掉帧。
+        .flowOn(Dispatchers.Default)
+        .stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
         initialValue = SessionsUiState(),

@@ -14,8 +14,10 @@ import com.manote.app.domain.Trend
 import com.manote.app.domain.TrendPoint
 import com.manote.app.ui.model.SessionRowUi
 import com.manote.app.ui.model.toRowUi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -73,7 +75,11 @@ class HomeViewModel(
                     extremes = SessionExtremes.of(dated),
                     recentSessions = rows.take(RECENT_LIMIT),
                 )
-            }.stateIn(
+            }
+            // 统计、走势、连输连赢都在这里全量遍历，量级随场次增长；
+            // 放到 Default 线程算，别让它和主线程的渲染抢同一帧。
+            .flowOn(Dispatchers.Default)
+            .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
                 initialValue = HomeUiState(),

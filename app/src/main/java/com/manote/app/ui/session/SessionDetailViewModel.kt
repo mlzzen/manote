@@ -56,7 +56,8 @@ sealed interface SessionDetailEvent {
  * 排名与结清建议都在订阅里实时重算（规格 2.5：根据当前四人结果实时计算），
  * 因此金额被修改后名次与结清会立刻跟着变。
  *
- * 删除经 Repository 的事务执行：先删四条结果再删场次，保留麻友档案（规格 2.3、5.1）。
+ * 删除是**软删除**：只把这一场移入回收站，结果行与麻友档案都保留，
+ * 随时可以在「回收站」里还原（规格 3.3）。
  * CSV 导出只读：取当前场次的原始结果生成文本，再交给系统文件选择器写盘（规格 6.2）。
  */
 class SessionDetailViewModel(
@@ -108,7 +109,7 @@ class SessionDetailViewModel(
         if (flags.value.deleting) return
         viewModelScope.launch {
             flags.update { it.copy(deleting = true) }
-            when (val result = sessionRepository.deleteSession(sessionId)) {
+            when (val result = sessionRepository.moveSessionToTrash(sessionId)) {
                 is ManoteResult.Success -> {
                     flags.update { it.copy(deleteRequested = false) }
                     emit(SessionDetailEvent.Deleted)
@@ -179,8 +180,9 @@ class SessionDetailViewModel(
         }
     }
 
-    private fun emit(event: SessionDetailEvent) {
-        _events.tryEmit(event)
+    private suspend fun emit(event: SessionDetailEvent) {
+        // 挂起式发送：buffer 满时排队而不是静默丢弃提示。
+        _events.emit(event)
     }
 
     private companion object {

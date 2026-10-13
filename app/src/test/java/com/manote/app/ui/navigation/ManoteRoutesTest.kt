@@ -23,10 +23,19 @@ class ManoteRoutesTest {
             ManoteRoutes.SESSION_DETAIL,
             ManoteRoutes.SESSION_EDIT,
             ManoteRoutes.FRIEND_DETAIL,
+            ManoteRoutes.BIN,
         )
 
         assertEquals("登记表必须覆盖全部目的地", expected, ManoteRoutes.all.toSet())
         assertEquals("登记表不能包含重复目的地", ManoteRoutes.all.size, ManoteRoutes.all.toSet().size)
+        // 转场名单引用的是同一份路由，漏登记会让某个子页面拿不到「从右侧滑入」
+        assertTrue(
+            "子页面路由必须都已登记：${ManoteRoutes.subRoutes - ManoteRoutes.all.toSet()}",
+            ManoteRoutes.all.toSet().containsAll(ManoteRoutes.subRoutes),
+        )
+        // 回收站是子页面（居中标题 + 返回键），而不是页签
+        assertTrue(ManoteRoutes.BIN in ManoteRoutes.subRoutes)
+        assertTrue(ManoteRoutes.BIN !in ManoteRoutes.tabRoutes)
     }
 
     @Test

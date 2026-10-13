@@ -61,6 +61,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onSelectTab: (ManoteTab) -> Unit,
     onRecordSession: () -> Unit,
+    onOpenRecycleBin: () -> Unit,
     onImportCompleted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -69,6 +70,7 @@ fun SettingsScreen(
             playerRepository = container.playerRepository,
             backupRepository = container.backupRepository,
             fileStore = container.backupFileStore,
+            sessionRepository = container.sessionRepository,
         )
     }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -201,6 +203,23 @@ fun SettingsScreen(
                         },
                     )
                 }
+            }
+
+            // 回收站：删除是软删除，被删的场次先落到这里。入口放在「数据管理」之后，
+            // 与导入/导出同属「对数据动手」的一组，但单独成卡——它是一条会离开本页的入口。
+            ManoteCard {
+                ManoteSectionHeader(title = stringResource(R.string.bin_title))
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = stringResource(R.string.settings_recycle_bin_desc, state.trashCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                ManoteTextAction(
+                    label = stringResource(R.string.settings_recycle_bin_action),
+                    onClick = onOpenRecycleBin,
+                )
             }
 
             ManoteCard {

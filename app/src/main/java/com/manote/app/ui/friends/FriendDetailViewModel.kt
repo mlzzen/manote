@@ -11,6 +11,7 @@ import com.manote.app.ui.model.friendBadges
 import com.manote.app.ui.model.messageRes
 import com.manote.app.ui.model.opponentMatches
 import com.manote.app.ui.model.toDetailUi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -84,7 +86,10 @@ class FriendDetailViewModel(
             archiveConfirmVisible = current.archiveConfirmVisible,
             working = current.working,
         )
-    }.stateIn(
+    }
+        // 标签要为这位牌友横比全部同场账，是全量遍历；放到 Default 线程执行。
+        .flowOn(Dispatchers.Default)
+        .stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
         initialValue = FriendDetailUiState(),
@@ -103,7 +108,7 @@ class FriendDetailViewModel(
                 is ManoteResult.Success -> flags.update { it.copy(editVisible = false, working = false) }
                 is ManoteResult.Failure -> {
                     flags.update { it.copy(working = false) }
-                    _events.tryEmit(FriendDetailEvent.Failed(result.error.messageRes()))
+                    _events.emit(FriendDetailEvent.Failed(result.error.messageRes()))
                 }
             }
         }
@@ -133,7 +138,7 @@ class FriendDetailViewModel(
             }
             flags.update { it.copy(archiveConfirmVisible = false, working = false) }
             if (result is ManoteResult.Failure) {
-                _events.tryEmit(FriendDetailEvent.Failed(result.error.messageRes()))
+                _events.emit(FriendDetailEvent.Failed(result.error.messageRes()))
             }
         }
     }

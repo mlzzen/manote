@@ -25,6 +25,14 @@ class PlayerRepository(
     private val writeSerializer: WriteSerializer,
     private val clock: () -> Long = System::currentTimeMillis,
     private val idFactory: () -> String = { UUID.randomUUID().toString() },
+    /**
+     * 新建本人档案时用的默认昵称。
+     *
+     * 由容器注入当前语言的文案——英文设备上新建的本人档案叫 "Me" 而不是「我」。
+     * 默认值仍是 [SessionRules.DEFAULT_SELF_NICKNAME]，因此不关心语言的调用方
+     * （测试、纯 JVM 场景）拿到的还是同一个确定值。
+     */
+    private val defaultSelfNickname: String = SessionRules.DEFAULT_SELF_NICKNAME,
 ) {
 
     private val playerDao = database.playerDao()
@@ -43,7 +51,7 @@ class PlayerRepository(
                     val self = PlayerEntity(
                         id = idFactory(),
                         kind = PlayerKind.SELF,
-                        nickname = SessionRules.DEFAULT_SELF_NICKNAME,
+                        nickname = defaultSelfNickname,
                         note = "",
                         archivedAt = null,
                         createdAt = now,

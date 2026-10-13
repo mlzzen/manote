@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  English UI. The Chinese strings in res/values are the source of truth for meaning;
+  this file mirrors them one-for-one for devices set to a non-Chinese locale.
+
+  Placeholder numbering must stay identical to the default file (%1$s, %1$d, %2$s …).
+  Apostrophes are escaped as \' — Android treats an unescaped one as a quote.
+-->
+<resources>
+    <string name="app_name">Manote</string>
+
+    <!-- Home screen shortcut: jump straight into "Record a session" -->
+    <string name="shortcut_record_short">Record a session</string>
+    <string name="shortcut_record_long">Record a new mahjong session</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_confirm">OK</string>
+    <string name="action_view_all">View all</string>
+    <string name="action_record_session">Record</string>
+    <string name="action_more">More</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_save">Save</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_unarchive">Unarchive</string>
+
+    <!-- Reused text -->
+    <string name="common_amount_unit">CNY</string>
+    <string name="common_unavailable">—</string>
+    <!-- Today in the top bar: date · weekday -->
+    <string name="common_today_format">%1$s · %2$s</string>
+    <string name="stat_average">Avg</string>
+    <!-- Default name for your own profile; follows the UI language -->
+    <string name="default_self_nickname">Me</string>
+    <!-- Single-session extremes: shared by the home summary and the friend detail page -->
+    <string name="stat_best_win">Best win</string>
+    <string name="stat_worst_loss">Worst loss</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_sessions">Sessions</string>
+    <string name="nav_friends">Players</string>
+    <string name="nav_settings">Me</string>
+
+    <!-- Seats -->
+    <string name="seat_self">Me</string>
+    <string name="seat_upper">Upper</string>
+    <string name="seat_opposite">Opposite</string>
+    <string name="seat_lower">Lower</string>
+
+    <!-- Win / loss -->
+    <string name="result_win">Win</string>
+    <string name="result_loss">Loss</string>
+    <string name="result_draw">Even</string>
+
+    <!-- Time of day -->
+    <string name="time_slot_morning">Morning</string>
+    <string name="time_slot_afternoon">Afternoon</string>
+    <string name="time_slot_evening">Evening</string>
+
+    <!-- Home -->
+    <string name="home_overview_title">Record overview</string>
+    <string name="home_overview_empty">No sessions to summarize yet</string>
+    <!-- Readout pills on the hero card -->
+    <string name="home_hero_sessions_format">%1$d sessions</string>
+    <string name="home_stat_net">Net result</string>
+    <string name="home_stat_win_rate">Win rate</string>
+    <string name="home_stat_net_wins">Net wins</string>
+    <string name="home_slot_title">By time of day</string>
+    <string name="home_slot_count">Sessions</string>
+    <string name="home_slot_count_format">%1$d</string>
+    <string name="home_trend_title">Cumulative net curve</string>
+    <string name="home_trend_empty">Record two sessions to see the trend.</string>
+    <string name="home_trend_note">The vertical axis is split at 0: above the line means cumulative winnings, below means cumulative losses.</string>
+    <string name="home_streak_title">Loss / win streaks</string>
+    <string name="home_streak_current_win">Current win streak</string>
+    <string name="home_streak_current_loss">Current losing streak</string>
+    <string name="home_streak_longest_win">Longest win streak</string>
+    <string name="home_streak_longest_loss">Longest losing streak</string>
+    <string name="home_streak_best_day">Best day</string>
+    <string name="home_streak_worst_day">Worst day</string>
+    <string name="home_streak_count_format">%1$d sessions</string>
+    <string name="trend_latest">Latest</string>
+    <string name="trend_highest">Range high</string>
+    <string name="trend_lowest">Range low</string>
+    <string name="home_recent_title">Recent sessions</string>
+    <string name="home_empty_title">No records yet</string>
+    <string name="home_empty_desc">After a game, tap the button below to record it. Your stats show up here right away.</string>
+
+    <!-- Session list -->
+    <string name="sessions_filter_all">All</string>
+    <string name="sessions_filter_this_month">This month</string>
+    <string name="sessions_filter_last_month">Last month</string>
+    <string name="sessions_empty_title">No sessions here yet</string>
+    <string name="sessions_empty_desc">Try another filter, or record a new session.</string>
+    <string name="sessions_search_hint">Search by title or player name at the time</string>
+    <string name="sessions_search_empty_title">No matching sessions</string>
+    <string name="sessions_search_empty_desc">Try another keyword, or clear the search to see everything.</string>
+    <string name="sessions_month_count_format">%1$d</string>
+    <string name="sessions_month_self_format">Mine %1$s</string>
+    <!-- List header: my net total across the sessions below, under the current filter and search -->
+    <string name="sessions_hero_label">Filtered net result</string>
+
+    <!-- Session detail -->
+    <string name="detail_title">Session detail</string>
+    <string name="detail_rank_format">No. %1$d</string>
+    <!-- Hero card on the detail page: my net result for this session -->
+    <string name="detail_self_net_label">My net result</string>
+    <string name="detail_settlement_title">Suggested settlement</string>
+    <string name="detail_settlement_hint">This is arithmetic only; it does not mean anyone has paid.</string>
+    <string name="detail_no_settlement">Nothing to settle</string>
+    <string name="detail_transfer_format">%1$s pays %2$s</string>
+    <string name="detail_unbalanced_format">This session totals %1$s, not 0.00, so no settlement can be suggested.</string>
+    <string name="detail_partial_seats_format">Only %1$d seats were recorded this session; the rest were left blank.</string>
+    <string name="detail_note_label">Note</string>
+    <string name="detail_duration_format">%1$s h</string>
+    <string name="detail_missing_title">This session no longer exists</string>
+    <string name="detail_missing_desc">It may have been deleted.</string>
+    <string name="detail_action_edit">Edit</string>
+    <string name="detail_action_delete">Delete</string>
+    <string name="detail_delete_title">Delete this session?</string>
+    <string name="detail_delete_message">It moves to the recycle bin: it disappears from the session list, stats and player records right away, while player profiles stay. You can restore it or delete it for good from the bin at any time.</string>
+    <string name="detail_delete_confirm">Delete</string>
+
+    <!-- Recycle bin -->
+    <string name="bin_title">Recycle bin</string>
+    <string name="bin_retention_note">Sessions in the bin count toward nothing; after 30 days they are cleared automatically on the next launch.</string>
+    <string name="bin_empty_title">The recycle bin is empty</string>
+    <string name="bin_empty_desc">Sessions you delete from a detail page land here first, ready to restore.</string>
+    <string name="bin_restore_action">Restore</string>
+    <string name="bin_purge_action">Delete forever</string>
+    <string name="bin_empty_action">Empty bin</string>
+    <string name="bin_purge_confirm_title">Delete this session forever?</string>
+    <string name="bin_purge_confirm_message">This session and its results will be permanently deleted and can never be restored.</string>
+    <string name="bin_empty_confirm_title">Empty the recycle bin?</string>
+    <string name="bin_empty_confirm_message">The %1$d sessions in the bin will be permanently deleted and can never be restored.</string>
+    <string name="bin_restore_success">Restored — it is back in the session list</string>
+    <string name="bin_purge_success">Deleted forever</string>
+    <string name="bin_empty_success_format">Deleted %1$d sessions forever</string>
+    <string name="bin_purge_failed">Could not delete. Try again</string>
+
+    <!-- Record a session -->
+    <string name="session_played_at">End time</string>
+    <string name="session_time_pick_title">Pick the end time</string>
+    <!-- Unit suffixes appended directly after the number in the wheel picker -->
+    <string name="session_time_unit_year">y</string>
+    <string name="session_time_unit_month">m</string>
+    <string name="session_time_unit_day">d</string>
+    <string name="session_time_unit_hour">h</string>
+    <string name="session_time_unit_minute">min</string>
+    <string name="session_amount_hint">Blank counts as 0</string>
+    <string name="session_pick_friend">Tap to pick a player</string>
+    <string name="session_seat_not_recorded">%1$s · not recorded</string>
+    <string name="session_title_label">Title</string>
+    <string name="session_title_hint">Blank uses a default name</string>
+    <string name="session_duration_label">Duration</string>
+    <string name="session_duration_hint">Blank counts as 4 hours</string>
+    <string name="session_duration_unit">h</string>
+    <!-- Shown when the duration is valid: 14:30 – 18:30 (Afternoon) -->
+    <string name="session_duration_slot_hint">%1$s (%2$s)</string>
+    <string name="session_note_label">Note</string>
+    <string name="session_note_hint">Optional, up to 100 characters</string>
+    <string name="session_total_label">Total</string>
+    <string name="session_total_ok">Total is 0.00.</string>
+    <string name="session_total_warning">Total is %1$s, not 0.00; you can save anyway or fix the amounts first.</string>
+    <string name="session_total_incomplete">Some amounts are invalid — check the fields marked in red.</string>
+    <string name="session_save">Save this session</string>
+    <string name="session_saving">Saving…</string>
+    <string name="session_preview_title">Confirm this session</string>
+    <string name="session_preview_continue">Confirm and save</string>
+    <string name="session_all_zero_confirm">Everyone recorded is at 0.00. Record it anyway?</string>
+    <string name="session_preview_unbalanced">Total is %1$s, not 0.00; saving only affects this session\'s stats.</string>
+    <string name="session_preview_partial_format">Only %1$d seats recorded; the rest will not be saved.</string>
+    <string name="session_discard_title">Discard this session?</string>
+    <string name="session_discard_message">The amounts and players you entered will not be saved.</string>
+    <string name="session_discard_confirm">Discard</string>
+    <string name="session_discard_stay">Keep editing</string>
+
+    <!-- Edit a session (reuses the record form) -->
+    <string name="session_edit_title">Edit session</string>
+    <string name="session_edit_roster_locked">Players and seats are fixed; you can change the time, title, note and the amounts of recorded seats. Blank amounts count as 0.</string>
+    <string name="session_edit_save">Save changes</string>
+    <string name="session_edit_stale">This session was changed or deleted. Go back and open it again.</string>
+
+    <!-- Player picker -->
+    <string name="friend_picker_title">Pick a player</string>
+    <string name="friend_picker_search_hint">Search by name or note</string>
+    <string name="friend_picker_empty">No matching players</string>
+    <string name="friend_picker_none">No players yet — create one first.</string>
+    <string name="friend_create_title">New player</string>
+    <string name="friend_nickname_label">Name</string>
+    <string name="friend_note_label">Note</string>
+    <string name="friend_note_hint">Optional, to tell players with the same name apart</string>
+    <string name="friend_duplicate_hint">A player with this name already exists; creating another keeps separate stats.</string>
+    <string name="friend_selected_elsewhere">Already in another seat</string>
+    <string name="friend_action_create">Create</string>
+    <string name="friend_id_short_format">ID %1$s</string>
+
+    <!-- Players page -->
+    <string name="friends_count_format">%1$d players</string>
+    <string name="friends_count_with_archived_format">%1$d players (%2$d archived)</string>
+    <string name="friends_empty_title">No players yet</string>
+    <string name="friends_empty_desc">You can create one while recording, or set them up here first.</string>
+    <string name="friends_add">Add player</string>
+    <string name="friends_search_hint">Search by name or note</string>
+    <string name="friends_include_archived">Include archived</string>
+    <string name="friends_archived_badge">Archived</string>
+    <string name="friends_worst_rival_badge">Nemesis</string>
+    <string name="friends_lucky_badge">Lucky charm</string>
+    <string name="friends_table_king_badge">Table king</string>
+    <string name="friends_help_action">Badge and sort help</string>
+    <string name="friends_help_title">Badge and sort help</string>
+    <string name="friends_help_badges_title">Badges (all require %1$d shared sessions)</string>
+    <string name="friends_help_worst_rival">Nemesis: the player against whom my average is lowest.</string>
+    <string name="friends_help_lucky">Lucky charm: the player against whom my average is highest.</string>
+    <string name="friends_help_table_king">Table king: the player with the highest average of their own, regardless of how I do against them.</string>
+    <string name="friends_help_archived">Archived: cannot be used in new sessions; past sessions and stats are kept.</string>
+    <string name="friends_help_stats">Average = that player\'s cumulative net result divided by sessions played; the net figure is the running total at the end of each row.</string>
+    <string name="friends_help_my_average">My average = my cumulative net result across sessions we shared divided by those sessions — the same number used for Nemesis / Lucky charm. It shows how I do against them, not how they do.</string>
+    <string name="friends_help_sort">In sorting, ↓ goes high to low and ↑ goes low to high; \"Average\" and \"Net\" describe the player, while \"My avg\" describes how I do against them. Players with no numbers to compare (never played, or never shared a session) always come last.</string>
+    <string name="friends_sort_action">Sort</string>
+    <string name="friends_sort_recent">Recently edited</string>
+    <string name="friends_sort_average_desc">Avg ↓</string>
+    <string name="friends_sort_average_asc">Avg ↑</string>
+    <string name="friends_sort_my_average_desc">My avg ↓</string>
+    <string name="friends_sort_my_average_asc">My avg ↑</string>
+    <string name="friends_sort_net_desc">Net ↓</string>
+    <string name="friends_sort_net_asc">Net ↑</string>
+    <string name="friends_average_label">Average</string>
+    <string name="friends_my_average_label">My avg</string>
+    <string name="friends_stat_format">%1$d</string>
+    <string name="friends_no_sessions">Not recorded yet</string>
+    <string name="friends_search_empty_title">No matching players</string>
+    <string name="friends_search_empty_desc">Try another keyword, or tick \"Include archived\".</string>
+
+    <!-- Player detail -->
+    <string name="friend_detail_title">Player detail</string>
+    <string name="friend_detail_missing_title">This player no longer exists</string>
+    <string name="friend_detail_missing_desc">It may have been deleted.</string>
+    <string name="friend_detail_archived_note">Archived: cannot be used in new sessions, but past sessions and stats are kept and you can unarchive at any time.</string>
+    <string name="friend_detail_stats_title">Cumulative record</string>
+    <string name="friend_detail_trend_title">Net trend</string>
+    <string name="friend_detail_trend_empty">Record two sessions to see the trend.</string>
+    <string name="friend_stat_win_amount">Total won</string>
+    <string name="friend_stat_loss_amount">Total lost</string>
+    <string name="friend_stat_net">Net result</string>
+    <string name="friend_stat_sessions">Sessions</string>
+    <string name="friend_stat_together_net">My net when we shared</string>
+    <string name="friend_stat_together_average">My average when we shared</string>
+    <string name="friend_stat_together_sessions_format">%1$d shared</string>
+    <string name="friend_detail_sessions_title">Session by session</string>
+    <string name="friend_detail_no_sessions">This player has not been in any session yet.</string>
+    <string name="friend_session_self_label">Me</string>
+    <string name="friend_edit_title">Edit player</string>
+    <string name="friend_archive_title">Archive this player?</string>
+    <string name="friend_archive_message">Archived players cannot be used in new sessions; past sessions, session records and stats are all kept, and you can unarchive at any time.</string>
+    <string name="friend_unarchive_title">Unarchive?</string>
+    <string name="friend_unarchive_message">After unarchiving, this player can be used in new sessions again.</string>
+
+    <!-- Me -->
+    <string name="settings_profile_title">My profile</string>
+    <string name="settings_version_format">Version %1$s</string>
+    <string name="settings_about_title">About</string>
+    <string name="settings_about_body">This app runs entirely offline: no network, no contacts or photo access. Backups and exports use the system file picker, so no storage permission is needed.</string>
+    <string name="settings_data_title">Data</string>
+    <string name="settings_data_desc">A backup is a plain JSON file holding every session, player and your profile; restoring replaces all local data, so keep it safe.</string>
+    <string name="settings_data_current_format">%1$d sessions, %2$d players on this device</string>
+    <string name="settings_data_working">Working…</string>
+    <string name="settings_recycle_bin_desc">%1$d in the recycle bin; deleted sessions sit there until you restore or delete them for good.</string>
+    <string name="settings_recycle_bin_action">Open recycle bin</string>
+    <string name="settings_export_action">Export backup</string>
+    <string name="settings_import_action">Import backup</string>
+    <string name="settings_export_success">Backup exported</string>
+    <string name="settings_export_failed">Export failed; nothing changed, you can try again</string>
+    <string name="settings_import_read_failed">Could not read the chosen file; you can try again</string>
+    <string name="settings_import_success">Backup imported; local data was fully replaced</string>
+    <string name="settings_import_failed">Import failed; nothing changed, you can try again</string>
+    <string name="settings_import_confirm_title">Overwrite local data with the backup?</string>
+    <string name="settings_import_confirm_current_format">On this device: %1$d sessions, %2$d players</string>
+    <string name="settings_import_confirm_incoming_format">In the backup: %1$d sessions, %2$d players</string>
+    <string name="settings_import_confirm_self_format">Your name: %1$s</string>
+    <string name="settings_import_confirm_warning">Importing replaces all local data and cannot be undone; any open edit form becomes invalid afterwards.</string>
+    <string name="settings_import_confirm_action">Replace and import</string>
+    <string name="settings_rename_action">Change name</string>
+    <string name="settings_rename_title">Change my name</string>
+    <string name="settings_rename_hint">1–12 characters; past sessions keep the name saved at the time and are not rewritten.</string>
+
+    <!-- Why a backup was rejected -->
+    <string name="backup_reject_unsupported_version">This backup version is not supported and cannot be imported</string>
+    <string name="backup_reject_too_large">The backup is larger than 20 MB and cannot be imported</string>
+    <string name="backup_reject_malformed">The backup is damaged or not in the expected format</string>
+    <string name="backup_reject_invalid_self">The backup does not contain exactly one unarchived profile for you</string>
+    <string name="backup_reject_invalid_id">The backup contains invalid or duplicate IDs</string>
+    <string name="backup_reject_orphan_reference">The backup contains records pointing to profiles that do not exist</string>
+    <string name="backup_reject_incomplete_seats">A session in the backup is missing your seat or has duplicate seats</string>
+    <string name="backup_reject_kind_mismatch">Seats and player types do not match in the backup</string>
+    <string name="backup_reject_amount_out_of_range">The backup contains an out-of-range amount</string>
+    <string name="backup_reject_invalid_text">The backup contains text that is too long</string>
+    <string name="backup_reject_invalid_time">The backup contains an impossible time ordering</string>
+    <string name="backup_reject_invalid_duration">The backup contains an invalid session duration</string>
+    <string name="backup_reject_invalid_revision">The backup contains an invalid revision number</string>
+    <string name="backup_reject_limit_exceeded">The backup exceeds the limit of 1000 sessions or 5000 players</string>
+
+    <!-- CSV export -->
+    <string name="detail_action_export_csv">Export CSV</string>
+    <string name="csv_export_success">CSV exported</string>
+    <string name="csv_export_failed">Export failed; you can try again</string>
+
+    <!-- Amount parsing failures -->
+    <string name="amount_empty">Please enter an amount</string>
+    <string name="amount_invalid">Amount format is invalid</string>
+    <string name="amount_too_many_decimals">At most two decimal places</string>
+    <string name="amount_out_of_range">Amount is beyond ±10,000.00</string>
+
+    <!-- Duration parsing failures -->
+    <string name="duration_empty">Please enter a duration</string>
+    <string name="duration_invalid">Duration format is invalid</string>
+    <string name="duration_too_many_decimals">At most one decimal place</string>
+    <string name="duration_out_of_range">Duration must be between 0.5 and 24 hours</string>
+
+    <!-- Business error codes -->
+    <string name="error_invalid_nickname">A name must be 1–12 characters</string>
+    <string name="error_invalid_note">A note can be at most 100 characters</string>
+    <string name="error_invalid_title">A title can be at most 30 characters</string>
+    <string name="error_played_at_in_future">The end time cannot be later than now</string>
+    <string name="error_invalid_duration">Duration must be 0.5–24 hours with at most one decimal place</string>
+    <string name="error_invalid_seat_set">Seats are incomplete or duplicated; please fill them in again</string>
+    <string name="error_duplicate_player">The same person cannot take two seats in one session</string>
+    <string name="error_seat_zero_not_self">Your own seat must be you</string>
+    <string name="error_non_self_seat_not_friend">Upper, opposite and lower seats must be players</string>
+    <string name="error_friend_archived">This player is archived and cannot be used in new sessions</string>
+    <string name="error_amount_out_of_range">A single amount must stay within ±10,000.00</string>
+    <string name="error_session_limit_reached">The 1000-session limit has been reached</string>
+    <string name="error_friend_limit_reached">The 5000-player limit has been reached</string>
+    <string name="error_session_id_already_exists">This session has already been saved</string>
+    <string name="error_session_not_found">The session does not exist or was deleted</string>
+    <string name="error_session_revision_conflict">This session was changed; reload it before editing</string>
+    <string name="error_player_not_found">The profile does not exist</string>
+    <string name="error_player_is_self">That is your own profile; this action is not allowed</string>
+    <string name="error_player_kind_mismatch">The profile type does not match</string>
+    <string name="error_internal_state_corrupted">Data is in an unexpected state; the action was stopped</string>
+</resources>
