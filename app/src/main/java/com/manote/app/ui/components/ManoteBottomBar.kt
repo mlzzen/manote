@@ -110,11 +110,17 @@ fun ManoteBottomBar(
                     .fillMaxWidth()
                     .manoteSoftShadow(barShape, ManoteElevation.floatingBar),
                 shape = barShape,
-                // 玻璃底：与卡片同一道渐变，但它是横躺的一条，上缘照样更亮
+                // 底色画在内层：Surface 只收一个平色，而这里要的是卡片那道玻璃渐变。
+                // 这一行不能省——省掉之后 Surface 只剩一圈描边，整条底栏看上去就是
+                // 「页面上飘着一根白线」，而不是一块玻璃。
                 color = Color.Transparent,
                 border = BorderStroke(1.dp, colors.glassBorder),
             ) {
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.cardSurface),
+                ) {
                     // 五个等宽槽位，横向内边距 6+6 之外才是可分配宽度
                     val slotWidth = (maxWidth - 12.dp) / BAR_SLOTS
 

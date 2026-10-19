@@ -95,6 +95,7 @@ class ManoteRenderSmokeTest {
             message = "底部导航的选中块没有画在最下方",
             fromRatio = 0.86f,
         )
+        assertFloatingBarHasItsOwnFill(pixels)
     }
 
     @Test
@@ -102,6 +103,7 @@ class ManoteRenderSmokeTest {
         val pixels = render(dark = true, name = "dark")
         assertContainsColor(pixels, DarkExtendedColors.heroSurface, "英雄卡的墨绿没有画出来")
         assertBackgroundIsAGradient(pixels, "页面背景的晨光渐变没有画出来")
+        assertFloatingBarHasItsOwnFill(pixels)
     }
 
     /**
@@ -182,6 +184,28 @@ class ManoteRenderSmokeTest {
         val pixels = IntArray(width * height)
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
         return pixels
+    }
+
+    /**
+     * 底栏必须画自己的底色。
+     *
+     * 这不是「细节」：底栏是半透的玻璃胶囊，底色一旦漏画，`Surface` 就只剩
+     * 一圈 1dp 白描边——在暖白的页面上，整条底栏看上去就是「飘着一根横向白线」。
+     * 2026-10-19 真的犯过这个错（`color = Color.Transparent` 之后忘了给内层画渐变），
+     * 而代码读起来完全正常：`Surface` 的注释还写着「玻璃底」。
+     *
+     * 判据取同一行里「胶囊内」与「胶囊外」的绿通道差：有底色时胶囊比页面亮一档，
+     * 漏画时两者恰好完全相同。样张是 xhdpi，1dp = 2px；取底栏下三分之一处，
+     * 横向落在右侧空白区，避开中间凸起的「记一场」与左边的深色选中块。
+     */
+    private fun assertFloatingBarHasItsOwnFill(pixels: IntArray) {
+        val y = 820 * 2
+        val inside = (pixels[y * width + 350 * 2] shr 8) and 0xFF
+        val outside = (pixels[y * width + 3 * 2] shr 8) and 0xFF
+        assertTrue(
+            "底栏没有画自己的底色（胶囊内 G=$inside，页面 G=$outside）：只剩一圈描边，看起来像一根白线",
+            inside - outside >= 6,
+        )
     }
 
     /**
