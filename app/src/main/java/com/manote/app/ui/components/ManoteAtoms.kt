@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -168,6 +170,66 @@ fun ManotePill(
             color = contentColor,
             style = style,
             maxLines = maxLines,
+        )
+    }
+}
+
+/**
+ * 一栏结果统计块：顶部一道结果色短条，下面是标签、场数与金额。
+ *
+ * 那道短条是这一块里唯一的高饱和色。三块并排时，先看到的是三道红绿黄，
+ * 于是「赢得多还是输得多」在读到数字之前就已经成立。
+ *
+ * 首页「战绩概览」与牌友详情「累计战绩」共用它：两页在对同一件事
+ * （赢 / 输 / 平各自几场、各多少钱）时用的是同一种符号与同一种节奏。
+ *
+ * @param amountMinor 这一栏的金额（分）。输的那一栏由调用方传入**负值**，
+ *   这样右下的金额与短条的颜色说的是同一个方向。
+ */
+@Composable
+fun ManoteResultTile(
+    label: String,
+    count: Int,
+    amountMinor: Long,
+    containerColor: Color,
+    contentColor: Color,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+    countStyle: TextStyle = MaterialTheme.typography.headlineMedium,
+) {
+    Column(
+        modifier = modifier
+            .clip(MaterialTheme.shapes.medium)
+            .background(containerColor)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 18.dp, height = 3.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(accentColor),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = contentColor,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = count.toString(),
+            style = countStyle,
+            fontWeight = FontWeight.Bold,
+            color = contentColor,
+            maxLines = 1,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = UiText.signedYuan(amountMinor),
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

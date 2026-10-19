@@ -240,6 +240,9 @@
     <string name="friend_detail_missing_desc">It may have been deleted.</string>
     <string name="friend_detail_archived_note">Archived: cannot be used in new sessions, but past sessions and stats are kept and you can unarchive at any time.</string>
     <string name="friend_detail_stats_title">Cumulative record</string>
+    <string name="friend_detail_together_title">My results at the same table</string>
+    <string name="friend_detail_together_note">Only counts sessions where they were seated too — how I do against them, not how much I won from them.</string>
+    <string name="friend_detail_together_empty">You have not shared a table yet; this group appears after your first shared session.</string>
     <string name="friend_detail_trend_title">Net trend</string>
     <string name="friend_detail_trend_empty">Record two sessions to see the trend.</string>
     <string name="friend_stat_win_amount">Total won</string>

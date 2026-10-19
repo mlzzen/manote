@@ -233,6 +233,9 @@
     <string name="friend_detail_missing_desc">它可能已经被删除。</string>
     <string name="friend_detail_archived_note">已归档：不能再用于新场次，历史场次与统计都会保留，随时可以取消归档。</string>
     <string name="friend_detail_stats_title">累计战绩</string>
+    <string name="friend_detail_together_title">同场时我的表现</string>
+    <string name="friend_detail_together_note">只统计他也在桌的那些场次，看的是我在他面前打成什么样——不是从他身上赢了多少。</string>
+    <string name="friend_detail_together_empty">你们还没有同过场；等到同上一桌，这一组数就会出现。</string>
     <string name="friend_detail_trend_title">净额走势</string>
     <string name="friend_detail_trend_empty">记满两场就能看到走势。</string>
     <string name="friend_stat_win_amount">累计赢钱</string>

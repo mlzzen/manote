@@ -1,6 +1,5 @@
 package com.manote.app.ui.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,9 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -24,12 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,6 +45,7 @@ import com.manote.app.ui.components.ManoteHeroCard
 import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.ManotePrimaryButton
 import com.manote.app.ui.components.ManoteReadout
+import com.manote.app.ui.components.ManoteResultTile
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.ManoteSectionHeader
 import com.manote.app.ui.components.ManoteSessionRow
@@ -299,7 +294,7 @@ private fun BreakdownCard(
 
     ManoteCard {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatTile(
+            ManoteResultTile(
                 label = stringResource(R.string.result_win),
                 count = statistics.winCount,
                 amountMinor = statistics.winMinor,
@@ -308,7 +303,7 @@ private fun BreakdownCard(
                 accentColor = colors.win,
                 modifier = Modifier.weight(1f),
             )
-            StatTile(
+            ManoteResultTile(
                 label = stringResource(R.string.result_loss),
                 count = statistics.lossCount,
                 amountMinor = -statistics.lossMinor,
@@ -317,7 +312,7 @@ private fun BreakdownCard(
                 accentColor = colors.loss,
                 modifier = Modifier.weight(1f),
             )
-            StatTile(
+            ManoteResultTile(
                 label = stringResource(R.string.result_draw),
                 count = statistics.drawCount,
                 amountMinor = 0L,
@@ -631,59 +626,6 @@ private fun signedColor(minor: Long): Color {
         minor > 0L -> colors.win
         minor < 0L -> colors.loss
         else -> MaterialTheme.colorScheme.onSurface
-    }
-}
-
-/**
- * 一栏统计块：顶部一道结实的结果色短条，下面是标签、场数与金额。
- *
- * 那道短条是这张卡里唯一的高饱和色。三块并排时，先看到的是三道红绿黄，
- * 于是「赢得多还是输得多」在读到数字之前就已经成立。
- */
-@Composable
-private fun StatTile(
-    label: String,
-    count: Int,
-    amountMinor: Long,
-    containerColor: Color,
-    contentColor: Color,
-    accentColor: Color,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .background(containerColor)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 18.dp, height = 3.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(accentColor),
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = contentColor,
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = count.toString(),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = contentColor,
-            maxLines = 1,
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = UiText.signedYuan(amountMinor),
-            style = MaterialTheme.typography.labelSmall,
-            color = contentColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
