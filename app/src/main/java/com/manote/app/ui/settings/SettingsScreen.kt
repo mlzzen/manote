@@ -38,7 +38,7 @@ import com.manote.app.BuildConfig
 import com.manote.app.R
 import com.manote.app.data.repository.BackupSummary
 import com.manote.app.data.repository.DataCounts
-import com.manote.app.ui.components.ManoteBottomBar
+import com.manote.app.ui.components.manoteTextFieldColors
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteHeroCard
 import com.manote.app.ui.components.ManoteScaffold
@@ -59,8 +59,6 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun SettingsScreen(
-    onSelectTab: (ManoteTab) -> Unit,
-    onRecordSession: () -> Unit,
     onOpenRecycleBin: () -> Unit,
     onImportCompleted: () -> Unit,
     modifier: Modifier = Modifier,
@@ -111,13 +109,6 @@ fun SettingsScreen(
         branded = true,
         modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        bottomBar = {
-            ManoteBottomBar(
-                current = ManoteTab.SETTINGS,
-                onSelect = onSelectTab,
-                onNewSession = onRecordSession,
-            )
-        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -358,6 +349,7 @@ private fun RenameSelfDialog(
                     singleLine = true,
                     label = { Text(text = stringResource(R.string.friend_nickname_label)) },
                     shape = MaterialTheme.shapes.small,
+                    colors = manoteTextFieldColors(),
                 )
                 Text(
                     text = stringResource(R.string.settings_rename_hint),

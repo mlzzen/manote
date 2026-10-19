@@ -238,8 +238,6 @@
     <string name="friend_detail_together_empty">你们还没有同过场；等到同上一桌，这一组数就会出现。</string>
     <string name="friend_detail_trend_title">净额走势</string>
     <string name="friend_detail_trend_empty">记满两场就能看到走势。</string>
-    <string name="friend_stat_win_amount">累计赢钱</string>
-    <string name="friend_stat_loss_amount">累计输钱</string>
     <string name="friend_stat_net">净输赢</string>
     <string name="friend_stat_sessions">场数</string>
     <string name="friend_stat_together_net">同场时我的净输赢</string>

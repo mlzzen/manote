@@ -58,13 +58,16 @@ fun ManoteSessionRow(
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            // 与内容卡片同一层高度与同一圈白色高光边：
+            // 场次行也是一张卡片，只是更矮，它不该看起来像另一种材质。
+            .manoteSoftShadow(shape)
             // 整张行一起缩放：结果色边、头像与金额是一块内容，按下时同进同退。
             .manotePress(interaction),
         shape = shape,
         // 与内容卡片同一层顶光；底色画在内层，顺序因此是「底光 → 结果色边 → 内容」
         color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(1.dp, colors.glassBorder),
     ) {
         Row(
             modifier = Modifier

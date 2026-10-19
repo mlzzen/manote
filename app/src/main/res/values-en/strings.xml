@@ -245,8 +245,6 @@
     <string name="friend_detail_together_empty">You have not shared a table yet; this group appears after your first shared session.</string>
     <string name="friend_detail_trend_title">Net trend</string>
     <string name="friend_detail_trend_empty">Record two sessions to see the trend.</string>
-    <string name="friend_stat_win_amount">Total won</string>
-    <string name="friend_stat_loss_amount">Total lost</string>
     <string name="friend_stat_net">Net result</string>
     <string name="friend_stat_sessions">Sessions</string>
     <string name="friend_stat_together_net">My net when we shared</string>

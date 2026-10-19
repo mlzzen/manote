@@ -37,7 +37,6 @@ import com.manote.app.domain.TimeSlot
 import com.manote.app.domain.TimeSlotStatistics
 import com.manote.app.domain.TrendPoint
 import com.manote.app.ui.manoteViewModel
-import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.AnimatedSignedYuan
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
@@ -76,7 +75,7 @@ import java.time.LocalDate
  */
 @Composable
 fun HomeScreen(
-    onSelectTab: (ManoteTab) -> Unit,
+    onOpenSessions: () -> Unit,
     onRecordSession: () -> Unit,
     onOpenSessionDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -88,7 +87,7 @@ fun HomeScreen(
 
     HomeContent(
         state = state,
-        onSelectTab = onSelectTab,
+        onOpenSessions = onOpenSessions,
         onRecordSession = onRecordSession,
         onOpenSessionDetail = onOpenSessionDetail,
         modifier = modifier,
@@ -98,7 +97,7 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     state: HomeUiState,
-    onSelectTab: (ManoteTab) -> Unit,
+    onOpenSessions: () -> Unit,
     onRecordSession: () -> Unit,
     onOpenSessionDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -112,20 +111,16 @@ private fun HomeContent(
         branded = true,
         modifier = modifier,
         actions = {
+            // 与顶栏那排圆钮同一种材质：白底、无描边。日期是文字不是图标，
+            // 所以用胶囊而不是圆——形状跟着内容走，尺寸才不会被硬凑。
             ManotePill(
                 text = todayLabel(today),
-                modifier = Modifier.padding(end = 6.dp),
+                modifier = Modifier.padding(end = 8.dp),
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall,
-                verticalPadding = 5.dp,
-            )
-        },
-        bottomBar = {
-            ManoteBottomBar(
-                current = ManoteTab.HOME,
-                onSelect = onSelectTab,
-                onNewSession = onRecordSession,
+                style = MaterialTheme.typography.labelMedium,
+                horizontalPadding = 12.dp,
+                verticalPadding = 6.dp,
             )
         },
     ) { innerPadding ->
@@ -135,7 +130,7 @@ private fun HomeContent(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             HeroCard(
                 statistics = state.statistics,
@@ -164,7 +159,7 @@ private fun HomeContent(
                 trailing = {
                     ManoteTextAction(
                         label = stringResource(R.string.action_view_all),
-                        onClick = { onSelectTab(ManoteTab.SESSIONS) },
+                        onClick = onOpenSessions,
                     )
                 },
             )
@@ -216,7 +211,7 @@ private fun HeroCard(
             style = MaterialTheme.typography.labelMedium,
             color = colors.onHeroMuted,
         )
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         // 记完一场回到首页，这个数是从旧值「长」出来的：变化本身也是一条信息
         AnimatedSignedYuan(
             netMinor = statistics.netMinor,
@@ -747,7 +742,7 @@ private fun HomeContentPreview() {
                     ),
                 ),
             ),
-            onSelectTab = {},
+            onOpenSessions = {},
             onRecordSession = {},
             onOpenSessionDetail = {},
             today = LocalDate.of(2026, 10, 12),
@@ -761,7 +756,7 @@ private fun HomeContentEmptyPreview() {
     ManoteTheme(darkTheme = false) {
         HomeContent(
             state = HomeUiState(loading = false),
-            onSelectTab = {},
+            onOpenSessions = {},
             onRecordSession = {},
             onOpenSessionDetail = {},
             today = LocalDate.of(2026, 10, 12),

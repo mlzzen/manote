@@ -6,12 +6,15 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.manote.app.domain.TimeSlot
+import com.manote.app.ui.navigation.ManoteTab
 import com.manote.app.ui.theme.ManoteTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -233,5 +236,68 @@ class ManoteComponentsTest {
         }
 
         composeRule.onNodeWithText("已记 5 场").assertIsDisplayed()
+    }
+
+    @Test
+    fun segmentedControl_reportsTheTappedIndex() {
+        // 分段控件的语义是「这几个选项互斥」，点击必须回报**下标**而不是文案：
+        // 调用方（场次筛选）拿它去索引枚举，回报文案就得再反查一次。
+        var picked = -1
+        composeRule.setContent {
+            ManoteTheme {
+                ManoteSegmentedControl(
+                    options = listOf("全部", "本月", "上月"),
+                    selectedIndex = 0,
+                    onSelect = { picked = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("本月").performClick()
+
+        assertEquals(1, picked)
+    }
+
+    @Test
+    fun searchField_showsHintUntilSomethingIsTyped() {
+        // 搜索框是自绘的 BasicTextField：没有 M3 的浮动标签兜底，
+        // 提示语只能在输入框为空时出现，否则会与用户输入的文字叠在一起。
+        var typed = ""
+        composeRule.setContent {
+            ManoteTheme {
+                ManoteSearchField(
+                    value = "",
+                    onValueChange = { typed = it },
+                    placeholder = "搜标题或牌友",
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("搜标题或牌友").assertIsDisplayed()
+        composeRule.onNode(hasSetTextAction()).performTextInput("周五")
+
+        assertEquals("周五", typed)
+    }
+
+    @Test
+    fun bottomBar_reportsTheTappedTab() {
+        // 选中块是绝对定位的浮层，它只负责「看起来停在哪一页」，不能抢点击。
+        // 把页码偏移设成半格（块正卡在两格之间）再点：既验证命中区不随块移动，
+        // 也锁住「以后别给块加 clickable」——加了就会吃掉整条底栏的点击。
+        var picked: ManoteTab? = null
+        composeRule.setContent {
+            ManoteTheme {
+                ManoteBottomBar(
+                    current = ManoteTab.SESSIONS,
+                    onSelect = { picked = it },
+                    onNewSession = {},
+                    pageOffset = { 0.5f },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("牌友").performClick()
+
+        assertEquals(ManoteTab.FRIENDS, picked)
     }
 }

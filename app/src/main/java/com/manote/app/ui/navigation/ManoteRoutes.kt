@@ -4,20 +4,21 @@ package com.manote.app.ui.navigation
  * 导航目的地登记表。
  *
  * 规格 4：导航只传 Session ID 或 Player ID，不传业务对象。
+ *
+ * **四个页签不在这里。** 它们没有各自的目的地，而是共用 [MAIN] 这一个——
+ * 页签之间靠 `HorizontalPager` 横向滑动切换，滑动位置是这个容器的内部状态，
+ * 不该进返回栈（否则左右滑几下，返回键要按好几次）。
+ * 页签自身的标识见 [ManoteTab.key]。
  */
 object ManoteRoutes {
 
-    /** 首页：本人统计与最近场次。 */
-    const val HOME = "home"
-
-    /** 场次：按结束时间倒序的场次列表。 */
-    const val SESSIONS = "sessions"
-
-    /** 牌友：麻友档案列表与新增。 */
-    const val FRIENDS = "friends"
-
-    /** 我的：本人档案、改名与版本信息。 */
-    const val SETTINGS = "settings"
+    /**
+     * 根容器：首页 / 场次 / 牌友 / 我的 四页共用。
+     *
+     * 返回栈上永远只有它一个「根」，子页面从它之上压入、再弹出，
+     * 因此 `popUpTo(MAIN)` 就是「回到根」。
+     */
+    const val MAIN = "main"
 
     /** 记一场：新建整场表单。 */
     const val SESSION_NEW = "session/new"
@@ -52,12 +53,11 @@ object ManoteRoutes {
     /**
      * 全部已注册目的地。Navigation 会因重复路由在运行时抛异常，
      * 因此该列表是「路由唯一」这一不变量的唯一来源，由单元测试守护。
+     *
+     * 只有六个：一个根容器 + 五个子页面。页签不占名额。
      */
     val all: List<String> = listOf(
-        HOME,
-        SESSIONS,
-        FRIENDS,
-        SETTINGS,
+        MAIN,
         SESSION_NEW,
         SESSION_DETAIL,
         SESSION_EDIT,
@@ -65,16 +65,14 @@ object ManoteRoutes {
         BIN,
     )
 
-    /** 底部导航的四个常驻页签（中心「新建」是动作而非页签）。 */
-    val tabRoutes: List<String> = listOf(HOME, SESSIONS, FRIENDS, SETTINGS)
-
     /**
-     * 子页面路由（详情、编辑、记一场）：转场从右侧滑入滑出，
-     * 与页签间的平级切换（上浮淡入）区分开。转场判断用的就是这一份名单。
+     * 子页面路由（详情、编辑、记一场、回收站）：转场从右侧滑入滑出，
+     * 与根容器区分开。转场判断用的就是这一份名单——[MAIN] 刻意不在其中，
+     * 它回到前台时应该是「直接就位」，不能再滑一次。
      */
     val subRoutes: Set<String> =
         setOf(SESSION_NEW, SESSION_DETAIL, SESSION_EDIT, FRIEND_DETAIL, BIN)
 
     /** 起始目的地。 */
-    const val START: String = HOME
+    const val START: String = MAIN
 }

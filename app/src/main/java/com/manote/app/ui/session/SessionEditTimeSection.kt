@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.manote.app.R
+import com.manote.app.ui.components.manoteTextFieldColors
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.model.UiText
 
@@ -130,6 +131,7 @@ internal fun PlayedAtRow(
             suffix = { Text(text = stringResource(R.string.session_duration_unit)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             shape = MaterialTheme.shapes.small,
+            colors = manoteTextFieldColors(),
         )
 
         when {

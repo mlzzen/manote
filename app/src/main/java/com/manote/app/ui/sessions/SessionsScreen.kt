@@ -16,14 +16,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,12 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
 import com.manote.app.ui.components.AnimatedSignedYuan
-import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteEmptyState
-import com.manote.app.ui.components.ManoteFilterChip
 import com.manote.app.ui.components.ManoteHeroCard
 import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.ManoteScaffold
+import com.manote.app.ui.components.ManoteSearchField
+import com.manote.app.ui.components.ManoteSegmentedControl
 import com.manote.app.ui.components.ManoteSessionRow
 import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.model.SessionFilter
@@ -59,8 +54,6 @@ import com.manote.app.ui.theme.manote
  */
 @Composable
 fun SessionsScreen(
-    onSelectTab: (ManoteTab) -> Unit,
-    onRecordSession: () -> Unit,
     onOpenSessionDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -73,8 +66,6 @@ fun SessionsScreen(
         state = state,
         onSelectFilter = viewModel::setFilter,
         onQueryChange = viewModel::setQuery,
-        onSelectTab = onSelectTab,
-        onRecordSession = onRecordSession,
         onOpenSessionDetail = onOpenSessionDetail,
         modifier = modifier,
     )
@@ -85,8 +76,6 @@ private fun SessionsContent(
     state: SessionsUiState,
     onSelectFilter: (SessionFilter) -> Unit,
     onQueryChange: (String) -> Unit,
-    onSelectTab: (ManoteTab) -> Unit,
-    onRecordSession: () -> Unit,
     onOpenSessionDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -100,13 +89,6 @@ private fun SessionsContent(
         title = stringResource(R.string.nav_sessions),
         branded = true,
         modifier = modifier,
-        bottomBar = {
-            ManoteBottomBar(
-                current = ManoteTab.SESSIONS,
-                onSelect = onSelectTab,
-                onNewSession = onRecordSession,
-            )
-        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -122,38 +104,21 @@ private fun SessionsContent(
                     SessionsHeroCard(count = visibleCount, netMinor = visibleNetMinor)
                 }
 
-                OutlinedTextField(
+                ManoteSearchField(
                     value = state.query,
                     onValueChange = onQueryChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = { Text(text = stringResource(R.string.sessions_search_hint)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    // 胶囊形的搜索框：与筛选胶囊、结果标签同一种圆角语言，
-                    // 也让「搜索」和下面的筛选项看起来是一组而非两层。
-                    shape = CircleShape,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    ),
+                    placeholder = stringResource(R.string.sessions_search_hint),
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SessionFilter.entries.forEach { filter ->
-                        ManoteFilterChip(
-                            label = stringResource(filter.labelRes()),
-                            selected = state.filter == filter,
-                            onClick = { onSelectFilter(filter) },
-                        )
-                    }
-                }
+                // 三个筛选项互斥，用分段控件而不是三颗独立胶囊：
+                // 后者看起来像可以多选，前者把「只能选一个」直接写进了形状里。
+                val filters = SessionFilter.entries
+                ManoteSegmentedControl(
+                    options = filters.map { stringResource(it.labelRes()) },
+                    selectedIndex = filters.indexOf(state.filter),
+                    onSelect = { onSelectFilter(filters[it]) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -276,18 +241,18 @@ private fun SessionMonthHeader(group: SessionMonthGroup, modifier: Modifier = Mo
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.small)
+            .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(width = 3.dp, height = 14.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .size(6.dp)
+                .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primary),
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(9.dp))
         Text(
             text = group.label,
             style = MaterialTheme.typography.titleSmall,

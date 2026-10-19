@@ -22,7 +22,7 @@ object ManoteMotion {
     /** 标准：颜色渐变、胶囊选中态、图标微缩放。 */
     const val DURATION_NORMAL = 220
 
-    /** 慢：进场、页面转场、数字滚动。 */
+    /** 慢：子页面进场、数字滚动。 */
     const val DURATION_SLOW = 320
 
     /** 标准缓动：起步快、收尾缓。进场与大部分状态切换用它。 */

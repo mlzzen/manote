@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.manote.app.R
+import com.manote.app.ui.components.manoteTextFieldColors
 import com.manote.app.ui.components.ManotePrimaryButton
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.model.UiText
@@ -111,6 +112,7 @@ fun FriendPickerSheet(
                     Icon(imageVector = Icons.Filled.Search, contentDescription = null)
                 },
                 shape = MaterialTheme.shapes.small,
+                colors = manoteTextFieldColors(),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -265,6 +267,7 @@ fun CreateFriendDialog(
                     singleLine = true,
                     label = { Text(text = stringResource(R.string.friend_nickname_label)) },
                     shape = MaterialTheme.shapes.small,
+                    colors = manoteTextFieldColors(),
                 )
                 OutlinedTextField(
                     value = note,
@@ -273,6 +276,7 @@ fun CreateFriendDialog(
                     label = { Text(text = stringResource(R.string.friend_note_label)) },
                     placeholder = { Text(text = stringResource(R.string.friend_note_hint)) },
                     shape = MaterialTheme.shapes.small,
+                    colors = manoteTextFieldColors(),
                 )
                 if (duplicateCount > 0) {
                     Text(

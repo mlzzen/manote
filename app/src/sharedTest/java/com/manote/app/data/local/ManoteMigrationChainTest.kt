@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.Executors
 
 /**
  * migration 注册表的自检（规格 5.1）。
@@ -21,12 +22,24 @@ class ManoteMigrationChainTest {
 
     @Test
     fun migrationsChainReachesTheActualDatabaseVersion() {
+        // 与 RoomTestCase 同一个理由：不能让 Room 用默认的 ArchTaskExecutor 全局 IO 线程。
+        // 它会在 database.close() 之后再跑一次失效通知，撞上已关闭的连接就抛
+        // IllegalStateException: Illegal connection pointer。这条异常本身被丢掉，
+        // 但同一个 JVM 里后跑的 Compose 测试会把它读成 UncaughtExceptionsBeforeTest，
+        // 表现为随机某个 UI 测试挂掉。
+        val queryExecutor = Executors.newSingleThreadExecutor { Thread(it, "manote-chain-db-query") }
+        val transactionExecutor = Executors.newSingleThreadExecutor { Thread(it, "manote-chain-db-tx") }
         val database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
             ManoteDatabase::class.java,
-        ).build()
+        )
+            .setQueryExecutor(queryExecutor)
+            .setTransactionExecutor(transactionExecutor)
+            .build()
         val actualVersion = database.openHelper.writableDatabase.version
         database.close()
+        queryExecutor.shutdownNow()
+        transactionExecutor.shutdownNow()
 
         val migrations = ManoteMigrations.ALL.sortedBy { it.startVersion }
 

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.manote.app.R
+import com.manote.app.ui.components.manoteTextFieldColors
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.PlayerAvatar
@@ -203,6 +204,7 @@ internal fun SeatEditor(
             textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = TextAlign.End),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             shape = MaterialTheme.shapes.small,
+            colors = manoteTextFieldColors(),
         )
 
         if (errorRes != null) {

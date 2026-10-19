@@ -36,6 +36,7 @@ import androidx.lifecycle.createSavedStateHandle
 import com.manote.app.R
 import com.manote.app.domain.SessionDuration
 import com.manote.app.domain.TimeSlot
+import com.manote.app.ui.components.manoteTextFieldColors
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
 import com.manote.app.ui.components.ManoteScaffold
@@ -219,6 +220,7 @@ fun SessionEditScreen(
                     label = { Text(text = stringResource(R.string.session_title_label)) },
                     placeholder = { Text(text = stringResource(R.string.session_title_hint)) },
                     shape = MaterialTheme.shapes.small,
+                    colors = manoteTextFieldColors(),
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
@@ -229,6 +231,7 @@ fun SessionEditScreen(
                     placeholder = { Text(text = stringResource(R.string.session_note_hint)) },
                     minLines = 2,
                     shape = MaterialTheme.shapes.small,
+                    colors = manoteTextFieldColors(),
                 )
             }
 

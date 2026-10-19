@@ -1,24 +1,26 @@
 package com.manote.app.ui.navigation
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 守护路由登记表的不变量。
+ * 守护路由登记表与页签映射的不变量。
  *
  * Navigation Compose 在注册重复路由字符串时会在运行时抛异常，且起始目的地
  * 必须已注册，否则应用启动即崩溃。这两点只能靠本测试覆盖。
+ *
+ * 页签那部分（顺序、槽位、越界）覆盖的是横向滑动的几何：
+ * 页码与页签一旦错位，底栏的选中块会停在一个「没有内容」的格子上，
+ * 而这种错位在界面上看起来只是「选中态有点歪」，很难一眼看出是映射错了。
  */
 class ManoteRoutesTest {
 
     @Test
     fun all_containsEveryDeclaredDestination() {
         val expected = setOf(
-            ManoteRoutes.HOME,
-            ManoteRoutes.SESSIONS,
-            ManoteRoutes.FRIENDS,
-            ManoteRoutes.SETTINGS,
+            ManoteRoutes.MAIN,
             ManoteRoutes.SESSION_NEW,
             ManoteRoutes.SESSION_DETAIL,
             ManoteRoutes.SESSION_EDIT,
@@ -33,9 +35,8 @@ class ManoteRoutesTest {
             "子页面路由必须都已登记：${ManoteRoutes.subRoutes - ManoteRoutes.all.toSet()}",
             ManoteRoutes.all.toSet().containsAll(ManoteRoutes.subRoutes),
         )
-        // 回收站是子页面（居中标题 + 返回键），而不是页签
+        // 回收站是子页面（居中标题 + 返回键）
         assertTrue(ManoteRoutes.BIN in ManoteRoutes.subRoutes)
-        assertTrue(ManoteRoutes.BIN !in ManoteRoutes.tabRoutes)
     }
 
     @Test
@@ -50,9 +51,11 @@ class ManoteRoutesTest {
     }
 
     @Test
-    fun startDestination_isRegistered() {
+    fun startDestination_isTheTabContainer() {
         assertTrue("起始目的地必须已登记", ManoteRoutes.START in ManoteRoutes.all)
-        assertEquals("起始目的地应为首页", ManoteRoutes.HOME, ManoteRoutes.START)
+        assertEquals("起始目的地应为页签容器", ManoteRoutes.MAIN, ManoteRoutes.START)
+        // 根容器自己带转场的话，从详情返回时会整屏再淡入一次
+        assertFalse("根容器不能出现在子页面名单里", ManoteRoutes.MAIN in ManoteRoutes.subRoutes)
     }
 
     @Test
@@ -107,30 +110,61 @@ class ManoteRoutesTest {
     }
 
     @Test
-    fun tabs_areExactlyTheFourPersistentDestinations() {
+    fun tabs_areExactlyTheFourSwipePages() {
         assertEquals(
-            listOf(
-                ManoteRoutes.HOME,
-                ManoteRoutes.SESSIONS,
-                ManoteRoutes.FRIENDS,
-                ManoteRoutes.SETTINGS,
-            ),
-            ManoteRoutes.tabRoutes,
+            "页签的枚举顺序就是左右滑动的页面顺序",
+            listOf("home", "sessions", "friends", "settings"),
+            ManoteTab.entries.map { it.key },
         )
-        // 每一条页签路由都必须已登记
-        ManoteRoutes.tabRoutes.forEach { route ->
-            assertTrue("页签路由必须已登记：$route", route in ManoteRoutes.all)
+        assertEquals("页签标识不能重复", 4, ManoteTab.entries.map { it.key }.toSet().size)
+    }
+
+    @Test
+    fun tab_lookupByKeyAndPage() {
+        ManoteTab.entries.forEach { tab ->
+            assertEquals(tab, ManoteTab.fromKey(tab.key))
+            assertEquals("页码必须能翻回同一个页签", tab, ManoteTab.at(tab.ordinal))
+        }
+        // 页签标识不是路由，拿一个路由去查必须查不到
+        assertEquals(null, ManoteTab.fromKey(ManoteRoutes.SESSION_NEW))
+        assertEquals(null, ManoteTab.fromKey(null))
+
+        // pager 恢复状态时可能短暂给出越界页码，夹取而不是抛异常
+        assertEquals(ManoteTab.HOME, ManoteTab.at(-1))
+        assertEquals(ManoteTab.SETTINGS, ManoteTab.at(ManoteTab.entries.size))
+    }
+
+    @Test
+    fun tab_barSlotSkipsTheCentreGap() {
+        // 底栏是「四页 + 中间一格留给『记一场』」，后两页各往右让一格
+        assertEquals(0, ManoteTab.HOME.barSlot)
+        assertEquals(1, ManoteTab.SESSIONS.barSlot)
+        assertEquals(3, ManoteTab.FRIENDS.barSlot)
+        assertEquals(4, ManoteTab.SETTINGS.barSlot)
+
+        // 停靠时槽位必须与 barSlot 一致，否则松手后块会停在错位
+        ManoteTab.entries.forEach { tab ->
+            assertEquals(
+                "停靠时槽位应当等于 barSlot：${tab.key}",
+                tab.barSlot.toFloat(),
+                ManoteTab.barSlotAt(tab.ordinal.toFloat()),
+                0.0001f,
+            )
         }
     }
 
     @Test
-    fun tab_lookupByRoute() {
-        assertEquals(ManoteTab.HOME, ManoteTab.fromRoute(ManoteRoutes.HOME))
-        assertEquals(ManoteTab.SESSIONS, ManoteTab.fromRoute(ManoteRoutes.SESSIONS))
-        assertEquals(ManoteTab.FRIENDS, ManoteTab.fromRoute(ManoteRoutes.FRIENDS))
-        assertEquals(ManoteTab.SETTINGS, ManoteTab.fromRoute(ManoteRoutes.SETTINGS))
-        // 非页签目的地（记一场 / 详情）不选中任何页签
-        assertEquals(null, ManoteTab.fromRoute(ManoteRoutes.SESSION_NEW))
-        assertEquals(null, ManoteTab.fromRoute(null))
+    fun tab_barSlotAt_isContinuousAndMonotonic() {
+        // 拖动时每帧都取这个值，跳一下就表现为选中块「闪一下」
+        var previous = ManoteTab.barSlotAt(0f)
+        var page = 0f
+        while (page <= 3f) {
+            val slot = ManoteTab.barSlotAt(page)
+            assertTrue("槽位不应回退：page=$page", slot >= previous)
+            assertTrue("相邻取样之间不应跳变：page=$page", slot - previous < 0.05f)
+            previous = slot
+            page += 0.01f
+        }
+        assertEquals(4f, ManoteTab.barSlotAt(3f), 0.0001f)
     }
 }

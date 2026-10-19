@@ -57,37 +57,57 @@ internal val OnGoldContainerLight = Color(0xFF4A3708)
  */
 internal val HeroSurfaceLight = Color(0xFF14352A)
 internal val HeroSurfaceTopLight = Color(0xFF1C4636)
+/** 英雄卡的下缘：比卡身再深一档，卡面因此有「受光面 / 背光面」而不是一块平色。 */
+internal val HeroSurfaceBottomLight = Color(0xFF0C2419)
 internal val OnHeroLight = Color(0xFFFFFFFF)
 internal val OnHeroMutedLight = Color(0xFF9FD3B8)
 internal val HeroChipLight = Color(0xFF1F5E45)
 internal val OnHeroChipLight = Color(0xFFD6F0E2)
 
 /** 画布 / 卡片 / 描边 / 胶囊底色。 */
-internal val CanvasLight = Color(0xFFF8F4EA)
-internal val CanvasDimLight = Color(0xFFEFE9DA)
+internal val CanvasLight = Color(0xFFF7F3E9)
+internal val CanvasDimLight = Color(0xFFEDE6D5)
 internal val SurfaceLight = Color(0xFFFFFFFF)
 internal val SurfaceAltLight = Color(0xFFFCF9F1)
 internal val BorderLight = Color(0xFFEDE4D2)
 internal val OutlineLight = Color(0xFFC9BFA9)
-internal val ChipLight = Color(0xFFF1ECE0)
+internal val ChipLight = Color(0xFFF1EEE6)
 
 /**
- * 页面背景的顶光：最上缘一层极淡的鼠尾草绿，往下渐渐还给画布色。
+ * 页面背景的晨光：最上缘一层暖杏色，往下穿过一段中性过渡，落回画布色。
  *
- * 平铺一块画布色会让整屏像一张纸；一层几乎看不出的绿意在顶部铺开、
- * 到底部已经与画布同色，页面就像被头顶的光照着——与英雄卡自己的纵向渐变同一个意象。
- * 这两个值都很靠近画布色，只负责改「光的方向」，不改变页面的明度关系。
+ * 平铺一块画布色会让整屏像一张纸。这里给顶端一层**看得出**的暖色
+ * （而不是只差两个色阶的灰绿），整页就有了「从窗外照进来」的方向感；
+ * 中段的过渡点既不是暖色的延续也不是画布色，把两层光柔和地接上。
+ * 最下一段仍然严格等于 [CanvasLight]——底部悬浮导航的外环、编辑页的保存条
+ * 都拿画布色贴在那条线上，渐变若在下面还留着色差，它们就会露出边界。
  */
-internal val PageTopLight = Color(0xFFE7EFE4)
-internal val PageMidLight = Color(0xFFF3F3E9)
+internal val PageTopLight = Color(0xFFFBE9C9)
+internal val PageMidLight = Color(0xFFF3F0E7)
 
 /**
- * 卡片顶光的下缘：纯白起、往下收一点点暖白。
+ * 右上角那团柔光（参考稿里窗光打在墙上的一角）。
  *
- * 与上缘的差值刻意压到 2 个色阶——卡片不再是「一块死白」，但也不至于看起来像两种材质；
- * 卡片与画布的分界仍然只由那圈 1px 描边负责。
+ * 它叠在 [PageTopLight] 的渐变之上，只在右上角有一个很淡的核，向外散尽。
+ * 单独一层而不是并进渐变里：径向光斑写不进线性渐变，而这一角暖光
+ * 正是整屏看起来「有空气」而不是「一块平色」的原因。
  */
-internal val CardBottomLight = Color(0xFFFDFBF5)
+internal val PageGlowLight = Color(0x66FFC76B)
+
+/**
+ * 玻璃卡片：底色不是纯白，而是带一点透的白。
+ *
+ * 卡片背后就是那层晨光，透一点上来，卡片才像一片磨砂玻璃架在页面上，
+ * 而不是一块贴上去的白纸。上缘比下缘更白一档，构成极弱的顶光。
+ */
+internal val GlassLight = Color(0xF4FFFFFF)
+internal val GlassBottomLight = Color(0xECFFFDF6)
+
+/** 卡片边缘的高光：一圈纯白细线，是「玻璃」的第二条线索（第一条是透）。 */
+internal val GlassBorderLight = Color(0xD9FFFFFF)
+
+/** 卡片投影的颜色：偏暖的褐灰，压在米白底上比纯黑柔和得多。 */
+internal val GlassShadowLight = Color(0xFF8A7355)
 
 /** 文本三级。 */
 internal val TextPrimaryLight = Color(0xFF1B211D)
@@ -126,8 +146,9 @@ internal val OnGoldContainerDark = Color(0xFFF3E4B8)
  * 浅色主题靠「深底白字」拉开层级，深色主题里再用更深的底就沉进背景了，
  * 因此改成比画布亮的墨绿，让同一套版式在两个主题下都还看得出是一块独立的卡。
  */
-internal val HeroSurfaceDark = Color(0xFF1B4433)
-internal val HeroSurfaceTopDark = Color(0xFF215139)
+internal val HeroSurfaceDark = Color(0xFF22513C)
+internal val HeroSurfaceTopDark = Color(0xFF2C6349)
+internal val HeroSurfaceBottomDark = Color(0xFF173A2B)
 internal val OnHeroDark = Color(0xFFEAF6EF)
 internal val OnHeroMutedDark = Color(0xFF9FD3B8)
 internal val HeroChipDark = Color(0xFF27543F)
@@ -147,11 +168,15 @@ internal val ChipDark = Color(0xFF252E29)
  * 浅色主题靠「深底白字」拉开层级，深色主题里一块纯 #121614 的底则沉得发死；
  * 顶部亮半档既补上了同样的「光从上面来」，也不会亮到抢走英雄卡的对比。
  */
-internal val PageTopDark = Color(0xFF1B2A23)
+internal val PageTopDark = Color(0xFF1D2E25)
 internal val PageMidDark = Color(0xFF161D19)
+internal val PageGlowDark = Color(0x3D3E8F68)
 
-/** 深色卡片顶光的下缘就是卡片底色，只把上缘提亮半档。 */
-internal val CardTopDark = Color(0xFF1F2723)
+/** 深色主题的玻璃卡：比画布亮一档，同样带透，让背后的顶光渗上来一点。 */
+internal val GlassDark = Color(0xF7212A24)
+internal val GlassBottomDark = Color(0xF01D2521)
+internal val GlassBorderDark = Color(0x29FFFFFF)
+internal val GlassShadowDark = Color(0xFF000000)
 
 internal val TextPrimaryDark = Color(0xFFE8ECE8)
 internal val TextSecondaryDark = Color(0xFF9AA39C)
@@ -215,6 +240,8 @@ data class ManoteExtendedColors(
     val onHeroChip: Color,
     /** 英雄卡的纵向渐变顶端色：比 [heroSurface] 亮半档，给卡面一层「光照」。 */
     val heroSurfaceTop: Color,
+    /** 英雄卡的纵向渐变底端色：比 [heroSurface] 深一档，给卡面一层「暗角」。 */
+    val heroSurfaceBottom: Color,
     /**
      * 英雄卡里的输赢三色。
      *
@@ -237,7 +264,7 @@ data class ManoteExtendedColors(
     val heroBadgeBrand: Color,
     val onHeroBadgeBrand: Color,
     /**
-     * 整页背景的顶光渐变。
+     * 整页背景的晨光渐变。
      *
      * 页面一律由 [com.manote.app.ui.components.ManoteScaffold] 铺这一道，
      * 各页自己不画背景色——否则「页面底色」会有好几份说法。
@@ -245,12 +272,25 @@ data class ManoteExtendedColors(
      * 底端只要与画布差一点，那圈环就会露出来。
      */
     val pageBackground: Brush,
-    /** 卡片（[com.manote.app.ui.components.ManoteCard] 与场次行）的顶光，比页面那层更弱。 */
+    /**
+     * 叠在 [pageBackground] 之上、右上角那团柔光的**颜色**。
+     *
+     * 这里只存一个颜色而不是 Brush：光斑的圆心要落在屏幕右上方之外（按实际尺寸算），
+     * 而 [Brush.radialGradient] 的圆心是像素单位、建 Brush 时还不知道尺寸。
+     * 真正的径向渐变由 [com.manote.app.ui.components.ManoteScaffold] 在绘制阶段按
+     * 画布大小现场构造，这里只负责给出那一层光的色相与浓度。
+     */
+    val pageGlow: Color,
+    /** 卡片（[com.manote.app.ui.components.ManoteCard] 与场次行）的玻璃底，比页面那层更亮也更透。 */
     val cardSurface: Brush,
+    /** 卡片边缘那圈高光细线。 */
+    val glassBorder: Color,
+    /** 卡片投影色。浅色主题取偏暖的褐灰，深色主题只能用黑。 */
+    val shadowColor: Color,
 )
 
 /**
- * 两道顶光渐变在这里只写一次，两个主题各一份。
+ * 三道背景在这里只写一次，两个主题各一份。
  *
  * 页面那道用一个中间停靠点（0.34）而不是从头到尾线性过渡：光要在第一屏内就落回画布，
  * 页面下半部分必须**严格等于**画布色——底部悬浮按钮的外环、编辑页的保存条
@@ -260,23 +300,33 @@ data class ManoteExtendedColors(
 private val PageBackgroundLight = Brush.verticalGradient(
     0f to PageTopLight,
     0.34f to PageMidLight,
-    0.72f to CanvasLight,
+    0.74f to CanvasLight,
     1f to CanvasLight,
 )
 private val CardSurfaceLight = Brush.verticalGradient(
-    0f to SurfaceLight,
-    1f to CardBottomLight,
+    0f to GlassLight,
+    1f to GlassBottomLight,
 )
+
+/**
+ * 右上角的柔光参数：圆心落在屏幕右上方之外，半径取到屏宽的一倍多。
+ *
+ * 圆心放到可见区域以外，页面上就只看得到光的「尾巴」——没有一道明确的圆边，
+ * 只有一层从中间往右上渐渐变暖的空气。两个数字都由 Scaffold 在绘制时取用。
+ */
+internal const val PAGE_GLOW_CENTER_X = 0.84f
+internal const val PAGE_GLOW_CENTER_Y = 0.04f
+internal const val PAGE_GLOW_RADIUS_RATIO = 1.05f
 
 private val PageBackgroundDark = Brush.verticalGradient(
     0f to PageTopDark,
     0.34f to PageMidDark,
-    0.72f to CanvasDark,
+    0.74f to CanvasDark,
     1f to CanvasDark,
 )
 private val CardSurfaceDark = Brush.verticalGradient(
-    0f to CardTopDark,
-    1f to SurfaceDark,
+    0f to GlassDark,
+    1f to GlassBottomDark,
 )
 
 internal val LightExtendedColors = ManoteExtendedColors(
@@ -305,6 +355,7 @@ internal val LightExtendedColors = ManoteExtendedColors(
     heroChip = HeroChipLight,
     onHeroChip = OnHeroChipLight,
     heroSurfaceTop = HeroSurfaceTopLight,
+    heroSurfaceBottom = HeroSurfaceBottomLight,
     heroWin = WinDark,
     heroLoss = LossDark,
     heroDraw = DrawDark,
@@ -315,7 +366,10 @@ internal val LightExtendedColors = ManoteExtendedColors(
     heroBadgeBrand = HeroBadgeBrand,
     onHeroBadgeBrand = OnHeroBadgeBrand,
     pageBackground = PageBackgroundLight,
+    pageGlow = PageGlowLight,
     cardSurface = CardSurfaceLight,
+    glassBorder = GlassBorderLight,
+    shadowColor = GlassShadowLight,
 )
 
 internal val DarkExtendedColors = ManoteExtendedColors(
@@ -344,6 +398,7 @@ internal val DarkExtendedColors = ManoteExtendedColors(
     heroChip = HeroChipDark,
     onHeroChip = OnHeroChipDark,
     heroSurfaceTop = HeroSurfaceTopDark,
+    heroSurfaceBottom = HeroSurfaceBottomDark,
     heroWin = WinDark,
     heroLoss = LossDark,
     heroDraw = DrawDark,
@@ -354,7 +409,10 @@ internal val DarkExtendedColors = ManoteExtendedColors(
     heroBadgeBrand = HeroBadgeBrand,
     onHeroBadgeBrand = OnHeroBadgeBrand,
     pageBackground = PageBackgroundDark,
+    pageGlow = PageGlowDark,
     cardSurface = CardSurfaceDark,
+    glassBorder = GlassBorderDark,
+    shadowColor = GlassShadowDark,
 )
 
 internal val LocalManoteExtendedColors = staticCompositionLocalOf { LightExtendedColors }

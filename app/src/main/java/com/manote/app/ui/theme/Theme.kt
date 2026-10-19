@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * 浅色配色：暖米白画布 + 深墨绿主要操作 + 砖红错误。
@@ -99,13 +100,51 @@ private val ManoteDarkColorScheme = darkColorScheme(
     surfaceContainerHighest = Color(0xFF2A332E),
 )
 
-/** 圆角：卡片与胶囊整体偏圆润。 */
+/**
+ * 圆角：卡片与胶囊整体偏圆润。
+ *
+ * 参考稿的把控点是大面积圆角（卡片接近 24dp）+ 顶部大标题，
+ * 圆角一小，整页立刻显得像表格。这里把每一档都提上去，
+ * 但保持逐档递增，避免「所有东西一样圆」而失去层级。
+ */
 private val ManoteShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(28.dp),
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp),
+)
+
+/**
+ * 层次用的一套高度令牌。
+ *
+ * 全应用只有三档：控件（按钮、胶囊）几乎贴地，卡片浮起来一层，
+ * 悬浮导航要压在内容之上。把高度收成三个数，翻十页看到的「什么在什么上面」
+ * 才是同一套关系；各处自己填 elevation 时，同一层的卡片会差出好几 dp。
+ */
+object ManoteElevation {
+    /** 顶栏的圆形按钮、分段控件的选中段。只给一点点，够把边线托起来。 */
+    val control = 2.dp
+
+    /** 内容卡片与场次行。 */
+    val card = 8.dp
+
+    /** 悬浮导航条：它必须明显高于任何内容。 */
+    val floatingBar = 18.dp
+}
+
+/**
+ * 根页面顶栏的大标题。
+ *
+ * 比 `titleLarge` 大一档、更粗、字距收紧一点：参考稿里页面名就是整屏的第一行，
+ * 用常规标题字号时它会淹没在下面那堆卡片标题里。中文没有西文那样的字距问题，
+ * 但 30sp 的字紧排一点更成块，不会散成五个独立方块。
+ */
+val ManoteScreenTitleStyle: TextStyle = TextStyle(
+    fontSize = 30.sp,
+    lineHeight = 38.sp,
+    fontWeight = FontWeight.ExtraBold,
+    letterSpacing = (-0.8).sp,
 )
 
 /**

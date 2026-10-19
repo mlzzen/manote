@@ -4,6 +4,7 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,13 +21,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -47,6 +54,7 @@ import com.manote.app.R
 import com.manote.app.domain.TimeSlot
 import com.manote.app.ui.model.UiText
 import com.manote.app.ui.model.timeSlotLabel
+import com.manote.app.ui.theme.ManoteElevation
 import com.manote.app.ui.theme.manote
 
 /**
@@ -475,4 +483,210 @@ fun ManoteShareBar(
 private fun String.firstCodePointOrNull(): String? {
     if (isEmpty()) return null
     return String(Character.toChars(codePointAt(0)))
+}
+
+/**
+ * 搜索框：一条无边框的浅色胶囊。
+ *
+ * 参考稿里搜索框就是「一块比页面略深的底色」，没有描边、没有填充高亮、没有标签。
+ * M3 的 OutlinedTextField 自带 56dp 高度、四角描边与浮动标签，放进这一屏
+ * 会比上下两张卡片都显眼——所以这里用 [BasicTextField] 自己铺装饰层：
+ * 高度固定 48dp、圆角取满、底色走 `surfaceVariant`，与筛选胶囊同一种材质。
+ *
+ * 无边框不等于无焦点提示：光标用品牌色，聚焦时整条胶囊的底色提亮一档。
+ * 无障碍上，[placeholder] 就是输入框的可见标签（读屏会把它当描述读出来）。
+ */
+@Composable
+fun ManoteSearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.onSurface)
+
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        singleLine = true,
+        textStyle = textStyle,
+        cursorBrush = SolidColor(colors.primary),
+        interactionSource = interaction,
+        decorationBox = { innerTextField ->
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(
+                        if (focused) colors.surface else colors.surfaceVariant,
+                    )
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = null,
+                    tint = colors.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.size(9.dp))
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            style = textStyle,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+        },
+    )
+}
+
+/**
+ * 表单输入框的统一配色：软填充、无常态描边。
+ *
+ * 默认的 M3 `OutlinedTextField` 是一圈细线加透明底，放在改版后的大圆角玻璃卡上
+ * 会显得像张表格——描边是这套设计里最不该出现的东西。这里改成：
+ * - 常态是**一块比卡片略深的软底**，靠底色而不是线框划出输入区；
+ * - 聚焦时底色不变，只把描边点亮成品牌绿，光标也是同一个颜色；
+ * - 出错时描边换成 error，与下面那行错误文案同一色。
+ *
+ * 形状仍由各调用点传 `MaterialTheme.shapes.small`，与胶囊、卡片同一套圆角语言。
+ */
+@Composable
+fun manoteTextFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = Color.Transparent,
+    disabledBorderColor = Color.Transparent,
+    errorBorderColor = MaterialTheme.colorScheme.error,
+    cursorColor = MaterialTheme.colorScheme.primary,
+)
+
+/**
+ * 分段控件：一个浅色胶囊里排几段，选中那段是浮起来的白色药丸。
+ *
+ * 与「一排各自独立的胶囊」相比，它把「这几个选项互斥」写进了形状里——
+ * 独立胶囊看起来像可以多选。参考稿的 1月 / 3月 / 全部 就是这一种。
+ *
+ * 整条高度 48dp（内层 40dp + 上下各 4dp 留白），满足规格 3.6 的最小点击区；
+ * 每段等宽（`weight(1f)`），所以切换时文字长短不会让药丸抖动。
+ * 选中态的白色药丸带一点投影，它才是「浮在上面」的那个平面。
+ */
+@Composable
+fun ManoteSegmentedControl(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        options.forEachIndexed { index, label ->
+            val selected = index == selectedIndex
+            val interaction = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .then(
+                        if (selected) {
+                            Modifier.manoteSoftShadow(CircleShape, ManoteElevation.control)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .background(
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.surface
+                        } else {
+                            Color.Transparent
+                        },
+                        shape = CircleShape,
+                    )
+                    .manotePress(interaction, pressedScale = 0.96f)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = LocalIndication.current,
+                        onClick = { onSelect(index) },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 顶栏的圆形图标按钮：白底、小投影、40dp 视觉尺寸。
+ *
+ * 参考稿的顶栏右侧是一排这样的圆钮，而不是一个挨一个的扁平图标——
+ * 它们因此像「桌上的几枚筹码」浮在页面之上，与下面那些卡片同一个高度语言。
+ * 视觉 40dp、点击区 48dp（外层 Box 撑满），两者分开，圆钮才不会被撑大。
+ */
+@Composable
+fun ManoteRoundIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .manotePress(interaction, pressedScale = 0.9f)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .manoteSoftShadow(CircleShape, ManoteElevation.control)
+                .background(MaterialTheme.colorScheme.surface, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
 }

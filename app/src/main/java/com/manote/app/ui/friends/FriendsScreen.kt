@@ -24,15 +24,12 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -56,9 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
 import com.manote.app.domain.Rivalry
-import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
+import com.manote.app.ui.components.ManoteSearchField
 import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.ManoteScaffold
 import com.manote.app.ui.components.PlayerAvatar
@@ -85,8 +82,6 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun FriendsScreen(
-    onSelectTab: (ManoteTab) -> Unit,
-    onRecordSession: () -> Unit,
     onOpenFriend: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -133,13 +128,6 @@ fun FriendsScreen(
                 )
             }
         },
-        bottomBar = {
-            ManoteBottomBar(
-                current = ManoteTab.FRIENDS,
-                onSelect = onSelectTab,
-                onNewSession = onRecordSession,
-            )
-        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -150,26 +138,11 @@ fun FriendsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedTextField(
+                // 与场次页同一个搜索框组件，两页的搜索行为看起来是一件事
+                ManoteSearchField(
                     value = state.query,
                     onValueChange = viewModel::setQuery,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = { Text(text = stringResource(R.string.friends_search_hint)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    // 与场次页同一个胶囊搜索框，两页的搜索行为看起来是一件事
-                    shape = CircleShape,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    ),
+                    placeholder = stringResource(R.string.friends_search_hint),
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

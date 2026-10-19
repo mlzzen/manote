@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
 import com.manote.app.domain.DatedNet
 import com.manote.app.domain.TrendPoint
+import com.manote.app.ui.components.manoteTextFieldColors
 import com.manote.app.ui.components.AnimatedSignedYuan
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
@@ -910,6 +911,7 @@ private fun EditFriendDialog(
                     singleLine = true,
                     label = { Text(text = stringResource(R.string.friend_nickname_label)) },
                     shape = MaterialTheme.shapes.small,
+                    colors = manoteTextFieldColors(),
                 )
                 OutlinedTextField(
                     value = note,
@@ -918,6 +920,7 @@ private fun EditFriendDialog(
                     label = { Text(text = stringResource(R.string.friend_note_label)) },
                     placeholder = { Text(text = stringResource(R.string.friend_note_hint)) },
                     shape = MaterialTheme.shapes.small,
+                    colors = manoteTextFieldColors(),
                 )
             }
         },
