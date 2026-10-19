@@ -269,6 +269,24 @@ class SessionRepository(
         }
 
     /**
+     * 批量删除整场 → 全部移入回收站（软删除，规格 3.3）。
+     *
+     * 一个事务里逐条打删除时间：要么这批全进回收站，要么一条都不动。
+     * 返回**实际**移入的场数——期间被别人删掉的 ID 会被跳过，
+     * 界面据此显示「删了 N 场」，而不是拿用户勾选的个数糊弄过去。
+     */
+    suspend fun moveSessionsToTrash(sessionIds: Collection<String>): ManoteResult<Int> =
+        writeSerializer.withWriteLock {
+            database.withTransaction {
+                val now = clock()
+                val moved = sessionIds.distinct().count { id ->
+                    sessionDao.moveToTrash(id, deletedAt = now, updatedAt = now) > 0
+                }
+                ManoteResult.Success(moved)
+            }
+        }
+
+    /**
      * 从回收站还原整场。
      *
      * 还原会重新占用一个在场名额，因此这里复查 1,000 场上限：满额时明确失败，

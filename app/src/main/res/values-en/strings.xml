@@ -18,6 +18,7 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_confirm">OK</string>
     <string name="action_view_all">View all</string>
+    <string name="action_view">View</string>
     <string name="action_record_session">Record</string>
     <string name="action_more">More</string>
     <string name="action_edit">Edit</string>
@@ -88,19 +89,79 @@
     <string name="home_empty_title">No records yet</string>
     <string name="home_empty_desc">After a game, tap the button below to record it. Your stats show up here right away.</string>
 
+    <!-- Home · last 10 sessions bar chart -->
+    <string name="home_bar_title">Last 10 sessions</string>
+    <string name="home_bar_sum">Last 10 total</string>
+    <string name="home_bar_record">Last 10 record</string>
+    <string name="home_bar_record_value">%1$dW %2$dL %3$dD</string>
+    <string name="home_bar_note">Dates on the horizontal axis, amounts on the vertical: up is a win, down is a loss, the latest on the right.</string>
+
+    <!-- Home · this month's calendar (the whole card opens the calendar page) -->
+    <string name="home_calendar_title">This month</string>
+    <string name="home_calendar_open">Open month</string>
+    <string name="home_calendar_net">Month net</string>
+    <string name="home_calendar_sessions">Sessions</string>
+    <string name="home_calendar_win_rate">Win rate</string>
+    <string name="home_calendar_empty">Nothing recorded this month yet.</string>
+
+    <!-- Calendar page -->
+    <string name="calendar_title">Calendar</string>
+    <string name="calendar_current_month">This month</string>
+    <string name="calendar_prev_year">Previous year</string>
+    <string name="calendar_next_year">Next year</string>
+    <string name="calendar_prev_month">Previous month</string>
+    <string name="calendar_next_month">Next month</string>
+    <string name="calendar_year_format">%1$d</string>
+    <string name="calendar_month_format">%1$d</string>
+    <string name="calendar_hero_label">Month net</string>
+    <string name="calendar_hero_days_format">%1$d days played</string>
+    <string name="calendar_stat_sessions">Sessions</string>
+    <string name="calendar_stat_win_rate">Win rate</string>
+    <string name="calendar_best_day">Best day</string>
+    <string name="calendar_worst_day">Worst day</string>
+    <string name="calendar_empty">Nothing recorded this month.</string>
+    <string name="calendar_empty_hint">Try another month, or go record a session.</string>
+    <string name="calendar_sessions_title">Sessions this month</string>
+    <string name="calendar_sessions_count_format">%1$d</string>
+
     <!-- Session list -->
-    <string name="sessions_filter_all">All</string>
-    <string name="sessions_filter_this_month">This month</string>
-    <string name="sessions_filter_last_month">Last month</string>
     <string name="sessions_empty_title">No sessions here yet</string>
     <string name="sessions_empty_desc">Try another filter, or record a new session.</string>
-    <string name="sessions_search_hint">Search by title or player name at the time</string>
-    <string name="sessions_search_empty_title">No matching sessions</string>
-    <string name="sessions_search_empty_desc">Try another keyword, or clear the search to see everything.</string>
     <string name="sessions_month_count_format">%1$d</string>
     <string name="sessions_month_self_format">Mine %1$s</string>
-    <!-- List header: my net total across the sessions below, under the current filter and search -->
+    <!-- List header: my net total across the sessions below, under the current filter -->
     <string name="sessions_hero_label">Filtered net result</string>
+    <!-- Multi-select delete: "Select" in the top bar, then confirm before deleting -->
+    <string name="sessions_select_action">Select</string>
+    <string name="sessions_selected_format">%1$d selected</string>
+    <string name="sessions_select_all">Select all</string>
+    <string name="sessions_deselect_all">Deselect all</string>
+    <string name="sessions_delete_action">Delete selected</string>
+    <string name="sessions_delete_title">Delete %1$d sessions?</string>
+    <string name="sessions_delete_message">They move to the recycle bin and can be restored from Settings → Recycle bin within 30 days.</string>
+    <string name="sessions_delete_confirm">Delete</string>
+    <string name="sessions_delete_done_format">Deleted %1$d sessions</string>
+    <string name="sessions_delete_failed_format">Delete failed: %1$s</string>
+    <!-- Filter entry in the top bar and its sheet -->
+    <string name="sessions_filter_action">Filter</string>
+    <string name="sessions_filter_title">Filter sessions</string>
+    <string name="sessions_filter_reset">Reset</string>
+    <string name="sessions_filter_any">Any</string>
+    <string name="sessions_filter_section_time_slot">Time of day</string>
+    <string name="sessions_filter_section_year">Year</string>
+    <string name="sessions_filter_section_month">Month</string>
+    <string name="sessions_filter_section_date">Day</string>
+    <string name="sessions_filter_section_friend">Players</string>
+    <string name="sessions_filter_section_result">Result</string>
+    <!-- Month chip label, e.g. "10" under the Month heading -->
+    <string name="sessions_filter_month_format">%1$d</string>
+    <string name="sessions_filter_pick_date">Pick a day</string>
+    <string name="sessions_filter_friend_none">No players shared a table yet</string>
+    <!-- Short ID appended to duplicate player names; the leading space is kept -->
+    <string name="sessions_filter_friend_id_format">" · %1$s"</string>
+    <string name="sessions_filter_show_format">Show %1$d sessions</string>
+    <string name="sessions_filter_empty_title">No sessions match</string>
+    <string name="sessions_filter_empty_desc">Try other filters, or reset them all from the button at the top right.</string>
 
     <!-- Session detail -->
     <string name="detail_title">Session detail</string>

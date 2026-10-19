@@ -120,6 +120,9 @@ internal fun SeatEditor(
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    // 这块没有自己的底色，水波直接按矩形铺开会在席位卡里露出一块方块；
+                    // 裁成卡片同一档圆角，按下去像是这块文字被轻轻按了一下。
+                    .clip(MaterialTheme.shapes.small)
                     .then(if (clickable) Modifier.clickable(onClick = onPick) else Modifier),
             ) {
                 Text(

@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.manote.app.R
 import com.manote.app.domain.DatedNet
 import com.manote.app.domain.DayNet
+import com.manote.app.domain.MonthSummary
 import com.manote.app.domain.PlayerStatistics
 import com.manote.app.domain.SessionExtremes
 import com.manote.app.domain.StreakStats
@@ -40,6 +41,7 @@ import com.manote.app.ui.manoteViewModel
 import com.manote.app.ui.components.AnimatedSignedYuan
 import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.components.ManoteEmptyState
+import com.manote.app.ui.components.ManoteHeroChip
 import com.manote.app.ui.components.ManoteHeroCard
 import com.manote.app.ui.components.ManotePill
 import com.manote.app.ui.components.ManotePrimaryButton
@@ -50,6 +52,8 @@ import com.manote.app.ui.components.ManoteSectionHeader
 import com.manote.app.ui.components.ManoteSessionRow
 import com.manote.app.ui.components.ManoteShareBar
 import com.manote.app.ui.components.ManoteTextAction
+import com.manote.app.ui.components.MonthCalendarGrid
+import com.manote.app.ui.components.NetBarChart
 import com.manote.app.ui.components.NetTrendChart
 import com.manote.app.ui.components.TimeSlotTag
 import com.manote.app.ui.model.SessionRowUi
@@ -59,16 +63,21 @@ import com.manote.app.ui.navigation.ManoteTab
 import com.manote.app.ui.theme.ManoteTheme
 import com.manote.app.ui.theme.manote
 import java.time.LocalDate
+import java.time.YearMonth
 
 /**
  * 首页（规格 3.1）。
  *
- * 结构自上而下：英雄卡（累计净输赢）→ 战绩概览 → 累计净额曲线 → 分时段战绩
- * → 连输 / 连赢 → 最近场次 → 记一场。
+ * 结构自上而下：英雄卡（累计净输赢）→ 近 10 场柱状图 → 本月月历 → 战绩概览
+ * → 累计净额曲线 → 分时段战绩 → 连输 / 连赢 → 最近场次 → 记一场。
  *
  * 只有「累计净输赢」一个数字被放大到 headlineLarge 并放进深墨绿底：
  * 全页其余读数都是同一档小字。此前所有读数同字号，满屏平铺，
  * 眼睛没有落点；现在先给结论，再给依据。
+ *
+ * 「近 10 场」与「本月月历」是两种时间尺度的对照：前者看手气（一场一场），
+ * 后者看这个月（一天一天）。月历整张卡可点，进到 [com.manote.app.ui.calendar.CalendarScreen]
+ * 可以逐月翻。
  *
  * 所有数字都来自 `session_result` 的实时汇总（规格 2.4），没有记录时显示 0.00 元。
  * 「今日宜忌 / 牌运」属规格外内容，不做。
@@ -78,6 +87,7 @@ fun HomeScreen(
     onOpenSessions: () -> Unit,
     onRecordSession: () -> Unit,
     onOpenSessionDetail: (String) -> Unit,
+    onOpenCalendar: (YearMonth) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel = manoteViewModel { container, _ ->
@@ -90,16 +100,18 @@ fun HomeScreen(
         onOpenSessions = onOpenSessions,
         onRecordSession = onRecordSession,
         onOpenSessionDetail = onOpenSessionDetail,
+        onOpenCalendar = onOpenCalendar,
         modifier = modifier,
     )
 }
 
 @Composable
-private fun HomeContent(
+internal fun HomeContent(
     state: HomeUiState,
     onOpenSessions: () -> Unit,
     onRecordSession: () -> Unit,
     onOpenSessionDetail: (String) -> Unit,
+    onOpenCalendar: (YearMonth) -> Unit,
     modifier: Modifier = Modifier,
     /** 顶栏上的日期。默认取设备时区的今天，预览与测试传入固定日期。 */
     today: LocalDate = LocalDate.now(),
@@ -141,6 +153,26 @@ private fun HomeContent(
             // 一场都没记时不显示概览、走势与分时段战绩，避免三行全是「—」的空表；
             // 空态已经由英雄卡上的 0.00 与「最近场次」里的说明覆盖了。
             if (state.statistics.sessionCount > 0) {
+                // 手气：一场一根柱子，最近 10 场
+                ManoteSectionHeader(title = stringResource(R.string.home_bar_title))
+                RecentBarsCard(bars = state.recentBars)
+
+                // 这个月：一天一格，整张卡可点进月历页
+                ManoteSectionHeader(
+                    title = stringResource(R.string.home_calendar_title),
+                    trailing = {
+                        ManoteTextAction(
+                            label = stringResource(R.string.action_view),
+                            onClick = { onOpenCalendar(state.month.yearMonth) },
+                        )
+                    },
+                )
+                MonthCalendarCard(
+                    month = state.month,
+                    today = today,
+                    onClick = { onOpenCalendar(state.month.yearMonth) },
+                )
+
                 ManoteSectionHeader(title = stringResource(R.string.home_overview_title))
                 BreakdownCard(statistics = state.statistics, extremes = state.extremes)
 
@@ -234,12 +266,12 @@ private fun HeroCard(
 
         Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            HeroChip(stringResource(R.string.home_hero_sessions_format, statistics.sessionCount))
-            HeroChip(
+            ManoteHeroChip(stringResource(R.string.home_hero_sessions_format, statistics.sessionCount))
+            ManoteHeroChip(
                 stringResource(R.string.home_stat_win_rate) + " " +
                     "${UiText.percent(statistics.winCount, statistics.sessionCount)}%",
             )
-            HeroChip(
+            ManoteHeroChip(
                 stringResource(R.string.home_stat_net_wins) + " " +
                     "${statistics.winCount - statistics.lossCount}",
             )
@@ -261,17 +293,124 @@ private fun HeroCard(
     }
 }
 
-/** 英雄卡里的小胶囊。底色比卡身亮一档，在深绿上是一块浅浅的牌子。 */
+/**
+ * 近 10 场柱状图：一根柱子是一场，向上赢、向下输。
+ *
+ * 与下面「累计净额曲线」是两个问题：那条线回答「总共赢了多少」，
+ * 这排柱子回答「最近这几场各自打成什么样」。总账一路向上时，
+ * 柱子仍可能东倒西歪——那才是手气的形状。
+ */
 @Composable
-private fun HeroChip(text: String) {
-    val colors = MaterialTheme.manote
-    ManotePill(
-        text = text,
-        containerColor = colors.heroChip,
-        contentColor = colors.onHeroChip,
-        style = MaterialTheme.typography.labelSmall,
-        verticalPadding = 4.dp,
-    )
+private fun RecentBarsCard(bars: List<DatedNet>) {
+    ManoteCard {
+        if (bars.isEmpty()) return@ManoteCard
+
+        val total = bars.sumOf { it.netMinor }
+        val wins = bars.count { it.netMinor > 0L }
+        val losses = bars.count { it.netMinor < 0L }
+        val draws = bars.size - wins - losses
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            ManoteReadout(
+                label = stringResource(R.string.home_bar_sum),
+                value = UiText.signedYuan(total),
+                valueColor = signedColor(total),
+                modifier = Modifier.weight(1f),
+            )
+            ManoteReadout(
+                label = stringResource(R.string.home_bar_record),
+                value = stringResource(R.string.home_bar_record_value, wins, losses, draws),
+                valueColor = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1.6f),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        NetBarChart(items = bars)
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.home_bar_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * 本月月历：一天一格，格子上写当天净输赢，底下是这个月的三个读数。
+ *
+ * 整张卡可点：点进去是月历页，可以逐月翻。这里不自带箭头，
+ * 首页只回答「这个月怎么样」，翻月份是另一个页面的职责 ——
+ * 一屏里塞两组月切换箭头，反而会让人以为首页也在换月份。
+ *
+ * 本月一场没记时仍然画网格（空白格），并把读数换成一句说明：
+ * 「这个月没打」与「这个月打平」是两件事，不能都显示成 ¥0.00。
+ */
+@Composable
+private fun MonthCalendarCard(
+    month: MonthSummary,
+    today: LocalDate,
+    onClick: () -> Unit,
+) {
+    ManoteCard(onClick = onClick) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = UiText.monthLabel(month.yearMonth),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = stringResource(R.string.home_calendar_open),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        MonthCalendarGrid(
+            month = month.yearMonth,
+            days = month.days,
+            today = today,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (month.hasSessions) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                ManoteReadout(
+                    label = stringResource(R.string.home_calendar_net),
+                    value = UiText.signedYuan(month.netMinor),
+                    valueColor = signedColor(month.netMinor),
+                    modifier = Modifier.weight(1.2f),
+                )
+                ManoteReadout(
+                    label = stringResource(R.string.home_calendar_sessions),
+                    value = stringResource(R.string.home_slot_count_format, month.sessionCount),
+                    valueColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                ManoteReadout(
+                    label = stringResource(R.string.home_calendar_win_rate),
+                    value = "${month.winRatePercent}%",
+                    valueColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.home_calendar_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 /**
@@ -719,6 +858,29 @@ private fun HomeContentPreview() {
                     bestWin = DatedNet(playedAt = 1_790_000_000_000L, netMinor = 2_600L),
                     worstLoss = DatedNet(playedAt = 1_792_000_000_000L, netMinor = -4_100L),
                 ),
+                recentBars = listOf(
+                    DatedNet(1_786_000_000_000L, -2_600L),
+                    DatedNet(1_786_400_000_000L, 900L),
+                    DatedNet(1_786_800_000_000L, 2_600L),
+                    DatedNet(1_787_200_000_000L, -200L),
+                    DatedNet(1_787_600_000_000L, -4_100L),
+                    DatedNet(1_788_000_000_000L, 0L),
+                    DatedNet(1_788_400_000_000L, 1_500L),
+                    DatedNet(1_788_800_000_000L, -3_400L),
+                ),
+                // 预览里的本月：4 天有记录，2 赢 2 输，与下面 statistics 的场数对得上
+                month = MonthSummary(
+                    yearMonth = YearMonth.of(2026, 10),
+                    days = mapOf(
+                        LocalDate.of(2026, 10, 3) to DayNet(LocalDate.of(2026, 10, 3), 4_200L, 1),
+                        LocalDate.of(2026, 10, 5) to DayNet(LocalDate.of(2026, 10, 5), -3_100L, 1),
+                        LocalDate.of(2026, 10, 9) to DayNet(LocalDate.of(2026, 10, 9), 1_250L, 1),
+                        LocalDate.of(2026, 10, 12) to DayNet(LocalDate.of(2026, 10, 12), -800L, 1),
+                    ),
+                    statistics = PlayerStatistics.of(listOf(4_200L, -3_100L, 1_250L, -800L)),
+                    bestDay = DayNet(LocalDate.of(2026, 10, 3), 4_200L, 1),
+                    worstDay = DayNet(LocalDate.of(2026, 10, 5), -3_100L, 1),
+                ),
                 recentSessions = listOf(
                     SessionRowUi(
                         id = "1",
@@ -728,7 +890,6 @@ private fun HomeContentPreview() {
                         timeSlot = TimeSlot.EVENING,
                         selfNetMinor = -200L,
                         opponentNames = listOf("次小", "次建米", "麻米建"),
-                        searchHaystack = "麻将对局\n次小\n次建米\n麻米建",
                     ),
                     SessionRowUi(
                         id = "2",
@@ -738,13 +899,13 @@ private fun HomeContentPreview() {
                         timeSlot = TimeSlot.AFTERNOON,
                         selfNetMinor = 2_600L,
                         opponentNames = listOf("阿强", "小美"),
-                        searchHaystack = "周五晚局\n阿强\n小美",
                     ),
                 ),
             ),
             onOpenSessions = {},
             onRecordSession = {},
             onOpenSessionDetail = {},
+            onOpenCalendar = {},
             today = LocalDate.of(2026, 10, 12),
         )
     }
@@ -759,6 +920,7 @@ private fun HomeContentEmptyPreview() {
             onOpenSessions = {},
             onRecordSession = {},
             onOpenSessionDetail = {},
+            onOpenCalendar = {},
             today = LocalDate.of(2026, 10, 12),
         )
     }

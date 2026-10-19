@@ -54,6 +54,14 @@ class UiTextTest {
     }
 
     @Test
+    fun monthSlashDay_neverPadsWithZero() {
+        // 柱状图横轴的写法：6 月 2 日就是 6/2，补零会白占一个字的位置
+        assertEquals("6/2", UiText.monthSlashDay(millisOf(2026, 6, 2, 21, 0)))
+        assertEquals("10/5", UiText.monthSlashDay(millisOf(2026, 10, 5, 21, 0)))
+        assertEquals("1/9", UiText.monthSlashDay(millisOf(2026, 1, 9, 8, 5)))
+    }
+
+    @Test
     fun percent_roundsToNearestInteger() {
         assertEquals(10, UiText.percent(1, 10))
         assertEquals(90, UiText.percent(9, 10))
@@ -111,5 +119,36 @@ class UiTextTest {
         // 极端情况下也不能抛异常：短串原样返回，空串返回空串
         assertEquals("abc", UiText.shortId("abc"))
         assertEquals("", UiText.shortId(""))
+    }
+
+    @Test
+    fun compactSignedYuan_keepsOneDecimalBelowTenYuan() {
+        // 月历格子只有 40dp 宽：不带货币符号、不带千分位
+        assertEquals("+12.3", UiText.compactSignedYuan(1_230L))
+        assertEquals("-4.5", UiText.compactSignedYuan(-450L))
+        assertEquals("+12", UiText.compactSignedYuan(1_200L))
+        assertEquals("0", UiText.compactSignedYuan(0L))
+    }
+
+    @Test
+    fun compactSignedYuan_dropsDecimalsOnceFourDigitsAreNeeded() {
+        // 1234.56 元：整数元就够，多一位小数会撑出格子
+        assertEquals("+1235", UiText.compactSignedYuan(123_456L))
+        assertEquals("-1235", UiText.compactSignedYuan(-123_456L))
+    }
+
+    @Test
+    fun compactSignedYuan_usesWanForLargeAmounts() {
+        assertEquals("+1.2万", UiText.compactSignedYuan(1_234_500L))
+        assertEquals("-1万", UiText.compactSignedYuan(-1_000_000L))
+        assertEquals("+12.3万", UiText.compactSignedYuan(12_345_678L))
+    }
+
+    @Test
+    fun compactSignedYuan_neverRoundsAPositiveIntoNegativeOrZeroSign() {
+        // 不足一分的方向也必须看得出：四舍五入到 0 之后符号还留着，
+        // 否则「赢了 4 分」会被画成一个中性的 0
+        assertEquals("+0", UiText.compactSignedYuan(4L))
+        assertEquals("-0", UiText.compactSignedYuan(-4L))
     }
 }

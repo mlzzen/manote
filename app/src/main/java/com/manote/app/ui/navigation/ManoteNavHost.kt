@@ -32,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.manote.app.ui.calendar.CalendarScreen
 import com.manote.app.ui.components.ManoteBottomBar
 import com.manote.app.ui.components.ManotePageBackground
 import com.manote.app.ui.friends.FriendDetailScreen
@@ -45,6 +46,8 @@ import com.manote.app.ui.sessions.SessionsScreen
 import com.manote.app.ui.settings.SettingsScreen
 import com.manote.app.ui.theme.ManoteMotion
 import kotlinx.coroutines.launch
+import java.time.YearMonth
+import java.time.format.DateTimeParseException
 
 /**
  * 单 Activity 的导航图。页面只接收 ID 与回调，不接收业务对象（规格 4）。
@@ -161,6 +164,7 @@ fun ManoteNavHost(
                         onNewSession = { navController.navigateTo(ManoteRoutes.SESSION_NEW) },
                         onOpenFriend = { navController.navigateTo(ManoteRoutes.friendDetail(it)) },
                         onOpenRecycleBin = { navController.navigateTo(ManoteRoutes.BIN) },
+                        onOpenCalendar = { navController.navigateTo(ManoteRoutes.calendar(it)) },
                         // 规格 6.1：导入成功后清除旧页面草稿、回到首页，统计从新库刷新
                         onImportCompleted = { returnToRoot(ManoteTab.HOME) },
                     )
@@ -231,6 +235,25 @@ fun ManoteNavHost(
                         },
                     )
                 }
+
+                composable(
+                    route = ManoteRoutes.CALENDAR,
+                    arguments = listOf(
+                        navArgument(ManoteRoutes.ARG_YEAR_MONTH) { type = NavType.StringType },
+                    ),
+                ) { entry ->
+                    CalendarScreen(
+                        // 路由里是 `2026-10`。参数缺失或被手改坏时退回本月，
+                        // 让页面照常打开——这里没有值得为它崩一次的分支。
+                        initialMonth = parseYearMonth(
+                            entry.arguments?.getString(ManoteRoutes.ARG_YEAR_MONTH),
+                        ),
+                        onNavigateBack = { navController.navigateUp() },
+                        onOpenSessionDetail = {
+                            navController.navigateTo(ManoteRoutes.sessionDetail(it))
+                        },
+                    )
+                }
             }
         }
     }
@@ -257,6 +280,7 @@ private fun MainTabs(
     onNewSession: () -> Unit,
     onOpenFriend: (String) -> Unit,
     onOpenRecycleBin: () -> Unit,
+    onOpenCalendar: (YearMonth) -> Unit,
     onImportCompleted: () -> Unit,
 ) {
     HorizontalPager(
@@ -272,6 +296,7 @@ private fun MainTabs(
                     onOpenSessions = { onSelectTab(ManoteTab.SESSIONS) },
                     onRecordSession = onNewSession,
                     onOpenSessionDetail = onOpenSessionDetail,
+                    onOpenCalendar = onOpenCalendar,
                 )
 
                 ManoteTab.SESSIONS -> SessionsScreen(
@@ -316,6 +341,19 @@ private fun ManoteTabsBar(
 private fun NavHostController.navigateTo(route: String) {
     if (currentDestination?.route == route) return
     navigate(route) { launchSingleTop = true }
+}
+
+/**
+ * 解析月历路由里的年月。
+ *
+ * 只接受 ISO 写法（`2026-10`）；拿不到或不合法时退回本月——
+ * 这条路由只会由 [ManoteRoutes.calendar] 生成，解析失败意味着参数被外部改坏了，
+ * 那时给用户一个可用的月份，比让月历页在 `YearMonth.parse` 上崩掉更合理。
+ */
+private fun parseYearMonth(raw: String?): YearMonth = try {
+    if (raw.isNullOrBlank()) YearMonth.now() else YearMonth.parse(raw)
+} catch (_: DateTimeParseException) {
+    YearMonth.now()
 }
 
 /**

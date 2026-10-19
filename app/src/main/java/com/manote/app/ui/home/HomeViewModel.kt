@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.manote.app.data.repository.PlayerRepository
 import com.manote.app.data.repository.SessionRepository
 import com.manote.app.domain.DatedNet
+import com.manote.app.domain.MonthCalendar
+import com.manote.app.domain.MonthSummary
 import com.manote.app.domain.PlayerStatistics
 import com.manote.app.domain.SessionExtremes
 import com.manote.app.domain.StreakStats
@@ -21,8 +23,10 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.YearMonth
+import java.time.ZoneId
 
-/** 首页状态。统计、走势与最近场次都来自同一次订阅，几处数字不会互相对不上。 */
+/** 首页状态。统计、走势、月历与最近场次都来自同一次订阅，几处数字不会互相对不上。 */
 data class HomeUiState(
     val loading: Boolean = true,
     val statistics: PlayerStatistics = PlayerStatistics.EMPTY,
@@ -34,6 +38,10 @@ data class HomeUiState(
     val streak: StreakStats = StreakStats.EMPTY,
     /** 单场赢最多 / 输最多；从没赢过或从没输过时对应的一边为 null。 */
     val extremes: SessionExtremes = SessionExtremes.EMPTY,
+    /** 最近若干场（按时间升序，最后一场在末尾），柱状图逐根画它。 */
+    val recentBars: List<DatedNet> = emptyList(),
+    /** 本月的逐日战况与月度合计。首页那张月历与它同源。 */
+    val month: MonthSummary = MonthSummary.empty(YearMonth.now()),
     val recentSessions: List<SessionRowUi> = emptyList(),
 )
 
@@ -43,18 +51,22 @@ data class HomeUiState(
  * 规格 2.4：统计一律从 session_result 实时计算，禁止另存手工累计；
  * 因此这里订阅全部场次及其结果，再在内存里汇总，任何写入都会自动刷新首页数字。
  *
- * 累计净额走势与连输/连赢也走这一份数据：三者同源，不会出现「概览的净胜」与
- * 「曲线终点」对不上的情况。
+ * 累计净额走势、连输/连赢、逐场柱状图与本月月历也走这一份数据：全部同源，
+ * 不会出现「概览的净胜」与「曲线终点」对不上、或「月历某天」在列表里查无此场的情况。
+ *
+ * [zoneId] 决定「哪一天 / 哪一月」怎么划分，与界面显示必须同源；
+ * 默认取设备时区，测试与导出可以显式钉死，避免换台机器才暴露的偏移。
  */
 class HomeViewModel(
     private val playerRepository: PlayerRepository,
     sessionRepository: SessionRepository,
+    private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> =
         sessionRepository.observeSessions()
             .map { sessions ->
-                val rows = sessions.map { it.toRowUi() }
+                val rows = sessions.map { it.toRowUi(zoneId) }
                 // 列表是倒序（最近在前），走势要正序：反过来再交给 Trend，
                 // 这样同一时刻的场次也会按 ID 升序落在后面，与列表口径一致。
                 val dated = rows.asReversed().map {
@@ -69,10 +81,13 @@ class HomeViewModel(
                         rows.groupBy({ it.timeSlot }, { it.selfNetMinor }),
                     ),
                     trend = Trend.cumulative(dated),
-                    streak = Streaks.of(dated),
+                    streak = Streaks.of(dated, zoneId),
                     // 单场极值与走势、连输连赢同源：都是这同一份 dated，
                     // 不会出现「曲线上的顶点」与「单场赢最多」对不上
                     extremes = SessionExtremes.of(dated),
+                    // 最近 10 场（正序）：柱状图从左往右读，最后一场在最右
+                    recentBars = dated.takeLast(RECENT_BAR_LIMIT),
+                    month = MonthCalendar.of(dated, YearMonth.now(zoneId), zoneId),
                     recentSessions = rows.take(RECENT_LIMIT),
                 )
             }
@@ -95,6 +110,9 @@ class HomeViewModel(
     private companion object {
         /** 首页最多展示 5 场，完整列表在「场次」页。 */
         const val RECENT_LIMIT = 5
+
+        /** 柱状图只画最近 10 场：再多一根柱子就挤成色块，读不出具体哪一场。 */
+        const val RECENT_BAR_LIMIT = 10
         const val STOP_TIMEOUT_MILLIS = 5_000L
     }
 }

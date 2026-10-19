@@ -1,5 +1,7 @@
 *.iml
 .gradle/
+# Kotlin 2.x 编译器把增量编译的会话数据写在这里，与 .gradle/ 同类
+.kotlin/
 local.properties
 .idea/
 .DS_Store

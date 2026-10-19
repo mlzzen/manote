@@ -40,17 +40,19 @@ data class SessionRowUi(
     /** 其余各位的昵称快照，按 seat 升序；本场只记录了部分位置时会少于三个（规格 1.3）。 */
     val opponentNames: List<String>,
     /**
-     * 关键词搜索用的比对串：标题 + 四人当时的昵称快照，已统一转小写。
-     * 预先算好，搜索时只做一次 `contains`，不必在每次按键时重新拼字符串。
+     * 其余各位的档案 ID，顺序与 [opponentNames] 严格一一对应。
+     *
+     * 「按牌友筛选」认 ID 不认昵称：麻友改名后，旧场次的昵称快照仍是旧名，
+     * 按名字筛会漏掉他自己那些场次；两个同名牌友也会被并成一个人。
+     * 默认空列表只服务于测试样张，真实数据一律由 [toRowUi] 填满。
      */
-    val searchHaystack: String,
+    val opponentPlayerIds: List<String> = emptyList(),
 ) {
     /**
      * 用户是否真的起过标题。
      *
      * 为 false 时列表不显示标题行——[SessionRules.DEFAULT_TITLE] 是占位名，
      * 每行都重复一句「麻将对局」只是噪音。
-     * 搜索串里仍然保留它，用「麻将」依旧搜得到这些场次。
      */
     val hasCustomTitle: Boolean get() = !SessionRules.isPlaceholderTitle(title)
 }
@@ -91,13 +93,12 @@ data class SessionDetailUi(
  *
  * 本人结果取 seat 0（规格 2.2：每场的 seat 0 必为 SELF）。
  * 若库处于异常状态导致缺少 seat 0，净额按 0 展示而不是崩溃。
- *
- * 搜索串按规格 3.3 只含「标题 + 历史昵称（nameSnapshot）」，
- * 不把备注纳入，否则「搜索标题」会被备注里的词意外命中。
  */
 fun SessionWithResults.toRowUi(zoneId: ZoneId = ZoneId.systemDefault()): SessionRowUi {
     val ordered = results.sortedBy { it.seat }
     val self = ordered.firstOrNull { it.seat == SessionRules.SEAT_SELF }
+    // 昵称与 ID 必须来自同一个列表：筛选按 ID、显示按昵称，两者错位就会张冠李戴
+    val opponents = ordered.filter { it.seat != SessionRules.SEAT_SELF }
     return SessionRowUi(
         id = session.id,
         title = session.title,
@@ -105,10 +106,8 @@ fun SessionWithResults.toRowUi(zoneId: ZoneId = ZoneId.systemDefault()): Session
         playedAt = session.playedAt,
         timeSlot = timeSlotOf(session.playedAt, session.durationMinutes, zoneId),
         selfNetMinor = self?.netMinor ?: 0L,
-        opponentNames = ordered.filter { it.seat != SessionRules.SEAT_SELF }.map { it.nameSnapshot },
-        searchHaystack = (listOf(session.title) + ordered.map { it.nameSnapshot })
-            .joinToString(SEARCH_HAYSTACK_SEPARATOR)
-            .lowercase(),
+        opponentNames = opponents.map { it.nameSnapshot },
+        opponentPlayerIds = opponents.map { it.playerId },
     )
 }
 
@@ -120,9 +119,6 @@ fun SessionWithResults.toRowUi(zoneId: ZoneId = ZoneId.systemDefault()): Session
  */
 private fun timeSlotOf(playedAt: Long, durationMinutes: Int, zoneId: ZoneId): TimeSlot =
     TimeSlot.of(SessionDuration.midpointAt(playedAt, durationMinutes), zoneId)
-
-/** 用换行分隔，避免「标题结尾 + 昵称开头」拼出一个并不存在的词而被误命中。 */
-private const val SEARCH_HAYSTACK_SEPARATOR = "\n"
 
 /** 场次 → 四人详情。排名与结清都在这里一次算好，Composable 只负责渲染。 */
 fun SessionWithResults.toDetailUi(zoneId: ZoneId = ZoneId.systemDefault()): SessionDetailUi {

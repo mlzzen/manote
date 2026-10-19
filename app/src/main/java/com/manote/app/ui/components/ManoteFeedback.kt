@@ -4,6 +4,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.MaterialTheme
@@ -12,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
@@ -47,6 +52,48 @@ fun Modifier.manotePress(
         transformOrigin = TransformOrigin.Center
     }
 }
+
+/**
+ * 圆角点击：先按 [shape] 裁一刀，再接上点击。
+ *
+ * 水波（indication）沿**节点的矩形边界**绘制，它并不知道外面那颗卡片是圆的。
+ * 修饰符由外向内逐层包裹，因此 `clip` 必须写在 `clickable` 之前——
+ * 写在之后只是裁内容，水波照旧是方的，按下去就在圆角卡片背后露出一块方块底色。
+ *
+ * 本应用所有自定义点击都走这里或 [manoteRipple]，不要手写 `clickable`：
+ * 少写一个 clip，那一处就会退回方块。
+ */
+@Composable
+fun Modifier.manoteClickable(
+    interactionSource: MutableInteractionSource,
+    shape: Shape,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+): Modifier = this
+    .clip(shape)
+    .clickable(
+        interactionSource = interactionSource,
+        indication = LocalIndication.current,
+        enabled = enabled,
+        onClick = onClick,
+    )
+
+/**
+ * 只负责画水波、不接管点击的一层，给「点击区比视觉更大」的控件用。
+ *
+ * 胶囊与圆形图标按钮的可点区域是 48dp，而看得见的那颗只有 38dp / 40dp。
+ * 直接把 48dp 的节点裁成圆角，水波就成了比控件大一圈的光晕；
+ * 把这一层挂在**视觉元素自己**身上，水波才会正好贴合它，
+ * 点击仍由外层的 `clickable(interactionSource, indication = null)` 负责——
+ * 按下事件照样会从同一个 [interactionSource] 流过来，指示层因此画得出来。
+ */
+@Composable
+fun Modifier.manoteRipple(
+    interactionSource: MutableInteractionSource,
+    shape: Shape,
+): Modifier = this
+    .clip(shape)
+    .indication(interactionSource, LocalIndication.current)
 
 /**
  * 带符号金额的滚动文本：数字从旧值平滑长到新值，颜色随输赢变化。

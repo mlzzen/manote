@@ -1,5 +1,7 @@
 package com.manote.app.ui.navigation
 
+import java.time.YearMonth
+
 /**
  * 导航目的地登记表。
  *
@@ -41,6 +43,12 @@ object ManoteRoutes {
     /** 回收站：删除的场次暂存在这里，可还原或彻底删除。 */
     const val BIN = "bin"
 
+    /** 月历路由的参数名，形如 `2026-10`。 */
+    const val ARG_YEAR_MONTH = "yearMonth"
+
+    /** 月历：按年月翻看逐日输赢。实际跳转请用 [calendar] 生成完整路由。 */
+    const val CALENDAR = "calendar/{yearMonth}"
+
     /** 生成某个场次的详情路由。 */
     fun sessionDetail(sessionId: String): String = "session/$sessionId"
 
@@ -51,10 +59,18 @@ object ManoteRoutes {
     fun friendDetail(playerId: String): String = "friend/$playerId"
 
     /**
+     * 生成某个月的月历路由。
+     *
+     * 用 [YearMonth.toString] 的 ISO 写法（`2026-10`）：带前导零、跨语言都不变，
+     * 解析回来只需 `YearMonth.parse`，不必自己拼「年 / 月」两个字。
+     */
+    fun calendar(yearMonth: YearMonth): String = "calendar/$yearMonth"
+
+    /**
      * 全部已注册目的地。Navigation 会因重复路由在运行时抛异常，
      * 因此该列表是「路由唯一」这一不变量的唯一来源，由单元测试守护。
      *
-     * 只有六个：一个根容器 + 五个子页面。页签不占名额。
+     * 只有七个：一个根容器 + 六个子页面。页签不占名额。
      */
     val all: List<String> = listOf(
         MAIN,
@@ -63,15 +79,16 @@ object ManoteRoutes {
         SESSION_EDIT,
         FRIEND_DETAIL,
         BIN,
+        CALENDAR,
     )
 
     /**
-     * 子页面路由（详情、编辑、记一场、回收站）：转场从右侧滑入滑出，
+     * 子页面路由（详情、编辑、记一场、回收站、月历）：转场从右侧滑入滑出，
      * 与根容器区分开。转场判断用的就是这一份名单——[MAIN] 刻意不在其中，
      * 它回到前台时应该是「直接就位」，不能再滑一次。
      */
     val subRoutes: Set<String> =
-        setOf(SESSION_NEW, SESSION_DETAIL, SESSION_EDIT, FRIEND_DETAIL, BIN)
+        setOf(SESSION_NEW, SESSION_DETAIL, SESSION_EDIT, FRIEND_DETAIL, BIN, CALENDAR)
 
     /** 起始目的地。 */
     const val START: String = MAIN

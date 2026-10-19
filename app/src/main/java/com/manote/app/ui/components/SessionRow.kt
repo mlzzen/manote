@@ -3,15 +3,22 @@ package com.manote.app.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,12 +46,17 @@ import com.manote.app.ui.theme.manote
  *
  * 首页「最近场次」和场次列表共用，保证两处观感与信息一致。
  * 整行可点击，点击区远超 48dp（规格 3.6）。
+ *
+ * @param selected 多选模式下的勾选状态。传 null 表示不在多选模式（首页与平常的列表），
+ *   此时行内不画勾选圈；传 true/false 时左侧多一枚圆圈，选中时整行描边换成品牌色——
+ *   只靠一枚 20dp 的圆点表示「选中了」，扫视一列时很容易看漏。
  */
 @Composable
 fun ManoteSessionRow(
     row: SessionRowUi,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    selected: Boolean? = null,
 ) {
     val colors = MaterialTheme.manote
     val stripeColor = when {
@@ -54,6 +66,10 @@ fun ManoteSessionRow(
     }
     val shape = MaterialTheme.shapes.large
     val interaction = remember { MutableInteractionSource() }
+    val cardBorder = when (selected) {
+        true -> BorderStroke(SELECTED_STROKE, MaterialTheme.colorScheme.primary)
+        else -> BorderStroke(1.dp, colors.glassBorder)
+    }
 
     Surface(
         modifier = modifier
@@ -67,7 +83,7 @@ fun ManoteSessionRow(
         // 与内容卡片同一层顶光；底色画在内层，顺序因此是「底光 → 结果色边 → 内容」
         color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, colors.glassBorder),
+        border = cardBorder,
     ) {
         Row(
             modifier = Modifier
@@ -90,6 +106,11 @@ fun ManoteSessionRow(
                 .padding(start = 18.dp, top = 14.dp, end = 14.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (selected != null) {
+                SelectionMark(checked = selected)
+                Spacer(modifier = Modifier.width(10.dp))
+            }
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = UiText.date(row.playedAt),
@@ -130,3 +151,42 @@ fun ManoteSessionRow(
 
 /** 结果色边的宽度。 */
 private val STRIPE_WIDTH = 4.dp
+
+/** 选中时整行的描边宽度：比默认那圈白线粗一点，扫视时才有「这一行被框住了」的感觉。 */
+private val SELECTED_STROKE = 1.5.dp
+
+/**
+ * 多选模式的勾选圈。
+ *
+ * 未选中是一个空心圆，选中是品牌色实心圆加一枚勾——两种状态共用一个轮廓尺寸，
+ * 勾上勾下时行内其它内容不会左右挪动。
+ */
+@Composable
+private fun SelectionMark(checked: Boolean) {
+    val shape = CircleShape
+    Box(
+        modifier = Modifier
+            .size(20.dp)
+            .clip(shape)
+            .background(
+                if (checked) MaterialTheme.colorScheme.primary else Color.Transparent,
+            )
+            .then(
+                if (checked) {
+                    Modifier
+                } else {
+                    Modifier.border(1.5.dp, MaterialTheme.colorScheme.outline, shape)
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}

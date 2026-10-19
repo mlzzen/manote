@@ -436,7 +436,6 @@ private fun SamplePage(
                     timeSlot = TimeSlot.EVENING,
                     selfNetMinor = -200L,
                     opponentNames = listOf("次小", "次建米", "麻米建"),
-                    searchHaystack = "",
                 ),
                 onClick = {},
             )
@@ -449,7 +448,6 @@ private fun SamplePage(
                     timeSlot = TimeSlot.AFTERNOON,
                     selfNetMinor = 2_600L,
                     opponentNames = listOf("阿强", "小美"),
-                    searchHaystack = "",
                 ),
                 onClick = {},
             )

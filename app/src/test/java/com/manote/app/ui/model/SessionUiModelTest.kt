@@ -78,15 +78,6 @@ class SessionUiModelTest {
     }
 
     @Test
-    fun placeholderTitleIsStillSearchable() {
-        // 标题只是不显示，搜索串里仍保留，用「麻将」照旧搜得到这些场次
-        val row = sessionWith(3000L, title = SessionRules.DEFAULT_TITLE).toRowUi()
-
-        assertFalse(row.hasCustomTitle)
-        assertTrue(row.searchHaystack.contains("麻将对局"))
-    }
-
-    @Test
     fun rowCarriesTheTimeSlotJudgedInTheGivenZone() {
         // 结束于 2026-10-05 21:30（上海）、打了 2 小时 → 区间 19:30–21:30、中点 20:30 → 晚场；
         // 同一时刻按 UTC 算，中点落在当天 12:30 → 下午场。

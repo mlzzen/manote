@@ -11,6 +11,7 @@
     <string name="action_cancel">取消</string>
     <string name="action_confirm">确定</string>
     <string name="action_view_all">查看全部</string>
+    <string name="action_view">查看</string>
     <string name="action_record_session">记一场</string>
     <string name="action_more">更多</string>
     <string name="action_edit">编辑</string>
@@ -81,19 +82,79 @@
     <string name="home_empty_title">暂无记录</string>
     <string name="home_empty_desc">打完一场后点下面的按钮记下来，统计会立刻出现在这里。</string>
 
+    <!-- 首页 · 近 10 场柱状图 -->
+    <string name="home_bar_title">近 10 场</string>
+    <string name="home_bar_sum">近 10 场合计</string>
+    <string name="home_bar_record">近 10 场战绩</string>
+    <string name="home_bar_record_value">%1$d 胜 %2$d 负 %3$d 平</string>
+    <string name="home_bar_note">横轴是日期，纵轴是金额；向上是赢、向下是输，最近一场在最右边。</string>
+
+    <!-- 首页 · 本月月历（整张卡可点进月历页） -->
+    <string name="home_calendar_title">本月日历</string>
+    <string name="home_calendar_open">看整月</string>
+    <string name="home_calendar_net">本月净输赢</string>
+    <string name="home_calendar_sessions">场次</string>
+    <string name="home_calendar_win_rate">胜率</string>
+    <string name="home_calendar_empty">这个月还没有记录。</string>
+
+    <!-- 月历页 -->
+    <string name="calendar_title">月历</string>
+    <string name="calendar_current_month">本月</string>
+    <string name="calendar_prev_year">上一年</string>
+    <string name="calendar_next_year">下一年</string>
+    <string name="calendar_prev_month">上个月</string>
+    <string name="calendar_next_month">下个月</string>
+    <string name="calendar_year_format">%1$d年</string>
+    <string name="calendar_month_format">%1$d月</string>
+    <string name="calendar_hero_label">当月净输赢</string>
+    <string name="calendar_hero_days_format">出勤 %1$d 天</string>
+    <string name="calendar_stat_sessions">场数</string>
+    <string name="calendar_stat_win_rate">胜率</string>
+    <string name="calendar_best_day">最佳单日</string>
+    <string name="calendar_worst_day">最差单日</string>
+    <string name="calendar_empty">这个月一场都没记。</string>
+    <string name="calendar_empty_hint">换个月看看，或者回去记一场。</string>
+    <string name="calendar_sessions_title">这个月的场次</string>
+    <string name="calendar_sessions_count_format">%1$d 场</string>
+
     <!-- 场次列表 -->
-    <string name="sessions_filter_all">全部</string>
-    <string name="sessions_filter_this_month">本月</string>
-    <string name="sessions_filter_last_month">上月</string>
     <string name="sessions_empty_title">这里还没有场次</string>
     <string name="sessions_empty_desc">换个筛选条件看看，或者直接记一场新的。</string>
-    <string name="sessions_search_hint">搜索标题或当时的牌友昵称</string>
-    <string name="sessions_search_empty_title">没有匹配的场次</string>
-    <string name="sessions_search_empty_desc">换个关键词，或清空搜索看看全部场次。</string>
     <string name="sessions_month_count_format">%1$d 场</string>
     <string name="sessions_month_self_format">本人 %1$s</string>
-    <!-- 场次页头部：当前筛选与搜索之下、下面这些场次的本人净额合计 -->
+    <!-- 场次页顶部那条窄读数：当前筛选之下、下面这些场次的本人净额合计 -->
     <string name="sessions_hero_label">筛选结果净输赢</string>
+    <!-- 多选删除：右上角「选择」进入，行变成可勾选，删除前必过一道确认 -->
+    <string name="sessions_select_action">选择</string>
+    <string name="sessions_selected_format">已选 %1$d 场</string>
+    <string name="sessions_select_all">全选</string>
+    <string name="sessions_deselect_all">全不选</string>
+    <string name="sessions_delete_action">删除选中</string>
+    <string name="sessions_delete_title">删除 %1$d 场？</string>
+    <string name="sessions_delete_message">删除后会移入回收站，30 天内在「我的 → 回收站」里还能还原。</string>
+    <string name="sessions_delete_confirm">删除</string>
+    <string name="sessions_delete_done_format">已删除 %1$d 场</string>
+    <string name="sessions_delete_failed_format">删除失败：%1$s</string>
+    <!-- 顶栏右上角的筛选入口与它的弹层 -->
+    <string name="sessions_filter_action">筛选</string>
+    <string name="sessions_filter_title">筛选场次</string>
+    <string name="sessions_filter_reset">重置</string>
+    <string name="sessions_filter_any">不限</string>
+    <string name="sessions_filter_section_time_slot">时段</string>
+    <string name="sessions_filter_section_year">年份</string>
+    <string name="sessions_filter_section_month">月份</string>
+    <string name="sessions_filter_section_date">日期</string>
+    <string name="sessions_filter_section_friend">牌友</string>
+    <string name="sessions_filter_section_result">输赢</string>
+    <!-- 月份胶囊上的字，例如「10月」 -->
+    <string name="sessions_filter_month_format">%1$d月</string>
+    <string name="sessions_filter_pick_date">选择某一天</string>
+    <string name="sessions_filter_friend_none">还没有同桌过的牌友</string>
+    <!-- 同名牌友并排时补的 ID 短串，前面的空格保留 -->
+    <string name="sessions_filter_friend_id_format">" · %1$s"</string>
+    <string name="sessions_filter_show_format">查看 %1$d 场</string>
+    <string name="sessions_filter_empty_title">没有符合条件的场次</string>
+    <string name="sessions_filter_empty_desc">换个筛选条件试试，或点右上角重置全部条件。</string>
 
     <!-- 四人详情 -->
     <string name="detail_title">场次详情</string>

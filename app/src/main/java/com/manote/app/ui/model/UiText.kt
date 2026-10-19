@@ -67,6 +67,52 @@ object UiText {
         )
     }
 
+    /**
+     * 月历格子里那种极窄场合的金额：`+120`、`-45.5`、`+1.2万`。
+     *
+     * 一个日期格子只有 40dp 宽，放不下 `+¥1,239.00` 这种完整写法，
+     * 于是去掉货币符号与千分位，元以下最多留一位，上万改用「万」。
+     * 输赢的方向由正负号表达，颜色只是辅助——与全应用的口径一致（规格 3.6）。
+     *
+     * 全程整数运算（以「角」为单位四舍五入），不经过浮点（规格 2.1）。
+     * 完整金额请用 [signedYuan]，那个才是详情与列表里的正式写法。
+     */
+    fun compactSignedYuan(minor: Long): String {
+        val sign = when {
+            minor > 0L -> "+"
+            minor < 0L -> "-"
+            else -> ""
+        }
+        val absolute = if (minor < 0L) -minor else minor
+        return sign + compactAmountBody(absolute)
+    }
+
+    /**
+     * 金额的紧凑正文（不带符号、不带货币符号），分。
+     *
+     * 1 元以下留一位小数，千元以下留整数元，上万元改成「x.x万」。
+     * 全程整数运算，不经过浮点（规格 2.1）。
+     */
+    private fun compactAmountBody(absolute: Long): String {
+        // 先折算到「角」，四舍五入：1 分以下在这个尺度上没有意义
+        val tenths = (absolute + 5L) / 10L
+        return when {
+            tenths < 10_000L -> if (tenths % 10L == 0L) {
+                (tenths / 10L).toString()
+            } else {
+                "${tenths / 10L}.${tenths % 10L}"
+            }
+            // 千元以上只留整数元，格子才放得下
+            tenths < 100_000L -> ((tenths + 5L) / 10L).toString()
+            else -> {
+                val yuan = (absolute + 50L) / 100L
+                val whole = yuan / 10_000L
+                val decimal = yuan % 10_000L / 1_000L
+                if (decimal == 0L) "${whole}万" else "$whole.${decimal}万"
+            }
+        }
+    }
+
     /** `10.05`，用于紧凑列表。 */
     fun monthDay(epochMillis: Long, zoneId: ZoneId = ZoneId.systemDefault()): String {
         val date = toLocalDate(epochMillis, zoneId)
@@ -87,6 +133,32 @@ object UiText {
      */
     fun monthDay(date: LocalDate): String =
         String.format(Locale.US, "%02d.%02d", date.monthValue, date.dayOfMonth)
+
+    /**
+     * `6/2`，柱状图横轴专用：**不补零**，也不带「月」「日」。
+     *
+     * 十根柱子并排时每个槽位只有三四个字宽，`06.02` 会被裁掉一半；
+     * 而这一行只用来把柱子对应到某一天，`6/2` 已经说完了。
+     * 补零的价值是让一列数字对齐，横轴标签各自居中对齐在柱子下方，并不需要这一点。
+     */
+    fun monthSlashDay(epochMillis: Long, zoneId: ZoneId = ZoneId.systemDefault()): String {
+        val date = toLocalDate(epochMillis, zoneId)
+        return "${date.monthValue}/${date.dayOfMonth}"
+    }
+
+    /**
+     * `2026.10.05`，用于已经有 [LocalDate] 的场合（例如筛选里挑中的那一天）。
+     *
+     * 与 [date] 的时间戳重载同一个格式：一处是「某条记录的时间」，一处是「筛的是哪一天」，
+     * 读起来必须是同一种写法。
+     */
+    fun date(date: LocalDate): String = String.format(
+        Locale.US,
+        "%04d.%02d.%02d",
+        date.year,
+        date.monthValue,
+        date.dayOfMonth,
+    )
 
     /**
      * 场次列表的月份分组标题（规格 3.3）：中文下是 `2026年10月`，其它语言下是 `October 2026`。

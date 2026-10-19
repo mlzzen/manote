@@ -1,6 +1,5 @@
 package com.manote.app.ui.components
 
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -38,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -280,9 +280,11 @@ fun ManoteFilterChip(
         modifier = modifier
             .heightIn(min = 48.dp)
             .manotePress(interaction, pressedScale = 0.95f)
+            // 水波交给下面那颗胶囊自己画：它 38dp、是圆的，而点击区 48dp 是方的。
+            // 在这里画水波会得到一块比胶囊大一圈的方角底块。
             .clickable(
                 interactionSource = interaction,
-                indication = LocalIndication.current,
+                indication = null,
                 onClick = onClick,
             )
             .wrapContentHeight(Alignment.CenterVertically),
@@ -299,7 +301,9 @@ fun ManoteFilterChip(
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
-            modifier = Modifier.height(38.dp),
+            modifier = Modifier
+                .height(38.dp)
+                .manoteRipple(interaction, CircleShape),
         ) {
             Box(
                 modifier = Modifier.padding(horizontal = 18.dp),
@@ -626,9 +630,9 @@ fun ManoteSegmentedControl(
                         shape = CircleShape,
                     )
                     .manotePress(interaction, pressedScale = 0.96f)
-                    .clickable(
+                    .manoteClickable(
                         interactionSource = interaction,
-                        indication = LocalIndication.current,
+                        shape = CircleShape,
                         onClick = { onSelect(index) },
                     ),
                 contentAlignment = Alignment.Center,
@@ -654,6 +658,10 @@ fun ManoteSegmentedControl(
  * 参考稿的顶栏右侧是一排这样的圆钮，而不是一个挨一个的扁平图标——
  * 它们因此像「桌上的几枚筹码」浮在页面之上，与下面那些卡片同一个高度语言。
  * 视觉 40dp、点击区 48dp（外层 Box 撑满），两者分开，圆钮才不会被撑大。
+ *
+ * [enabled] 为 false 时整颗按钮压到半透明，并且真的点不动：
+ * 「暂无选中」时那颗删除按钮应该看得出来是灰的，而不是点了没反应。
+ * [contentColor] 让危险动作（删除）能用错误色，与弹出的确认框里那颗按钮同色。
  */
 @Composable
 fun ManoteRoundIconButton(
@@ -661,15 +669,20 @@ fun ManoteRoundIconButton(
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .size(48.dp)
             .manotePress(interaction, pressedScale = 0.9f)
+            // 与筛选胶囊同理：点击区 48dp、圆钮只有 40dp，
+            // 水波由里面的圆钮自己画，才不会在圆外多出一圈方块。
             .clickable(
                 interactionSource = interaction,
-                indication = LocalIndication.current,
+                indication = null,
+                enabled = enabled,
                 onClick = onClick,
             ),
         contentAlignment = Alignment.Center,
@@ -677,16 +690,22 @@ fun ManoteRoundIconButton(
         Box(
             modifier = Modifier
                 .size(40.dp)
+                .alpha(if (enabled) 1f else DISABLED_ALPHA)
                 .manoteSoftShadow(CircleShape, ManoteElevation.control)
-                .background(MaterialTheme.colorScheme.surface, CircleShape),
+                .background(MaterialTheme.colorScheme.surface, CircleShape)
+                // 指示层排在底色之后：投影要落在圆外，不能被这刀 clip 切掉
+                .manoteRipple(interaction, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = contentColor,
                 modifier = Modifier.size(20.dp),
             )
         }
     }
 }
+
+/** 不可用时的透明度：看得出「灰了」，又不至于像被移除。 */
+private const val DISABLED_ALPHA = 0.38f

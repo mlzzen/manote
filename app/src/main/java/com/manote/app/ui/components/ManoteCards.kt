@@ -3,7 +3,6 @@ package com.manote.app.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -98,13 +97,11 @@ fun ManoteCard(
             .manoteSoftShadow(shape)
             .then(
                 if (onClick != null) {
+                    // 点击在 Surface 之外，而 Surface 的圆角裁剪在它自己内部——
+                    // 不在这里补一刀，水波就会盖住卡片的四个圆角，按下去像一块方形色块。
                     Modifier
                         .manotePress(interaction)
-                        .clickable(
-                            interactionSource = interaction,
-                            indication = LocalIndication.current,
-                            onClick = onClick,
-                        )
+                        .manoteClickable(interaction, shape, onClick = onClick)
                 } else {
                     Modifier
                 },
@@ -237,10 +234,33 @@ fun ManoteSectionHeader(
 }
 
 /**
+ * 英雄卡里的小胶囊：卡身底色上再亮一档的一枚牌子。
+ *
+ * 首页（已记 N 场 / 胜率 / 净胜场）与月历页（场数 / 胜率 / 出勤）都挂在英雄卡上，
+ * 两处必须同一种厚度与同一个底色，所以收在这里，而不是各页自己写一遍 ManotePill。
+ */
+@Composable
+fun ManoteHeroChip(text: String, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.manote
+    ManotePill(
+        text = text,
+        modifier = modifier,
+        containerColor = colors.heroChip,
+        contentColor = colors.onHeroChip,
+        style = MaterialTheme.typography.labelSmall,
+        verticalPadding = 4.dp,
+    )
+}
+
+/**
  * 文字动作（如「查看全部」），点击区最小 48dp。
  *
  * [contentColor] 可以让它落在深色底上（英雄卡里的「修改昵称」），
  * 默认仍是品牌主色。
+ *
+ * [chevron] 默认带一枚向右的小箭头，表示「点了会去别处」；
+ * 顶栏上的模式开关（全选 / 取消）不跳页，传 false 把它去掉——
+ * 一个指向右边的箭头在那里会让人以为要进下一层。
  */
 @Composable
 fun ManoteTextAction(
@@ -248,6 +268,7 @@ fun ManoteTextAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     contentColor: Color = MaterialTheme.colorScheme.primary,
+    chevron: Boolean = true,
 ) {
     Row(
         modifier = modifier
@@ -262,12 +283,14 @@ fun ManoteTextAction(
             style = MaterialTheme.typography.labelLarge,
             color = contentColor,
         )
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = contentColor,
-            modifier = Modifier.size(18.dp),
-        )
+        if (chevron) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 

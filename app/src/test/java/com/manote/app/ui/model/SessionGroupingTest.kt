@@ -105,6 +105,5 @@ class SessionGroupingTest {
         timeSlot = TimeSlot.of(playedAt, zone),
         selfNetMinor = selfNet,
         opponentNames = emptyList(),
-        searchHaystack = "",
     )
 }
