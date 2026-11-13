@@ -233,7 +233,6 @@
 
     <!-- 修改整场（复用记一场表单） -->
     <string name="session_edit_title">修改本场</string>
-    <string name="session_edit_roster_locked">本场的人员与位置不可更改；可以修改时间、标题、备注和已记录位置的金额，金额留空按 0 计。</string>
     <string name="session_edit_save">保存修改</string>
     <string name="session_edit_stale">这一场已被改动或删除，请返回后重新打开。</string>
 
@@ -247,7 +246,7 @@
     <string name="friend_note_label">备注</string>
     <string name="friend_note_hint">可选，用于区分同名牌友</string>
     <string name="friend_duplicate_hint">已有同名档案；继续创建会作为另一位牌友单独统计。</string>
-    <string name="friend_selected_elsewhere">已在其它位置</string>
+    <string name="friend_selected_elsewhere">已在%1$s · 点击交换位置</string>
     <string name="friend_action_create">创建</string>
     <string name="friend_id_short_format">ID %1$s</string>
 

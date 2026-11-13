@@ -43,14 +43,17 @@ import com.manote.app.ui.components.manoteTextFieldColors
 import com.manote.app.ui.components.ManotePrimaryButton
 import com.manote.app.ui.components.PlayerAvatar
 import com.manote.app.ui.model.UiText
+import com.manote.app.ui.model.seatLabel
 import kotlinx.coroutines.delay
 
 /**
  * 麻友选择器（规格 3.2）。
  *
  * 支持搜索昵称 / 备注、选择已有档案、或即时新建。
- * 已被其它座位选走的牌友会置灰，保证一场不会重复选到同一个人；
- * 当前座位已选的那位不算「被占」，可以重复点选。
+ * 已经在其它位置的那位不会置灰拒选，而是**整份对调两个位置**：
+ * 记错座位是常事（先把上和下记反了），逼用户先清空再重填会把金额一起丢掉，
+ * 而金额本来就是跟着人走的。副标题里写明他坐在哪儿，点下去会发生什么一望可知。
+ * 当前座位已选的那位可以重复点选（等于不变）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,7 +171,8 @@ private fun FriendOptionRow(
 ) {
     val takenByOtherSeat = option.takenBySeat != null && option.takenBySeat != forSeat
     val subtitle = if (takenByOtherSeat) {
-        stringResource(R.string.friend_selected_elsewhere)
+        // 说清他坐在哪、点下去会换位置；只写「已在其它位置」会让人以为不能选
+        stringResource(R.string.friend_selected_elsewhere, seatLabel(option.takenBySeat ?: forSeat))
     } else {
         // 备注 + （同名时）ID 短串，两者都没有就不占这一行
         listOfNotNull(
@@ -182,34 +186,23 @@ private fun FriendOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.small)
-            .clickable(enabled = !takenByOtherSeat) { onPick(option) }
+            // 已坐在别处的人也能点：那是一次「换位置」，不是错误操作
+            .clickable { onPick(option) }
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PlayerAvatar(
             name = option.nickname,
             size = 40.dp,
-            containerColor = if (takenByOtherSeat) {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            } else {
-                MaterialTheme.colorScheme.primaryContainer
-            },
-            contentColor = if (takenByOtherSeat) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            },
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         )
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = option.nickname,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (takenByOtherSeat) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -217,7 +210,13 @@ private fun FriendOptionRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // 「已在 上家」是提示一次可撤销的交换，用品牌色标出可点；
+                    // 备注与 ID 只是信息，保持次级文字色
+                    color = if (takenByOtherSeat) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

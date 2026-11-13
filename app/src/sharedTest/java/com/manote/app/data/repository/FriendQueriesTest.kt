@@ -222,7 +222,12 @@ class FriendQueriesTest : RoomTestCase() {
                 playedAt = BASE_NOW - 60_000L,
                 title = "改过的标题",
                 note = "",
-                netMinorBySeat = mapOf(0 to 6000L, 1 to -2000L, 2 to -2000L, 3 to -2000L),
+                seats = listOf(
+                    SeatResultInput(0, self, 6000L),
+                    SeatResultInput(1, friend1, -2000L),
+                    SeatResultInput(2, friend2, -2000L),
+                    SeatResultInput(3, friend3, -2000L),
+                ),
             ),
         ).value()
 

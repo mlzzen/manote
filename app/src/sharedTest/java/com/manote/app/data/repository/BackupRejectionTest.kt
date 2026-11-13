@@ -152,7 +152,12 @@ class BackupRejectionTest : RoomTestCase() {
                     playedAt = BASE_NOW - 1_000L,
                     title = "改",
                     note = "",
-                    netMinorBySeat = mapOf(0 to 3000L, 1 to -1000L, 2 to -1000L, 3 to -1000L),
+                    seats = listOf(
+                        SeatResultInput(0, oldIds[0], 3000L),
+                        SeatResultInput(1, oldIds[1], -1000L),
+                        SeatResultInput(2, oldIds[2], -1000L),
+                        SeatResultInput(3, oldIds[3], -1000L),
+                    ),
                 ),
             ).error(),
         )

@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * 新建场次时对某个座位的输入。
+ * 新建或修改场次时对某个座位的输入。
  * 只带 playerId 与金额；昵称快照在事务内从 Player 表读取，不使用 UI 传值。
  */
 data class SeatResultInput(
@@ -39,14 +39,21 @@ data class SessionDraft(
     val durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
 )
 
-/** 修改一整场：只允许改标题、结束时间、时长、备注与四人金额，不支持换人员与位置。 */
+/**
+ * 修改一整场：标题、结束时间、时长、备注，以及**人员与位置**。
+ *
+ * [seats] 是整份座位表，不是补丁：提交什么就是改完之后这一场的样子。
+ * 因此换人、换位置、删掉一个位置都只是换一份 [seats]；
+ * 座位集合不再要求与保存时一致，只要求这份表自身合法
+ * （1～4 个位置、必含本人、每人只出现一次）。
+ */
 data class SessionEdit(
     val id: String,
     val expectedRevision: Long,
     val playedAt: Long,
     val title: String,
     val note: String,
-    val netMinorBySeat: Map<Int, Long>,
+    val seats: List<SeatResultInput>,
     /** 本场时长（分钟）。与金额一样，属于「可以改错、可以改回」的内容。 */
     val durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
 )
@@ -170,7 +177,10 @@ class SessionRepository(
 
     /**
      * 修改整场：使用原 Session ID 原子替换结果，不新增场次、不叠加金额。
-     * 人员、座位与昵称快照保持不变（座位集合必须与保存时完全一致）。
+     *
+     * 人员与位置也可以改：提交的 [SessionEdit.seats] 就是改完之后的座位表，
+     * 结果行整份重写。座位没动、牌友也没变的位置沿用当时的昵称快照；
+     * 换了人（或新加的位置）才取档案里的当前昵称。
      */
     suspend fun updateSession(edit: SessionEdit): ManoteResult<Long> =
         writeSerializer.withWriteLock {
@@ -214,11 +224,37 @@ class SessionRepository(
             return ManoteResult.Failure(ManoteError.INTERNAL_STATE_CORRUPTED)
         }
 
-        // 人员与位置只读：提交的座位集合必须与保存时逐一对应（规格 2.3）。
-        if (edit.netMinorBySeat.keys != existingSeats) {
-            return ManoteResult.Failure(ManoteError.INVALID_SEAT_SET)
+        // 人员与位置可以改：座位集合不再要求与保存时一致，
+        // 只要求提交的这份座位表自身合法（1～4 个位置、必含本人、每人只出现一次）。
+        validateSeatInputs(edit.seats)?.let { return ManoteResult.Failure(it) }
+        val netsBySeat = edit.seats.associate { it.seat to it.netMinor }
+        SessionValidator.validateSeatNets(netsBySeat)?.let { return ManoteResult.Failure(it) }
+
+        val playersById = loadPlayersOrNull(edit.seats.map { it.playerId })
+            ?: return ManoteResult.Failure(ManoteError.PLAYER_NOT_FOUND)
+
+        // 身份在事务内重新判定，不信任界面的旧状态：
+        // 座位 0 只能是本人；其余位置只能是麻友。
+        //
+        // 归档的判定要看出处：原本就坐在这一场里的人，归档后仍允许保留与改金额
+        // （归档不影响历史修正）；但把一个已归档的人**新**塞进某一场要拦住，
+        // 那等于绕过「已归档」这个状态去记新账。
+        val originalPlayerBySeat = existingResults.associate { it.seat to it.playerId }
+        for (input in edit.seats) {
+            val player = playersById.getValue(input.playerId)
+            if (input.seat == SessionRules.SEAT_SELF) {
+                if (player.kind != PlayerKind.SELF) {
+                    return ManoteResult.Failure(ManoteError.SEAT_ZERO_NOT_SELF)
+                }
+            } else {
+                if (player.kind != PlayerKind.FRIEND) {
+                    return ManoteResult.Failure(ManoteError.NON_SELF_SEAT_NOT_FRIEND)
+                }
+                if (originalPlayerBySeat[input.seat] != input.playerId && player.archivedAt != null) {
+                    return ManoteResult.Failure(ManoteError.FRIEND_ARCHIVED)
+                }
+            }
         }
-        SessionValidator.validateSeatNets(edit.netMinorBySeat)?.let { return ManoteResult.Failure(it) }
 
         // revision 一致才提交并 +1；已被删除或版本已变时拒绝，保留草稿由 UI 负责（规格 2.3）。
         val updatedRows = sessionDao.updateIfRevisionMatches(
@@ -234,15 +270,20 @@ class SessionRepository(
             return ManoteResult.Failure(ManoteError.SESSION_REVISION_CONFLICT)
         }
 
+        val originalSnapshotBySeat = existingResults.associate { it.seat to it.nameSnapshot }
         sessionResultDao.deleteBySession(session.id)
         sessionResultDao.insertAll(
-            existingResults.map { existing ->
+            edit.seats.map { input ->
                 SessionResultEntity(
                     sessionId = session.id,
-                    seat = existing.seat,
-                    playerId = existing.playerId,
-                    nameSnapshot = existing.nameSnapshot,
-                    netMinor = edit.netMinorBySeat.getValue(existing.seat),
+                    seat = input.seat,
+                    playerId = input.playerId,
+                    // 位置与牌友都没动的位置沿用当时的快照：改名不该改写历史；
+                    // 换了人或新加进来的位置，才用档案里的当前昵称。
+                    nameSnapshot = originalSnapshotBySeat[input.seat]
+                        ?.takeIf { originalPlayerBySeat[input.seat] == input.playerId }
+                        ?: playersById.getValue(input.playerId).nickname,
+                    netMinor = input.netMinor,
                 )
             },
         )

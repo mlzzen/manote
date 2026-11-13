@@ -8,18 +8,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,36 +31,12 @@ import com.manote.app.ui.components.ManoteCard
 import com.manote.app.ui.model.UiText
 
 /**
- * 「记一场 / 修改本场」表单里的**时间部分**：修改模式的说明条，以及结束时间 + 时长。
+ * 「记一场 / 修改本场」表单里的**时间部分**：结束时间 + 时长。
  *
  * 从 `SessionEditScreen.kt` 里拆出来：这个文件原先近九百行，
  * 时间、座位、合计、对话框四类互不相干的内容挤在一处，改动其中一类都要在一屏之外找引用。
  * 拆开之后每块各管一件事，`SessionEditScreen` 只负责把它们拼起来。
  */
-
-/** 修改模式的说明条：明确告诉用户人员与位置改不了（规格 3.3）。 */
-@Composable
-internal fun RosterLockedNotice() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-    ) {
-        Row(modifier = Modifier.padding(14.dp)) {
-            Icon(
-                imageVector = Icons.Filled.Warning,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = stringResource(R.string.session_edit_roster_locked),
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-    }
-}
 
 /**
  * 结束时间与时长（规格 1.3、3.2）。

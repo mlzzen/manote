@@ -67,7 +67,8 @@ private fun SessionEditMode.viewModelKey(): String = when (this) {
  * 金额留空按 0 计；合计不为 0 时只给出提示色，保存按钮照常可用。
  * 提交前预览确认，保存期间禁用按钮，返回有改动时确认放弃。
  *
- * 修改模式复用同一套表单，但人员与位置只读、进入即预填（规格 3.3）。
+ * 修改模式复用同一套表单，进入即预填：与新建的唯一差别是保存走「替换原场」而不是新建一场，
+ * 人员与位置照样能改——记错人、把上和下记反了，本来就该能在原场里改对。
  *
  * 本文件只保留**页面骨架与状态接线**：时间块、座位卡片、底部合计栏与两个对话框
  * 各自拆在 `SessionEditTimeSection.kt` / `SessionSeatEditor.kt` /
@@ -171,10 +172,6 @@ fun SessionEditScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (state.rosterLocked) {
-                RosterLockedNotice()
-            }
-
             PlayedAtRow(
                 playedAt = state.playedAt,
                 durationText = state.durationText,
@@ -201,7 +198,6 @@ fun SessionEditScreen(
                 SeatEditor(
                     draft = draft,
                     errorRes = state.amountErrors[draft.seat],
-                    rosterLocked = state.rosterLocked,
                     requestAmountFocus = pendingAmountFocusSeat == draft.seat,
                     onAmountFocusRequested = { pendingAmountFocusSeat = null },
                     onPick = { pickingSeat = draft.seat },

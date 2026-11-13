@@ -240,7 +240,6 @@
 
     <!-- Edit a session (reuses the record form) -->
     <string name="session_edit_title">Edit session</string>
-    <string name="session_edit_roster_locked">Players and seats are fixed; you can change the time, title, note and the amounts of recorded seats. Blank amounts count as 0.</string>
     <string name="session_edit_save">Save changes</string>
     <string name="session_edit_stale">This session was changed or deleted. Go back and open it again.</string>
 
@@ -254,7 +253,7 @@
     <string name="friend_note_label">Note</string>
     <string name="friend_note_hint">Optional, to tell players with the same name apart</string>
     <string name="friend_duplicate_hint">A player with this name already exists; creating another keeps separate stats.</string>
-    <string name="friend_selected_elsewhere">Already in another seat</string>
+    <string name="friend_selected_elsewhere">In %1$s · tap to swap seats</string>
     <string name="friend_action_create">Create</string>
     <string name="friend_id_short_format">ID %1$s</string>
 

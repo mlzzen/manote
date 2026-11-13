@@ -58,7 +58,6 @@ import com.manote.app.ui.theme.manote
 internal fun SeatEditor(
     draft: SeatDraft,
     errorRes: Int?,
-    rosterLocked: Boolean,
     /** 刚刚选好这位牌友：金额框该自动获得焦点。 */
     requestAmountFocus: Boolean,
     /** 焦点已送过去，父级可以把标记清掉，免得下次再选同一个人时不再触发。 */
@@ -115,8 +114,8 @@ internal fun SeatEditor(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 修改模式人员只读，因此这里不再挂点击事件
-            val clickable = !draft.isSelfSeat && !rosterLocked
+            // 本人座位不能换人；其余位置点一下就能换人或换位置（规格 3.3）
+            val clickable = !draft.isSelfSeat
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -152,7 +151,7 @@ internal fun SeatEditor(
                 )
             }
 
-            if (!draft.isSelfSeat && selected && !rosterLocked) {
+            if (!draft.isSelfSeat && selected) {
                 IconButton(onClick = onClear) {
                     Icon(
                         imageVector = Icons.Filled.Close,

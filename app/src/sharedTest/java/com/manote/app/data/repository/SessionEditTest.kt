@@ -16,17 +16,24 @@ import org.junit.Test
 /** 修改与删除整场（规格 1.3、2.3、5.1；验收用例 T10–T13、T18、T19）。 */
 class SessionEditTest : RoomTestCase() {
 
+    /** 这一局里的四个人：[自己, 上家, 对家, 下家]。 */
+    private var players: List<String> = emptyList()
+
     /** 建一场基础数据：自己 +30、上家 -10、对家 -10、下家 -10。 */
     private suspend fun givenSavedSession(): List<String> {
-        val players = givenSelfAndThreeFriends()
+        players = givenSelfAndThreeFriends()
         sessionRepository.createSession(
             draftOf(players, listOf(3000L, -1000L, -1000L, -1000L)),
         ).value()
         return players
     }
 
-    private fun editOf(
-        nets: List<Long>,
+    /** 四个位置都用 [players] 里的同序号那位。 */
+    private fun fullSeats(nets: List<Long>): List<SeatResultInput> =
+        players.indices.map { seat -> SeatResultInput(seat, players[seat], nets[seat]) }
+
+    private fun editOfSeats(
+        seats: List<SeatResultInput>,
         expectedRevision: Long = 1L,
         playedAt: Long = BASE_NOW - 60_000L,
         title: String = "周五晚局",
@@ -38,7 +45,23 @@ class SessionEditTest : RoomTestCase() {
         playedAt = playedAt,
         title = title,
         note = note,
-        netMinorBySeat = mapOf(0 to nets[0], 1 to nets[1], 2 to nets[2], 3 to nets[3]),
+        seats = seats,
+        durationMinutes = durationMinutes,
+    )
+
+    private fun editOf(
+        nets: List<Long>,
+        expectedRevision: Long = 1L,
+        playedAt: Long = BASE_NOW - 60_000L,
+        title: String = "周五晚局",
+        note: String = "",
+        durationMinutes: Int = SessionDuration.DEFAULT_MINUTES,
+    ) = editOfSeats(
+        seats = fullSeats(nets),
+        expectedRevision = expectedRevision,
+        playedAt = playedAt,
+        title = title,
+        note = note,
         durationMinutes = durationMinutes,
     )
 
@@ -92,8 +115,8 @@ class SessionEditTest : RoomTestCase() {
     }
 
     @Test
-    fun editKeepsPlayersPositionsAndNameSnapshots() = runBlocking {
-        // 规格 2.3：首版修改不支持换人员、位置及昵称快照
+    fun editKeepsSnapshotsWhenTheRosterIsUnchanged() = runBlocking {
+        // 人员与位置都没动时，昵称快照不该被重写：改名不改写历史
         givenSavedSession()
         val before = sessionRepository.getSessionDetail("session-1").value()
 
@@ -142,9 +165,33 @@ class SessionEditTest : RoomTestCase() {
     }
 
     @Test
-    fun editRequiresExactlyTheRecordedSeatSet() = runBlocking {
-        // 只记录了本人与上家的场次（规格 1.3）
-        val players = givenSelfAndThreeFriends()
+    fun editCanSwapTwoFriendsBetweenSeats() = runBlocking {
+        // 记错座位（上和下反了）：两个位置对调，人换了、金额跟着人走
+        givenSavedSession()
+
+        sessionRepository.updateSession(
+            editOfSeats(
+                listOf(
+                    SeatResultInput(0, players[0], 3000L),
+                    SeatResultInput(1, players[3], -1000L),
+                    SeatResultInput(2, players[2], -1000L),
+                    SeatResultInput(3, players[1], -1000L),
+                ),
+            ),
+        ).value()
+
+        val after = sessionRepository.getSessionDetail("session-1").value()
+        assertEquals(players[3], after.results.first { it.seat == 1 }.playerId)
+        assertEquals(players[1], after.results.first { it.seat == 3 }.playerId)
+        // 场数不变，统计跟着新位置走
+        assertEquals(1, sessionCount())
+        assertEquals(-1000L, playerRepository.statistics(players[1]).netMinor)
+    }
+
+    @Test
+    fun editCanGrowAndShrinkTheRecordedSeatSet() = runBlocking {
+        // 只记录了本人与上家的场次（规格 1.3）：修改时可以补一位，也可以把人去掉
+        players = givenSelfAndThreeFriends()
         sessionRepository.createSession(
             SessionDraft(
                 id = "session-1",
@@ -158,29 +205,121 @@ class SessionEditTest : RoomTestCase() {
             ),
         ).value()
 
+        // 补上对家
         sessionRepository.updateSession(
-            editOf(listOf(5000L, -5000L, 0L, 0L)).copy(
-                netMinorBySeat = mapOf(0 to 5000L, 1 to -5000L),
+            editOfSeats(
+                listOf(
+                    SeatResultInput(0, players[0], 5000L),
+                    SeatResultInput(1, players[1], -3000L),
+                    SeatResultInput(2, players[2], -2000L),
+                ),
             ),
         ).value()
-        assertEquals(listOf(5000L, -5000L), resultsOf("session-1").map { it.netMinor })
+        assertEquals(setOf(0, 1, 2), resultsOf("session-1").map { it.seat }.toSet())
+        assertEquals(-2000L, playerRepository.statistics(players[2]).netMinor)
 
-        // 人员与位置只读：提交的座位集合必须与保存时逐一对应
-        val tooMany = sessionRepository.updateSession(
-            editOf(listOf(5000L, -3000L, -2000L, 0L), expectedRevision = 2L),
-        ).error()
-        assertEquals(ManoteError.INVALID_SEAT_SET, tooMany)
+        // 再把上家整个去掉：位置集合收缩，那个人不再计入这一场
+        sessionRepository.updateSession(
+            editOfSeats(
+                listOf(
+                    SeatResultInput(0, players[0], 2000L),
+                    SeatResultInput(2, players[2], -2000L),
+                ),
+                expectedRevision = 2L,
+            ),
+        ).value()
 
-        val tooFew = sessionRepository.updateSession(
-            editOf(listOf(5000L, 0L, 0L, 0L), expectedRevision = 2L).copy(
-                netMinorBySeat = mapOf(0 to 5000L),
+        assertEquals(setOf(0, 2), resultsOf("session-1").map { it.seat }.toSet())
+        assertEquals(0, playerRepository.statistics(players[1]).sessionCount)
+        assertEquals(2000L, playerRepository.statistics(players[0]).netMinor)
+    }
+
+    @Test
+    fun editUsesCurrentNicknameOnlyWhereThePlayerChanged() = runBlocking {
+        // 换人的位置取档案里的当前昵称；没动的位置继续沿用当时的快照
+        givenSavedSession()
+        playerRepository.updateFriend(players[1], "新名字", "").value()
+        val newcomer = playerRepository.createFriend("新来的", "").value()
+        sessionRepository.updateSession(
+            editOfSeats(
+                listOf(
+                    SeatResultInput(0, players[0], 3000L),
+                    SeatResultInput(1, players[1], -1000L),
+                    SeatResultInput(2, newcomer, -1000L),
+                    SeatResultInput(3, players[3], -1000L),
+                ),
+            ),
+        ).value()
+
+        val after = sessionRepository.getSessionDetail("session-1").value()
+        assertEquals("上家", after.results.first { it.seat == 1 }.nameSnapshot)
+        assertEquals("新来的", after.results.first { it.seat == 2 }.nameSnapshot)
+    }
+
+    @Test
+    fun editRejectsTheSamePlayerInTwoSeats() = runBlocking {
+        // 一场不能同时记录同一个人两次：唯一约束之外，事务先给出明确错误
+        givenSavedSession()
+
+        val error = sessionRepository.updateSession(
+            editOfSeats(
+                listOf(
+                    SeatResultInput(0, players[0], 3000L),
+                    SeatResultInput(1, players[1], -1000L),
+                    SeatResultInput(2, players[1], -1000L),
+                    SeatResultInput(3, players[3], -1000L),
+                ),
             ),
         ).error()
-        assertEquals(ManoteError.INVALID_SEAT_SET, tooFew)
 
-        // 两次非法提交都没有改动库
+        assertEquals(ManoteError.DUPLICATE_PLAYER, error)
+        assertEquals(listOf(3000L, -1000L, -1000L, -1000L), resultsOf("session-1").map { it.netMinor })
+    }
+
+    @Test
+    fun editStillRequiresSelfAtSeatZero() = runBlocking {
+        // 换人可以，但座位 0 恒为本人：别人坐不到自己那一格
+        givenSavedSession()
+
+        val error = sessionRepository.updateSession(
+            editOfSeats(
+                listOf(
+                    SeatResultInput(0, players[1], 3000L),
+                    SeatResultInput(1, players[0], -1000L),
+                    SeatResultInput(2, players[2], -1000L),
+                    SeatResultInput(3, players[3], -1000L),
+                ),
+            ),
+        ).error()
+
+        assertEquals(ManoteError.SEAT_ZERO_NOT_SELF, error)
+        assertEquals(1L, sessionRepository.getSessionDetail("session-1").value().session.revision)
+    }
+
+    @Test
+    fun editRejectsAddingAnArchivedFriendToANewSeat() = runBlocking {
+        givenSavedSession()
+        val archived = players[1]
+        playerRepository.archiveFriend(archived).value()
+
+        // 原位保留仍可保存（归档不阻止历史修正，T13）
+        sessionRepository.updateSession(editOf(listOf(6000L, -2000L, -2000L, -2000L))).value()
+
+        // 但把已归档的人塞到另一个位置要拦住：那等于绕过归档状态记新账
+        val error = sessionRepository.updateSession(
+            editOfSeats(
+                listOf(
+                    SeatResultInput(0, players[0], 6000L),
+                    SeatResultInput(1, players[2], -2000L),
+                    SeatResultInput(2, archived, -2000L),
+                    SeatResultInput(3, players[3], -2000L),
+                ),
+                expectedRevision = 2L,
+            ),
+        ).error()
+
+        assertEquals(ManoteError.FRIEND_ARCHIVED, error)
         assertEquals(2L, sessionRepository.getSessionDetail("session-1").value().session.revision)
-        assertEquals(listOf(5000L, -5000L), resultsOf("session-1").map { it.netMinor })
     }
 
     @Test
@@ -248,7 +387,7 @@ class SessionEditTest : RoomTestCase() {
 
     @Test
     fun editRejectsUnknownSession() = runBlocking {
-        givenSelfAndThreeFriends()
+        players = givenSelfAndThreeFriends()
 
         val error = sessionRepository.updateSession(editOf(listOf(6000L, -2000L, -2000L, -2000L))).error()
 

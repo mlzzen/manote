@@ -112,9 +112,7 @@ data class SessionEditUiState(
      */
     val unbalanced: Boolean get() = totalMinor != null && totalMinor != 0L
 
-    /** 修改模式下人员与位置只读（规格 3.3）；新建时可自由选人。 */
-    val rosterLocked: Boolean get() = mode is SessionEditMode.Edit
-
+    /** 修改模式下是否处于「修改已有场次」。人员与位置两种模式都能改。 */
     val isEditing: Boolean get() = mode is SessionEditMode.Edit
 
     /**
@@ -157,7 +155,8 @@ sealed interface SessionEditEvent {
  * - 时长留空即按默认 4 小时提交，填错（0、25 小时、两位小数）则拦住保存。
  *
  * 修改（规格 3.3）：
- * - 人员与位置只读，可编辑时间、时长、标题、备注与已记录位置的金额，进入时全部预填；
+ * - 人员与位置同样可改：换人、换位置、清空与增减位置都走与新建相同的座位卡片，进入时全部预填；
+ * - 可编辑时间、时长、标题、备注与各位置金额；
  * - 保存走 `updateSession`，携带进入时的 revision，过期则拒绝覆盖并保留输入（T19）；
  * - 不做「恢复草稿后清空已归档牌友」这一步：已归档麻友的历史场次本来就允许修正（T13）。
  */
@@ -186,7 +185,7 @@ class SessionEditViewModel(
      */
     private var baseline: FormBaseline? = null
 
-    /** 可选牌友（未归档）及各座位的占用情况。修改模式人员只读，不消费这份数据。 */
+    /** 可选牌友（未归档）及各座位的占用情况；两种模式都用它挑人与换位置。 */
     val friendOptions: StateFlow<List<FriendOptionUi>> =
         combine(playerRepository.observeActiveFriends(), _uiState) { friends, state ->
             friends.map { friend ->
@@ -227,15 +226,37 @@ class SessionEditViewModel(
         updateSeat(seat) { it.copy(amountText = filterAmountInput(text)) }
 
     fun selectFriend(seat: Int, option: FriendOptionUi) {
-        // 修改模式人员只读（规格 3.3）
-        if (_uiState.value.rosterLocked) return
-        updateSeat(seat) { it.copy(playerId = option.id, nickname = option.nickname) }
+        // 本人座位不接受换人：座位 0 恒为本人（规格 1.3）
+        if (seat == SessionRules.SEAT_SELF) return
+
+        val current = _uiState.value
+        val occupant = current.seats.firstOrNull {
+            it.playerId == option.id && it.seat != seat && !it.isSelfSeat
+        }
+        if (occupant == null) {
+            updateSeat(seat) { it.copy(playerId = option.id, nickname = option.nickname) }
+            return
+        }
+
+        // 选了一位已经坐在别处的人 → 两处座位整份对调。
+        // 输赢与金额是跟着人走的：只换名字而把钱留在原位，等于把这笔账记到别人头上。
+        // 目标位置原来是空位时，「对调」就是把人挪过去、原位变空。
+        updateSeats { seats ->
+            val from = seats.first { it.seat == seat }
+            val to = seats.first { it.seat == occupant.seat }
+            seats.map { draft ->
+                when (draft.seat) {
+                    seat -> to.copy(seat = seat, nickname = option.nickname)
+                    occupant.seat -> from.copy(seat = occupant.seat)
+                    else -> draft
+                }
+            }
+        }
     }
 
     /** 清空某个非本人座位：连同金额一起清掉，本场不再记录这个位置。 */
     fun clearSeat(seat: Int) {
         if (seat == SessionRules.SEAT_SELF) return
-        if (_uiState.value.rosterLocked) return
         // 金额必须一并清掉：不记录的位置若留着金额，会被静默忽略，看起来像已经记上了
         updateSeat(seat) { it.copy(playerId = null, nickname = "", amountText = "") }
     }
@@ -376,7 +397,8 @@ class SessionEditViewModel(
                                     playedAt = state.playedAt,
                                     title = state.title,
                                     note = state.note,
-                                    netMinorBySeat = inputs.associate { it.seat to it.netMinor },
+                                    // 整份座位表一起提交：换人、换位置、增减位置都在里面
+                                    seats = inputs,
                                     durationMinutes = durationMinutes,
                                 ),
                             )
@@ -445,6 +467,13 @@ class SessionEditViewModel(
         recompute()
     }
 
+    /** 一次改多个座位（换位置要对调两处），持久化与重算只做一次。 */
+    private fun updateSeats(block: (List<SeatDraft>) -> List<SeatDraft>) {
+        _uiState.update { state -> state.copy(seats = block(state.seats)) }
+        persist()
+        recompute()
+    }
+
     private fun recompute() {
         _uiState.update { state ->
             val signed = mutableMapOf<Int, Long>()
@@ -504,13 +533,13 @@ class SessionEditViewModel(
      * 否则一进修改页就因为「字段都填着」而被判成脏，返回时白白拦一次。
      */
     private fun SessionEditUiState.isDirty(): Boolean {
-        val base = baseline
+            val base = baseline
         return if (base != null) {
             playedAt != base.playedAt ||
                 durationText != base.durationText ||
                 title != base.title ||
                 note != base.note ||
-                seats.map { SeatFormValue(it.isWin, it.amountText) } != base.seatValues
+                seats.map { SeatFormValue(it.isWin, it.amountText, it.playerId) } != base.seatValues
         } else {
             durationText.isNotBlank() ||
                 title.isNotBlank() ||
@@ -610,7 +639,7 @@ class SessionEditViewModel(
             durationText = state.durationText,
             title = state.title,
             note = state.note,
-            seatValues = state.seats.map { SeatFormValue(it.isWin, it.amountText) },
+            seatValues = state.seats.map { SeatFormValue(it.isWin, it.amountText, it.playerId) },
         )
     }
 
@@ -742,7 +771,15 @@ class SessionEditViewModel(
         _events.emit(event)
     }
 
-    private data class SeatFormValue(val isWin: Boolean, val amountText: String)
+    /**
+     * 基线里也要记下每个位置的牌友：换了人而金额恰好没动，同样是一次改动，
+     * 返回时该拦一次「要放弃修改吗」。
+     */
+    private data class SeatFormValue(
+        val isWin: Boolean,
+        val amountText: String,
+        val playerId: String?,
+    )
 
     private data class FormBaseline(
         val playedAt: Long,
