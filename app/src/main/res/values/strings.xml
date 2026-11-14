@@ -339,6 +339,61 @@
     <string name="settings_rename_action">修改昵称</string>
     <string name="settings_rename_title">修改本人昵称</string>
     <string name="settings_rename_hint">1～12 个字；历史场次里保存的是当时的昵称，不会被改写。</string>
+    <!-- 麻将小工具：牌理与记牌器。成都麻将只有万、条、筒三门，没有字牌 -->
+    <string name="mahjong_suit_wan">万</string>
+    <string name="mahjong_suit_tiao">条</string>
+    <string name="mahjong_suit_tong">筒</string>
+    <!-- 一张牌的读法，例如「3 筒」；牌面与读屏共用 -->
+    <string name="mahjong_tile_format">%1$d %2$s</string>
+
+    <!-- 牌理 -->
+    <string name="mahjong_shanten_title">牌理</string>
+    <string name="mahjong_shanten_hero_label">向听</string>
+    <string name="mahjong_shanten_hero_empty">把手里有的牌点进下面，就能算出还差几步。</string>
+    <string name="mahjong_shanten_count_format">%1$d 张</string>
+    <string name="mahjong_shanten_tiles_format">%1$d 向听</string>
+    <string name="mahjong_shanten_tenpai">听牌</string>
+    <string name="mahjong_shanten_win">和了</string>
+    <string name="mahjong_shanten_banned_label">定缺</string>
+    <string name="mahjong_shanten_banned_none">不限</string>
+    <string name="mahjong_shanten_banned_format">定缺 %1$s</string>
+    <string name="mahjong_shanten_banned_left_format">缺门 %1$d 张</string>
+    <string name="mahjong_shanten_banned_badge">缺门</string>
+    <string name="mahjong_shanten_melds_format">副露 %1$d 组</string>
+    <string name="mahjong_shanten_melds_hint">碰过、杠过的那一组不用点进来，只点手上剩下的牌——张数会说明你碰了几组。</string>
+    <string name="mahjong_shanten_hand_label">手牌</string>
+    <string name="mahjong_shanten_hand_empty">点下面的牌，把手里有的牌点进来；点上面已经进来的牌可以撤掉。</string>
+    <string name="mahjong_shanten_clear">清空</string>
+    <string name="mahjong_shanten_waits_label">进张</string>
+    <string name="mahjong_shanten_waits_note_format">摸到这些牌都能让这一手快一步，一共还有 %1$d 张可摸。</string>
+    <string name="mahjong_shanten_waits_none">摸哪张都不会让这一手变快，考虑换个牌型。</string>
+    <string name="mahjong_shanten_win_note">已经组成四副面子加一对将。</string>
+    <string name="mahjong_shanten_discards_label">打哪张</string>
+    <string name="mahjong_shanten_ukeire_format">进张 %1$d 张</string>
+    <string name="mahjong_shanten_odd_count">张数还差一张：没碰过是十三 / 十四张，碰一组是十 / 十一张，碰两组是七 / 八张。</string>
+    <string name="mahjong_shanten_note">向听按四副面子加一对将算，七对也算和牌——但碰过、杠过之后只剩一般形。定缺的那一门不参与拆牌，摸到它也进不了进张列表。进张枚数按「四张减手上这几张」算，没有扣掉牌河里已经打出去的。</string>
+
+    <!-- 记牌器 -->
+    <string name="mahjong_tally_title">记牌器</string>
+    <string name="mahjong_tally_hero_label">%1$s · 还剩</string>
+    <string name="mahjong_tally_remaining_unit">张</string>
+    <string name="mahjong_tally_seen_format">已出现 %1$d 张</string>
+    <string name="mahjong_tally_unseen_kinds_format">还有 %1$d 种没出完</string>
+    <string name="mahjong_tally_unseen_label">未出现</string>
+    <string name="mahjong_tally_unseen_empty">这一门的牌全都出现过了。</string>
+    <string name="mahjong_tally_unseen_hint">每一块就是一张还在池子里的牌，点一下记它出现；点下面的牌可以撤回。</string>
+    <string name="mahjong_tally_seen_label">已出现</string>
+    <string name="mahjong_tally_seen_empty">这一门（%1$s）还没记过。</string>
+    <string name="mahjong_tally_seen_hint">点下面的牌可以撤回一张。</string>
+    <string name="mahjong_tally_clear">清空</string>
+    <string name="mahjong_tally_note">上面每一块就是一张还在池子里的牌，念过去就是「还剩哪些」；一门的记录独立保存，切换花色不会丢。这里记的东西不会写进任何场次。</string>
+
+    <!-- 我的 · 麻将小工具入口 -->
+    <string name="settings_mahjong_title">麻将小工具</string>
+    <string name="settings_mahjong_desc">打牌时顺手用的两个工具，不碰场次记录，也不联网。</string>
+    <string name="settings_mahjong_shanten_desc">输进手里的牌，看还差几步听牌、摸哪些牌有用。</string>
+    <string name="settings_mahjong_tally_desc">一门九种各四张，点一下记一张已经出了。</string>
+
 
     <!-- 备份被拒绝的原因（规格 6.1） -->
     <string name="backup_reject_unsupported_version">这个备份的版本不受支持，无法导入</string>

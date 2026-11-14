@@ -2,6 +2,7 @@ package com.manote.app.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,11 +10,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
@@ -29,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,10 +63,16 @@ import kotlinx.coroutines.launch
  * 展示本人昵称与版本号、修改本人昵称，并提供 JSON 备份的导出与导入。
  * 文件读写一律走系统文件选择器，因此不需要任何存储权限；
  * 取消选择器不会有任何副作用，导出失败也不会影响数据库。
+ *
+ * 麻将小工具（牌理 / 记牌器）也挂在这一页：它们既不读库也不写库，
+ * 只在打牌时用一下，因此与「数据管理」刻意分开成卡——
+ * 放进去会让人以为它们会动到记录。
  */
 @Composable
 fun SettingsScreen(
     onOpenRecycleBin: () -> Unit,
+    onOpenShanten: () -> Unit,
+    onOpenTally: () -> Unit,
     onImportCompleted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -150,6 +163,27 @@ fun SettingsScreen(
                         contentColor = heroColors.onHeroChip,
                     )
                 }
+            }
+
+            ManoteCard {
+                ManoteSectionHeader(title = stringResource(R.string.settings_mahjong_title))
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.settings_mahjong_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                ToolEntry(
+                    title = stringResource(R.string.mahjong_shanten_title),
+                    description = stringResource(R.string.settings_mahjong_shanten_desc),
+                    onClick = onOpenShanten,
+                )
+                ToolEntry(
+                    title = stringResource(R.string.mahjong_tally_title),
+                    description = stringResource(R.string.settings_mahjong_tally_desc),
+                    onClick = onOpenTally,
+                )
             }
 
             ManoteCard {
@@ -372,6 +406,49 @@ private fun RenameSelfDialog(
             }
         },
     )
+}
+
+/**
+ * 一条会离开本页的工具入口：标题 + 一行说明 + 右侧箭头。
+ *
+ * 与 [ManoteTextAction] 的区别只有一处：它多一行说明。
+ * 「牌理」两个字对新用户是行话，不解释一句就点进去多半会愣住；
+ * 而说明压在标题下面，读起来仍是一个整体，不像两段各自为政的文字。
+ */
+@Composable
+private fun ToolEntry(
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(MaterialTheme.shapes.small)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp),
+        )
+    }
 }
 
 private const val JSON_MIME_TYPE = "application/json"

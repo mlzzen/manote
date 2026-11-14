@@ -38,6 +38,8 @@ import com.manote.app.ui.components.ManotePageBackground
 import com.manote.app.ui.friends.FriendDetailScreen
 import com.manote.app.ui.friends.FriendsScreen
 import com.manote.app.ui.home.HomeScreen
+import com.manote.app.ui.mahjong.ShantenScreen
+import com.manote.app.ui.mahjong.TallyScreen
 import com.manote.app.ui.recyclebin.RecycleBinScreen
 import com.manote.app.ui.session.SessionDetailScreen
 import com.manote.app.ui.session.SessionEditMode
@@ -165,6 +167,8 @@ fun ManoteNavHost(
                         onOpenFriend = { navController.navigateTo(ManoteRoutes.friendDetail(it)) },
                         onOpenRecycleBin = { navController.navigateTo(ManoteRoutes.BIN) },
                         onOpenCalendar = { navController.navigateTo(ManoteRoutes.calendar(it)) },
+                        onOpenShanten = { navController.navigateTo(ManoteRoutes.MAHJONG_SHANTEN) },
+                        onOpenTally = { navController.navigateTo(ManoteRoutes.MAHJONG_TALLY) },
                         // 规格 6.1：导入成功后清除旧页面草稿、回到首页，统计从新库刷新
                         onImportCompleted = { returnToRoot(ManoteTab.HOME) },
                     )
@@ -254,6 +258,15 @@ fun ManoteNavHost(
                         },
                     )
                 }
+
+                // 两个麻将小工具不碰数据库，参数只有一个返回键。
+                composable(ManoteRoutes.MAHJONG_SHANTEN) {
+                    ShantenScreen(onNavigateBack = { navController.navigateUp() })
+                }
+
+                composable(ManoteRoutes.MAHJONG_TALLY) {
+                    TallyScreen(onNavigateBack = { navController.navigateUp() })
+                }
             }
         }
     }
@@ -281,6 +294,8 @@ private fun MainTabs(
     onOpenFriend: (String) -> Unit,
     onOpenRecycleBin: () -> Unit,
     onOpenCalendar: (YearMonth) -> Unit,
+    onOpenShanten: () -> Unit,
+    onOpenTally: () -> Unit,
     onImportCompleted: () -> Unit,
 ) {
     HorizontalPager(
@@ -309,6 +324,8 @@ private fun MainTabs(
 
                 ManoteTab.SETTINGS -> SettingsScreen(
                     onOpenRecycleBin = onOpenRecycleBin,
+                    onOpenShanten = onOpenShanten,
+                    onOpenTally = onOpenTally,
                     onImportCompleted = onImportCompleted,
                 )
             }

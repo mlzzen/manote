@@ -346,6 +346,61 @@
     <string name="settings_rename_action">Change name</string>
     <string name="settings_rename_title">Change my name</string>
     <string name="settings_rename_hint">1–12 characters; past sessions keep the name saved at the time and are not rewritten.</string>
+    <!-- Mahjong tools: tile efficiency and tile counter. Chengdu mahjong has three suits and no honours -->
+    <string name="mahjong_suit_wan">Wan</string>
+    <string name="mahjong_suit_tiao">Tiao</string>
+    <string name="mahjong_suit_tong">Tong</string>
+    <!-- How a tile reads, e.g. "3 Tong"; shared by the tile face and the screen reader -->
+    <string name="mahjong_tile_format">%1$d %2$s</string>
+
+    <!-- Tile efficiency -->
+    <string name="mahjong_shanten_title">Tile efficiency</string>
+    <string name="mahjong_shanten_hero_label">Shanten</string>
+    <string name="mahjong_shanten_hero_empty">Tap the tiles you hold below to see how far the hand still is.</string>
+    <string name="mahjong_shanten_count_format">%1$d tiles</string>
+    <string name="mahjong_shanten_tiles_format">%1$d shanten</string>
+    <string name="mahjong_shanten_tenpai">Ready</string>
+    <string name="mahjong_shanten_win">Win</string>
+    <string name="mahjong_shanten_banned_label">Void</string>
+    <string name="mahjong_shanten_banned_none">None</string>
+    <string name="mahjong_shanten_banned_format">Void %1$s</string>
+    <string name="mahjong_shanten_banned_left_format">%1$d to discard</string>
+    <string name="mahjong_shanten_banned_badge">Void</string>
+    <string name="mahjong_shanten_melds_format">%1$d melds</string>
+    <string name="mahjong_shanten_melds_hint">Leave out the ponged or konged set — enter only the tiles still in your hand; the tile count tells how many sets are exposed.</string>
+    <string name="mahjong_shanten_hand_label">Hand</string>
+    <string name="mahjong_shanten_hand_empty">Tap tiles below to add them to the hand; tap one above to take it back.</string>
+    <string name="mahjong_shanten_clear">Clear</string>
+    <string name="mahjong_shanten_waits_label">Useful draws</string>
+    <string name="mahjong_shanten_waits_note_format">Every one of these speeds the hand up — %1$d tiles still unseen.</string>
+    <string name="mahjong_shanten_waits_none">No draw improves this hand; consider a different shape.</string>
+    <string name="mahjong_shanten_win_note">Four sets and a pair, complete.</string>
+    <string name="mahjong_shanten_discards_label">What to discard</string>
+    <string name="mahjong_shanten_ukeire_format">%1$d useful draws</string>
+    <string name="mahjong_shanten_odd_count">One tile short: 13 / 14 with nothing exposed, 10 / 11 after one pong, 7 / 8 after two.</string>
+    <string name="mahjong_shanten_note">Shanten counts four sets plus a pair, and seven pairs wins too — but a pong or kong leaves only the standard shape. The voided suit takes no part in the shape and never counts as a useful draw. Draw counts are four minus the tiles you hold; discards are not subtracted.</string>
+
+    <!-- Tile counter -->
+    <string name="mahjong_tally_title">Tile counter</string>
+    <string name="mahjong_tally_hero_label">%1$s · left</string>
+    <string name="mahjong_tally_remaining_unit">tiles</string>
+    <string name="mahjong_tally_seen_format">%1$d seen</string>
+    <string name="mahjong_tally_unseen_kinds_format">%1$d kinds still live</string>
+    <string name="mahjong_tally_unseen_label">Not seen yet</string>
+    <string name="mahjong_tally_unseen_empty">Every tile in this suit has been seen.</string>
+    <string name="mahjong_tally_unseen_hint">Each tile here is still live — tap one to mark it seen; tap one below to take it back.</string>
+    <string name="mahjong_tally_seen_label">Already seen</string>
+    <string name="mahjong_tally_seen_empty">Nothing recorded for %1$s yet.</string>
+    <string name="mahjong_tally_seen_hint">Tap a tile below to take one back.</string>
+    <string name="mahjong_tally_clear">Clear</string>
+    <string name="mahjong_tally_note">Every tile above is still live, so reading across gives the tiles left. Each suit keeps its own record, and nothing here is written to a session.</string>
+
+    <!-- Settings · mahjong tools -->
+    <string name="settings_mahjong_title">Mahjong tools</string>
+    <string name="settings_mahjong_desc">Two helpers for the table. They never touch your records and never go online.</string>
+    <string name="settings_mahjong_shanten_desc">Enter the tiles you hold to see how far you are and which draws help.</string>
+    <string name="settings_mahjong_tally_desc">Nine ranks, four copies each — tap to record the ones already gone.</string>
+
 
     <!-- Why a backup was rejected -->
     <string name="backup_reject_unsupported_version">This backup version is not supported and cannot be imported</string>

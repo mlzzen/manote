@@ -27,6 +27,8 @@ class ManoteRoutesTest {
             ManoteRoutes.FRIEND_DETAIL,
             ManoteRoutes.BIN,
             ManoteRoutes.CALENDAR,
+            ManoteRoutes.MAHJONG_SHANTEN,
+            ManoteRoutes.MAHJONG_TALLY,
         )
 
         assertEquals("登记表必须覆盖全部目的地", expected, ManoteRoutes.all.toSet())

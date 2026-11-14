@@ -114,6 +114,26 @@ internal val TextPrimaryLight = Color(0xFF1B211D)
 internal val TextSecondaryLight = Color(0xFF7C837B)
 internal val TextTertiaryLight = Color(0xFFA6ACA4)
 
+/**
+ * 麻将牌面：比卡片更白一档的「象牙白」，加一道米色描边。
+ *
+ * 牌是这一屏里唯一要「像一块实物」的东西，所以它不能沿用卡片的玻璃质感——
+ * 玻璃是透的，牌是实的。牌底因此不用 [GlassLight] 那道渐变，而是纯色加描边，
+ * 数字与花色压在上面才干净。
+ */
+internal val TileFaceLight = Color(0xFFFFFDF7)
+internal val TileBorderLight = Color(0xFFE7DCC4)
+
+/**
+ * 三门的牌面色：万取朱、条取竹青、筒取靛。
+ *
+ * 三个色相离得足够远，远看就能分出是哪一门，不必凑近读字；
+ * 又都比输赢那对红绿更沉，牌面才不会被读成「这一手是赢是输」。
+ */
+internal val TileWanLight = Color(0xFFB23A2A)
+internal val TileTiaoLight = Color(0xFF256B47)
+internal val TileTongLight = Color(0xFF27508A)
+
 // ——————————————————————————————— 深色 ———————————————————————————————
 
 internal val BrandInkDark = Color(0xFF1B4131)
@@ -181,6 +201,19 @@ internal val GlassShadowDark = Color(0xFF000000)
 internal val TextPrimaryDark = Color(0xFFE8ECE8)
 internal val TextSecondaryDark = Color(0xFF9AA39C)
 internal val TextTertiaryDark = Color(0xFF7A837C)
+
+/**
+ * 深色主题的牌面：比卡片亮一档的墨绿灰，而不是把白牌直接搬过来。
+ *
+ * 整屏都沉下去之后，一块纯白的小方块会亮得像开了个灯——牌面要「浮起来一层」，
+ * 不是「发光」。三门色相应提亮，压在深底上才读得出。
+ */
+internal val TileFaceDark = Color(0xFF2B3530)
+internal val TileBorderDark = Color(0xFF3E4C45)
+
+internal val TileWanDark = Color(0xFFF0927F)
+internal val TileTiaoDark = Color(0xFF7BC9A3)
+internal val TileTongDark = Color(0xFF8FB4E8)
 
 // ————————————————————— 两个主题共用（深底上的颜色） —————————————————————
 
@@ -287,6 +320,13 @@ data class ManoteExtendedColors(
     val glassBorder: Color,
     /** 卡片投影色。浅色主题取偏暖的褐灰，深色主题只能用黑。 */
     val shadowColor: Color,
+    /** 麻将牌面：这一屏里唯一一块「实物」而不是玻璃。 */
+    val tileFace: Color,
+    val tileBorder: Color,
+    /** 三门的牌面色。同一门在键盘、手牌、进张三处必须完全一致。 */
+    val tileWan: Color,
+    val tileTiao: Color,
+    val tileTong: Color,
 )
 
 /**
@@ -370,6 +410,11 @@ internal val LightExtendedColors = ManoteExtendedColors(
     cardSurface = CardSurfaceLight,
     glassBorder = GlassBorderLight,
     shadowColor = GlassShadowLight,
+    tileFace = TileFaceLight,
+    tileBorder = TileBorderLight,
+    tileWan = TileWanLight,
+    tileTiao = TileTiaoLight,
+    tileTong = TileTongLight,
 )
 
 internal val DarkExtendedColors = ManoteExtendedColors(
@@ -413,6 +458,11 @@ internal val DarkExtendedColors = ManoteExtendedColors(
     cardSurface = CardSurfaceDark,
     glassBorder = GlassBorderDark,
     shadowColor = GlassShadowDark,
+    tileFace = TileFaceDark,
+    tileBorder = TileBorderDark,
+    tileWan = TileWanDark,
+    tileTiao = TileTiaoDark,
+    tileTong = TileTongDark,
 )
 
 internal val LocalManoteExtendedColors = staticCompositionLocalOf { LightExtendedColors }

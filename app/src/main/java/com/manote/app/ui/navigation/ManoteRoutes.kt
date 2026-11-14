@@ -49,6 +49,17 @@ object ManoteRoutes {
     /** 月历：按年月翻看逐日输赢。实际跳转请用 [calendar] 生成完整路由。 */
     const val CALENDAR = "calendar/{yearMonth}"
 
+    /**
+     * 牌理：把手里这手牌输进去，看向听数与进张。
+     *
+     * 两个小工具与场次数据完全无关，既不读库也不写库；
+     * 它们只是被放在了同一个应用里，路由上仍按子页面处理（居中标题 + 返回键）。
+     */
+    const val MAHJONG_SHANTEN = "mahjong/shanten"
+
+    /** 记牌器：按花色记已出现的牌。 */
+    const val MAHJONG_TALLY = "mahjong/tally"
+
     /** 生成某个场次的详情路由。 */
     fun sessionDetail(sessionId: String): String = "session/$sessionId"
 
@@ -70,7 +81,7 @@ object ManoteRoutes {
      * 全部已注册目的地。Navigation 会因重复路由在运行时抛异常，
      * 因此该列表是「路由唯一」这一不变量的唯一来源，由单元测试守护。
      *
-     * 只有七个：一个根容器 + 六个子页面。页签不占名额。
+     * 只有九个：一个根容器 + 八个子页面。页签不占名额。
      */
     val all: List<String> = listOf(
         MAIN,
@@ -80,15 +91,25 @@ object ManoteRoutes {
         FRIEND_DETAIL,
         BIN,
         CALENDAR,
+        MAHJONG_SHANTEN,
+        MAHJONG_TALLY,
     )
 
     /**
-     * 子页面路由（详情、编辑、记一场、回收站、月历）：转场从右侧滑入滑出，
+     * 子页面路由（详情、编辑、记一场、回收站、月历、两个麻将小工具）：转场从右侧滑入滑出，
      * 与根容器区分开。转场判断用的就是这一份名单——[MAIN] 刻意不在其中，
      * 它回到前台时应该是「直接就位」，不能再滑一次。
      */
-    val subRoutes: Set<String> =
-        setOf(SESSION_NEW, SESSION_DETAIL, SESSION_EDIT, FRIEND_DETAIL, BIN, CALENDAR)
+    val subRoutes: Set<String> = setOf(
+        SESSION_NEW,
+        SESSION_DETAIL,
+        SESSION_EDIT,
+        FRIEND_DETAIL,
+        BIN,
+        CALENDAR,
+        MAHJONG_SHANTEN,
+        MAHJONG_TALLY,
+    )
 
     /** 起始目的地。 */
     const val START: String = MAIN
