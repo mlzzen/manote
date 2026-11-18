@@ -375,6 +375,7 @@
     <string name="mahjong_shanten_waits_note_format">Every one of these speeds the hand up — %1$d tiles still unseen.</string>
     <string name="mahjong_shanten_waits_none">No draw improves this hand; consider a different shape.</string>
     <string name="mahjong_shanten_win_note">Four sets and a pair, complete.</string>
+    <string name="mahjong_shanten_win_discard_note">You can still switch: discard any tile below and the rest is ready at once.</string>
     <string name="mahjong_shanten_discards_label">What to discard</string>
     <string name="mahjong_shanten_discards_note_format">These %1$d discards leave the hand closest to ready, most useful draws first.</string>
     <string name="mahjong_shanten_ukeire_format">%1$d useful draws</string>
@@ -395,6 +396,18 @@
     <string name="mahjong_tally_seen_empty">Nothing recorded for %1$s yet.</string>
     <string name="mahjong_tally_seen_hint">Tap a tile below to take one back.</string>
     <string name="mahjong_tally_clear">Clear</string>
+    <!-- Guessing what the opponent waits on: enumerate the splits while the wall is short -->
+    <string name="mahjong_tally_infer_title">Possible waits</string>
+    <string name="mahjong_tally_infer_hint">To see what they might be waiting on, set how many tiles they hold. Once the unseen tiles are within three of that number, every split can be listed.</string>
+    <string name="mahjong_tally_opponent_none">Not set</string>
+    <string name="mahjong_tally_infer_note_format">%1$d unseen, %2$d in their hand, %3$d in the wall. Every split below is ready.</string>
+    <string name="mahjong_tally_infer_overflow_format">%1$d tiles still in the wall — past %2$d there are too many splits to be worth listing.</string>
+    <string name="mahjong_tally_infer_short_format">Only %1$d unseen tiles cannot hold a hand of %2$d.</string>
+    <string name="mahjong_tally_infer_none">No split of this suit can be waiting.</string>
+    <string name="mahjong_tally_infer_total_format">%1$d splits in all — showing the first %2$d.</string>
+    <string name="mahjong_tally_infer_wait_label">Waits</string>
+    <string name="mahjong_tally_infer_wall_label">Wall</string>
+    <string name="mahjong_tally_infer_wall_empty">Empty</string>
     <string name="mahjong_tally_note">Every tile above is still live, so reading across gives the tiles left. Each suit keeps its own record, and nothing here is written to a session.</string>
 
     <!-- Settings · mahjong tools -->

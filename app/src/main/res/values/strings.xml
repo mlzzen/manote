@@ -368,6 +368,7 @@
     <string name="mahjong_shanten_waits_note_format">摸到这些牌都能让这一手快一步，一共还有 %1$d 张可摸。</string>
     <string name="mahjong_shanten_waits_none">摸哪张都不会让这一手变快，考虑换个牌型。</string>
     <string name="mahjong_shanten_win_note">已经组成四副面子加一对将。</string>
+    <string name="mahjong_shanten_win_discard_note">想换张也可以：下面每一张打出去，剩下的都立刻听牌。</string>
     <string name="mahjong_shanten_discards_label">打哪张</string>
     <string name="mahjong_shanten_discards_note_format">下面 %1$d 种打法打完之后向听最少，按进张多少排列。</string>
     <string name="mahjong_shanten_ukeire_format">进张 %1$d 张</string>
@@ -388,6 +389,18 @@
     <string name="mahjong_tally_seen_empty">这一门（%1$s）还没记过。</string>
     <string name="mahjong_tally_seen_hint">点下面的牌可以撤回一张。</string>
     <string name="mahjong_tally_clear">清空</string>
+    <!-- 对手手牌的推算：未知牌只剩三张以内时，穷举这一池牌的分配 -->
+    <string name="mahjong_tally_infer_title">可能的听牌</string>
+    <string name="mahjong_tally_infer_hint">想知道对手在等什么，先填他大概有几张手牌；未知的牌只比它多三张以内时，每一种分配都能摆出来。</string>
+    <string name="mahjong_tally_opponent_none">未填</string>
+    <string name="mahjong_tally_infer_note_format">未知 %1$d 张，对手 %2$d 张，牌山 %3$d 张。下面每一种摆法都听牌。</string>
+    <string name="mahjong_tally_infer_overflow_format">牌山还有 %1$d 张，超过 %2$d 张时摆法太多，先不推。</string>
+    <string name="mahjong_tally_infer_short_format">未知只有 %1$d 张，装不下 %2$d 张手牌。</string>
+    <string name="mahjong_tally_infer_none">这一门凑不出能听牌的摆法。</string>
+    <string name="mahjong_tally_infer_total_format">一共 %1$d 种，先列 %2$d 种。</string>
+    <string name="mahjong_tally_infer_wait_label">听</string>
+    <string name="mahjong_tally_infer_wall_label">牌山</string>
+    <string name="mahjong_tally_infer_wall_empty">空</string>
     <string name="mahjong_tally_note">上面每一块就是一张还在池子里的牌，念过去就是「还剩哪些」；一门的记录独立保存，切换花色不会丢。这里记的东西不会写进任何场次。</string>
 
     <!-- 我的 · 麻将小工具入口 -->

@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.manote.app.domain.mahjong.ChengduHand
+import com.manote.app.domain.mahjong.ChengduShanten
 import com.manote.app.domain.mahjong.ChengduTile
 import com.manote.app.domain.mahjong.MahjongSuit
 import com.manote.app.domain.mahjong.TileTally
@@ -22,6 +23,7 @@ import com.manote.app.ui.theme.TileFaceLight
 import com.manote.app.ui.theme.TileTongDark
 import com.manote.app.ui.theme.TileWanLight
 import com.manote.app.ui.theme.manote
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -53,6 +55,9 @@ class MahjongRenderSmokeTest {
      * 要核对「一条都没被截掉」，画布得比真机高一截。
      */
     private val TALL_PAGE_HEIGHT = 3600
+
+    /** 推算那一屏更高：九种摆法、每种三排牌。 */
+    private val INFER_PAGE_HEIGHT = 4400
 
     @Test
     fun shantenPage_drawsTilesAndHeroCard() {
@@ -113,11 +118,13 @@ class MahjongRenderSmokeTest {
             TallyContent(
                 tally = tally,
                 suit = MahjongSuit.WAN,
+                opponentHand = 0,
                 onNavigateBack = {},
                 onSelectSuit = {},
                 onMark = {},
                 onUnmark = {},
                 onClear = {},
+                onOpponentChange = {},
             )
         }
 
@@ -257,6 +264,138 @@ class MahjongRenderSmokeTest {
         )
         assertTrue(
             "手牌与进张的牌面没有画出来",
+            bitmap.countPixelsNear(TileWanLight, tolerance = 32) > 300,
+        )
+    }
+
+    /**
+     * 已经和了的那一手，照样要给出「打哪张、听什么」。
+     *
+     * 和了之后整页只剩一句「已经组成四副面子加一对将」，等于让人自己去想
+     * 「换成哪张还能听」。而从和了的牌里换出一张，剩下的必然听牌——
+     * 这一份表是看牌型、数剩余张数、跟别人的听牌对撞时才用得上的东西。
+     */
+    @Test
+    fun shantenPage_stillOffersDiscardsWhenTheHandIsWon() {
+        // 111m + 234m + 555t + 99t：三副面子加一对将，已经和了
+        val hand = listOf(
+            ChengduTile(MahjongSuit.WAN, 1),
+            ChengduTile(MahjongSuit.WAN, 1),
+            ChengduTile(MahjongSuit.WAN, 1),
+            ChengduTile(MahjongSuit.WAN, 2),
+            ChengduTile(MahjongSuit.WAN, 3),
+            ChengduTile(MahjongSuit.WAN, 4),
+            ChengduTile(MahjongSuit.TIAO, 5),
+            ChengduTile(MahjongSuit.TIAO, 5),
+            ChengduTile(MahjongSuit.TIAO, 5),
+            ChengduTile(MahjongSuit.TIAO, 9),
+            ChengduTile(MahjongSuit.TIAO, 9),
+        ).fold(ChengduHand.empty) { acc, tile -> acc.plus(tile) }
+
+        assertEquals("这一手本该是和了", -1, ChengduShanten.of(hand))
+
+        val bitmap = renderScreen(width, TALL_PAGE_HEIGHT, "render-mahjong-won.png") {
+            ShantenContent(
+                hand = hand,
+                banned = null,
+                onNavigateBack = {},
+                onAdd = {},
+                onRemove = {},
+                onClear = {},
+                onBannedChange = {},
+            )
+        }
+
+        assertTrue(
+            "顶部英雄卡没有画出来",
+            bitmap.countPixelsNear(HeroSurfaceLight) > 500,
+        )
+        // 和了之后还有「打哪张」，说明那一段没被一句提示顶掉
+        assertTrue(
+            "和了之后没有给出打法",
+            bitmap.countPixelsNear(TileWanLight, tolerance = 32) > 300,
+        )
+    }
+
+    /**
+     * 记牌器的推算：未知九张万子，对手七张。
+     *
+     * 用户报的那一池（223456679）一共九种摆法都能听牌，每一种带着自己的听牌
+     * 与牌山。九块内容里有七张牌的整手、也有两排小牌，排版一挤就叠在一起，
+     * 只能真画一遍才看得出来。
+     */
+    @Test
+    fun tallyPage_listsEveryInferredTenpaiSplit() {
+        // 只留这九张没见过：其余的全部记成已出现
+        val pool = listOf(2, 2, 3, 4, 5, 6, 6, 7, 9)
+        var tally = TileTally.empty
+        (1..9).forEach { rank ->
+            repeat(ChengduTile.COPIES - pool.count { it == rank }) {
+                tally = tally.mark(ChengduTile(MahjongSuit.WAN, rank))
+            }
+        }
+        assertEquals(9, tally.remainingCount(MahjongSuit.WAN))
+
+        val bitmap = renderScreen(width, INFER_PAGE_HEIGHT, "render-mahjong-infer.png") {
+            TallyContent(
+                tally = tally,
+                suit = MahjongSuit.WAN,
+                opponentHand = 7,
+                onNavigateBack = {},
+                onSelectSuit = {},
+                onMark = {},
+                onUnmark = {},
+                onClear = {},
+                onOpponentChange = {},
+            )
+        }
+
+        assertTrue(
+            "顶部英雄卡没有画出来",
+            bitmap.countPixelsNear(HeroSurfaceLight) > 500,
+        )
+        assertTrue(
+            "推算区没有画出牌面",
+            bitmap.countPixelsNear(TileWanLight, tolerance = 32) > 300,
+        )
+    }
+
+    /**
+     * 未出现的池子要尽量把一行填满。
+     *
+     * 用户报过这个：一行放得下 `1111 22`，再多一组 `33` 就被判成摆不下、单独换行，
+     * 而那一行其实还剩着空档。原因是牌宽只按「两组四张」算，没算第三组多出来的
+     * 那道组间空档。这里画的正是这个池子：正确的话第一行是 `1111 22 33`、
+     * 第二行只剩 `4444`。
+     */
+    @Test
+    fun tallyPage_packsThreeTileGroupsIntoOneRow() {
+        // 只留 1111 22 33 4444 没见过
+        val unseenCounts = mapOf(1 to 4, 2 to 2, 3 to 2, 4 to 4)
+        var tally = TileTally.empty
+        (1..9).forEach { rank ->
+            repeat(ChengduTile.COPIES - (unseenCounts[rank] ?: 0)) {
+                tally = tally.mark(ChengduTile(MahjongSuit.WAN, rank))
+            }
+        }
+        assertEquals(12, tally.remainingCount(MahjongSuit.WAN))
+
+        val bitmap = renderScreen(width, height, "render-mahjong-tally-pack.png") {
+            TallyContent(
+                tally = tally,
+                suit = MahjongSuit.WAN,
+                opponentHand = 0,
+                onNavigateBack = {},
+                onSelectSuit = {},
+                onMark = {},
+                onUnmark = {},
+                onClear = {},
+                onOpponentChange = {},
+            )
+        }
+
+        assertTrue(
+            "未出现的牌面没有画出来",
             bitmap.countPixelsNear(TileWanLight, tolerance = 32) > 300,
         )
     }
@@ -427,11 +566,13 @@ class MahjongRenderSmokeTest {
             TallyContent(
                 tally = tally,
                 suit = MahjongSuit.TONG,
+                opponentHand = 0,
                 onNavigateBack = {},
                 onSelectSuit = {},
                 onMark = {},
                 onUnmark = {},
                 onClear = {},
+                onOpponentChange = {},
             )
         }
 

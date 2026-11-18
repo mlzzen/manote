@@ -30,3 +30,23 @@ internal fun handOf(spec: String): ChengduHand {
     require(digits.isEmpty()) { "牌谱必须以花色字母结尾：$spec" }
     return hand
 }
+
+/**
+ * 一手牌摊成列表：同一种牌有几张就给几个元素。
+ *
+ * 牌面、进张、推算出来的整手牌都是「逐张」的，用例里也跟着用列表，
+ * 免得到断言时再临时展开一遍。
+ */
+internal fun tilesOf(spec: String): List<ChengduTile> {
+    val hand = handOf(spec)
+    return ChengduTile.all.flatMap { tile -> List(hand.countOf(tile)) { tile } }
+}
+
+/**
+ * 把一串牌压回牌谱写法（只用于同一门）：`2234566`。
+ *
+ * 断言里写牌谱，左边那一串能直接对着牌面读；写成 27 个计数就没人看得懂了。
+ * 这里顺带排一次序，调用方不必先自己理好。
+ */
+internal fun specOf(tiles: List<ChengduTile>): String =
+    tiles.sortedBy { it.index }.joinToString("") { it.rank.toString() }

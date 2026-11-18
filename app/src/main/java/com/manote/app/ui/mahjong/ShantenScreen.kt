@@ -123,7 +123,7 @@ internal fun ShantenContent(
                 onClear = onClear,
             )
 
-            ResultCard(hand = hand, banned = banned)
+            ResultSection(hand = hand, banned = banned)
 
             Text(
                 text = stringResource(R.string.mahjong_shanten_note),
@@ -376,20 +376,30 @@ private fun TileKeyboard(hand: ChengduHand, onAdd: (ChengduTile) -> Unit) {
  * 只有余数为 0（十二张、九张……）才真的还没打完一轮。
  */
 @Composable
-private fun ResultCard(hand: ChengduHand, banned: MahjongSuit?) {
+private fun ResultSection(hand: ChengduHand, banned: MahjongSuit?) {
     if (hand.isEmpty) return
 
     val shanten = ChengduShanten.of(hand, banned)
 
-    // 十一张也可能是和了（四副面子全齐、只剩将那一步已经补上），
-    // 这时不该再劝人「打哪张」。
     if (shanten < 0) {
-        ManoteCard {
-            Text(
-                text = stringResource(R.string.mahjong_shanten_win_note),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        // 已经和了，但「打哪张」照样有用：从和了的手里换出一张，剩下的必然听牌
+        // （听回自己刚打出去的那张）。看牌型、算还剩几张、跟别人的听牌对撞，
+        // 都要靠这一份。所以这里不给一句「已经和了」就收工。
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            ManoteCard {
+                Text(
+                    text = stringResource(R.string.mahjong_shanten_win_note),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.mahjong_shanten_win_discard_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DiscardCard(hand = hand, banned = banned)
         }
         return
     }
