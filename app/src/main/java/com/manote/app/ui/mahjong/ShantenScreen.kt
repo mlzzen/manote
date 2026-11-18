@@ -463,34 +463,53 @@ private fun WaitCard(hand: ChengduHand, banned: MahjongSuit?, shanten: Int) {
 }
 
 /**
- * 打牌建议：给出几条候选，好的排在前面。
+ * 打牌建议：向听最好的那几种打法，好的排在前面。
  *
- * 只列前四条。第十四张牌有几种打法最多也就五六种，全都列出来反而要读完才敢动手；
- * 前四条已经覆盖了「稳妥」「搏一把」这些实际会选的走法。
+ * 「最好」是整份候选里向听最小的**全部**，不是固定的前四条。
+ * 一手牌能听牌的打法常常不止一种（`34445567778889m` 就有六种），
+ * 它们之间只差进张多少；按条数截掉后面几条，界面上就变成了「这些打法不存在」——
+ * 而它们一样听牌，只是听的那几张在外面剩得少。
+ *
+ * 每条都带一排小牌：那才是「听什么」。只写「进张 6 张」，
+ * 人还得自己把这六张拆回两个点数。
  */
 @Composable
 private fun DiscardCard(hand: ChengduHand, banned: MahjongSuit?) {
-    val options = ChengduShanten.discardOptions(hand, banned).take(MAX_DISCARD_OPTIONS)
+    val options = ChengduShanten.bestDiscards(hand, banned)
 
     ManoteCard {
         ManoteSectionHeader(title = stringResource(R.string.mahjong_shanten_discards_label))
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.mahjong_shanten_discards_note_format, options.size),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
 
         options.forEachIndexed { index, option ->
             DiscardRow(option = option)
             if (index != options.lastIndex) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+                // 每条候选都带一排小牌，行与行之间不加分隔线就会连成一片：
+                // 上一行的「听 6 9」看着像下一行的一部分。
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                Spacer(modifier = Modifier.height(14.dp))
             }
         }
     }
 }
 
+/**
+ * 一条打法：打哪张 → 打完什么向听 → 摸到哪些牌有用。
+ *
+ * 那排小牌是这一行真正的信息。合计枚数写在它上面一行，
+ * 只当成一个可以快速比较的读数，不必逐块去加。
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DiscardRow(option: DiscardOption) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    Row(modifier = Modifier.fillMaxWidth()) {
         MahjongTileFace(
             tile = option.tile,
             width = DISCARD_TILE_WIDTH,
@@ -498,27 +517,52 @@ private fun DiscardRow(option: DiscardOption) {
         )
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = shantenText(option.shanten),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (option.bannedSuit) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.mahjong_shanten_banned_badge),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
             Text(
-                text = shantenText(option.shanten),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = if (option.shanten < 0) {
-                    stringResource(R.string.mahjong_shanten_win_note)
-                } else {
-                    stringResource(R.string.mahjong_shanten_ukeire_format, option.ukeire)
+                text = when {
+                    option.shanten < 0 -> stringResource(R.string.mahjong_shanten_win_note)
+                    // 听牌时这一串就是和了牌，叫「进张」会让人以为还得再摸一次
+                    option.shanten == 0 -> stringResource(
+                        R.string.mahjong_shanten_win_tiles_format,
+                        option.ukeire,
+                    )
+
+                    else -> stringResource(R.string.mahjong_shanten_ukeire_format, option.ukeire)
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        if (option.bannedSuit) {
-            Text(
-                text = stringResource(R.string.mahjong_shanten_banned_badge),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
+
+            if (option.waits.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(WAIT_TILE_GAP),
+                    verticalArrangement = Arrangement.spacedBy(WAIT_TILE_GAP),
+                ) {
+                    option.waits.forEach { wait ->
+                        MahjongTileFace(
+                            tile = wait.tile,
+                            width = WAIT_TILE_WIDTH,
+                            badge = wait.remaining.toString(),
+                            contentDescription = tileDescription(wait.tile),
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -540,7 +584,16 @@ private fun tileDescription(tile: ChengduTile): String =
 private val HAND_TILE_WIDTH = 34.dp
 
 /** 打牌建议里的牌宽：它跟着一行文字走，不能比那一行高太多。 */
-private val DISCARD_TILE_WIDTH = 28.dp
+private val DISCARD_TILE_WIDTH = 32.dp
 
-/** 打牌建议最多列几条。 */
-private const val MAX_DISCARD_OPTIONS = 4
+/**
+ * 每条建议下面那排「听什么」的牌宽。
+ *
+ * 比待打的那张（28dp）反而略大一点：这一排才是要读的东西，
+ * 而牌面上的角标是按牌宽的比例缩的——26dp 时那个数字只剩 5sp 出头，
+ * 手机上得凑近看。这里卡在 30dp，与键盘上那排牌（约 36dp）同一个量级。
+ */
+private val WAIT_TILE_WIDTH = 30.dp
+
+/** 那排小牌的间隙：比手牌紧一档，一整排才不至于散成互不相干的方块。 */
+private val WAIT_TILE_GAP = 3.dp

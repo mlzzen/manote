@@ -376,7 +376,9 @@
     <string name="mahjong_shanten_waits_none">No draw improves this hand; consider a different shape.</string>
     <string name="mahjong_shanten_win_note">Four sets and a pair, complete.</string>
     <string name="mahjong_shanten_discards_label">What to discard</string>
+    <string name="mahjong_shanten_discards_note_format">These %1$d discards leave the hand closest to ready, most useful draws first.</string>
     <string name="mahjong_shanten_ukeire_format">%1$d useful draws</string>
+    <string name="mahjong_shanten_win_tiles_format">%1$d winning tiles</string>
     <string name="mahjong_shanten_odd_count">One tile short: 13 / 14 with nothing exposed, 10 / 11 after one pong, 7 / 8 after two.</string>
     <string name="mahjong_shanten_note">Shanten counts four sets plus a pair, and seven pairs wins too — but a pong or kong leaves only the standard shape. The voided suit takes no part in the shape and never counts as a useful draw. Draw counts are four minus the tiles you hold; discards are not subtracted.</string>
 

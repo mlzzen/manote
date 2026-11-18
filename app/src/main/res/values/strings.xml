@@ -369,7 +369,9 @@
     <string name="mahjong_shanten_waits_none">摸哪张都不会让这一手变快，考虑换个牌型。</string>
     <string name="mahjong_shanten_win_note">已经组成四副面子加一对将。</string>
     <string name="mahjong_shanten_discards_label">打哪张</string>
+    <string name="mahjong_shanten_discards_note_format">下面 %1$d 种打法打完之后向听最少，按进张多少排列。</string>
     <string name="mahjong_shanten_ukeire_format">进张 %1$d 张</string>
+    <string name="mahjong_shanten_win_tiles_format">和了牌 %1$d 张</string>
     <string name="mahjong_shanten_odd_count">张数还差一张：没碰过是十三 / 十四张，碰一组是十 / 十一张，碰两组是七 / 八张。</string>
     <string name="mahjong_shanten_note">向听按四副面子加一对将算，七对也算和牌——但碰过、杠过之后只剩一般形。定缺的那一门不参与拆牌，摸到它也进不了进张列表。进张枚数按「四张减手上这几张」算，没有扣掉牌河里已经打出去的。</string>
 

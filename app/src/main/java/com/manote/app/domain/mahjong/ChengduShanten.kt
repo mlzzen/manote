@@ -13,16 +13,21 @@ data class EffectiveTile(val tile: ChengduTile, val remaining: Int)
  * 一种打法的评估结果。
  *
  * @param shanten 打出 [tile] 之后这一手牌的向听数（-1 表示和了）。
- * @param ukeire 打出之后有多少张牌能进张。和牌之后再谈进张没有意义，记为 0。
+ * @param waits 打出之后摸到哪些牌能快一步，以及各自还剩几张。
+ *   听牌时这一串就是**和了牌**——只报一个「进张 6 张」而不说听 6、9，
+ *   等于让人自己把这六张拆回两个点数。
  * @param bannedSuit 这张是不是定缺那一门——它无论如何都要打出去，
  *   因此在向听与进张都相同的并列里排在最前。
  */
 data class DiscardOption(
     val tile: ChengduTile,
     val shanten: Int,
-    val ukeire: Int,
+    val waits: List<EffectiveTile>,
     val bannedSuit: Boolean,
-)
+) {
+    /** 打出之后有多少张牌能进张。和了之后再谈进张没有意义（[waits] 本来就空），自然是 0。 */
+    val ukeire: Int get() = waits.sumOf { it.remaining }
+}
 
 /**
  * 成都麻将的牌理：向听数、进张（有效牌）与打牌建议。
@@ -97,19 +102,21 @@ object ChengduShanten {
      * 排序看三件事：打完之后的向听、能进多少张、以及这张是不是定缺那一门。
      * 先比向听再比进张，是因为「少一步」永远强过「多七张」——
      * 进张再多，方向错了也还是在原地绕。
+     *
+     * 这里不截断：手里每种牌各是一条，十四张最多也就十来条。要「只留最好的那几种」
+     * 请用 [bestDiscards]——截断这件事一旦写下额度（比如前四），就会把
+     * 「进张只有两张、但确实听牌」的打法挤掉，而那恰恰是有人想搏的那一种。
      */
     fun discardOptions(hand: ChengduHand, banned: MahjongSuit? = null): List<DiscardOption> {
         val options = ArrayList<DiscardOption>()
         for (tile in ChengduTile.all) {
             if (hand.countOf(tile) == 0) continue
             val after = hand.minus(tile)
-            val shanten = of(after, banned)
-            val ukeire = if (shanten < 0) 0 else effectiveTiles(after, banned).sumOf { it.remaining }
             options.add(
                 DiscardOption(
                     tile = tile,
-                    shanten = shanten,
-                    ukeire = ukeire,
+                    shanten = of(after, banned),
+                    waits = effectiveTiles(after, banned),
                     bannedSuit = banned != null && tile.suit == banned,
                 ),
             )
@@ -122,6 +129,20 @@ object ChengduShanten {
             ),
         )
         return options
+    }
+
+    /**
+     * 值得照做的几种打法：只留向听最好的那一档。
+     *
+     * 「最好的那一档」是整份候选里向听最小的全部，而不是固定的前 N 条。
+     * 一手牌能听牌的打法往往不止一种（`34445567778889m` 有六种），
+     * 它们之间只差进张多少；按额度截掉后面几条，界面上就变成了「这些打法不存在」，
+     * 而它们其实一样听牌，只是听的那几张在外面剩得少。
+     */
+    fun bestDiscards(hand: ChengduHand, banned: MahjongSuit? = null): List<DiscardOption> {
+        val all = discardOptions(hand, banned)
+        val best = all.firstOrNull()?.shanten ?: return emptyList()
+        return all.filter { it.shanten == best }
     }
 
     /**

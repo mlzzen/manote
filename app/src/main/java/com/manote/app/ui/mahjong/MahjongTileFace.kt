@@ -3,8 +3,10 @@ package com.manote.app.ui.mahjong
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +21,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +48,36 @@ private const val SUIT_FONT_RATIO = 0.24f
 
 /** 角标的字号比例。比花色名再小一档：它是一句注解，不该和牌面的点数抢注意力。 */
 private const val BADGE_FONT_RATIO = 0.21f
+
+/**
+ * 「数字 + 花色」这一块相对牌面中心的上移量，按牌宽的比例给。
+ *
+ * 两行字都按几何居中摆好之后，看上去仍然偏下一点点：字体的上伸（ascent）比下伸
+ * （descent）长，数字底下那截空白比头顶少，整块墨迹的重心就落在中心线下面
+ * 约牌宽的 1.8%。这个数是量出来的（见 `MahjongRenderSmokeTest` 里那条居中用例），
+ * 不是估的——换成别的字体要重新量。
+ */
+private const val CONTENT_NUDGE_RATIO = 0.018f
+
+/**
+ * 数字与花色之间的行距，按牌宽的比例给，取负值表示往里收。
+ *
+ * 两行都显示成牌面的那个比例时，字框各自带的空白会把中间撑出将近一个字高，
+ * 数字与花色看着像两块不相干的东西。收掉一半之后，中间那道空隙
+ * 与「万」的笔画高度差不多，整块才读成「3 万」而不是「3 …… 万」。
+ */
+private const val LINE_TIGHTEN_RATIO = 0.09f
+
+/**
+ * 牌面上两行字的文字样式。
+ *
+ * 关掉系统给每行文字额外加的那圈内边距（Android 的 `includeFontPadding`）。
+ * 那圈空白是给拉丁字母的下伸部分留的，压在方块牌面上就成了「上多下少」的一圈留白：
+ * 两行字加起来能被推下去小半个字，整块牌面看着就是歪的。
+ */
+private val TileTextStyle = TextStyle(
+    platformStyle = PlatformTextStyle(includeFontPadding = false),
+)
 
 /**
  * 牌与牌、行与行之间的间隙。
@@ -102,6 +137,8 @@ fun MahjongTileFace(
     val colors = MaterialTheme.manote
     val accent = tile.suit.accent()
     val shape = RoundedCornerShape(width * 0.20f)
+    val rankSize = (width.value * RANK_FONT_RATIO).sp
+    val suitSize = (width.value * SUIT_FONT_RATIO).sp
 
     val interaction = remember { MutableInteractionSource() }
     val clickModifier = if (onClick != null) {
@@ -128,17 +165,33 @@ fun MahjongTileFace(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.offset(y = -(width * CONTENT_NUDGE_RATIO)),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            // 两行之间的距离由这里定，且是负的：两张字各自的字框都带着一圈空白，
+            // 顺着排会空出半个字那么高，数字和花色就散成了两件事。
+            // 负间距只是让它们靠拢，整块仍由外层居中，不必再补别的位置。
+            verticalArrangement = Arrangement.spacedBy(-(width * LINE_TIGHTEN_RATIO)),
+        ) {
             Text(
                 text = tile.rank.toString(),
-                fontSize = (width.value * RANK_FONT_RATIO).sp,
+                fontSize = rankSize,
+                // 行高按字号给，默认行高会在字上下各留一截空白：
+                // 两行字各自带着这圈空白，加起来就有半个字那么高，
+                // 于是「数字 + 花色」这一块整体偏下，牌面看着是歪的。
+                lineHeight = rankSize,
                 fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
                 color = accent,
+                style = TileTextStyle,
             )
             Text(
                 text = tile.suit.label(),
-                fontSize = (width.value * SUIT_FONT_RATIO).sp,
+                fontSize = suitSize,
+                lineHeight = suitSize,
+                textAlign = TextAlign.Center,
                 color = accent.copy(alpha = 0.72f),
+                style = TileTextStyle,
             )
         }
 

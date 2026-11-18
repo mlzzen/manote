@@ -123,6 +123,42 @@ class ChengduShantenTest {
     }
 
     @Test
+    fun bestDiscards_keepEveryTenpaiDiscardInsteadOfTheFirstFour() {
+        // 34445567778889m：tenhou 上打 3、4、5、7、8、9 都能听牌。
+        // 进张只有两张的 7、9 排在最后，早先被「只列前四条」直接截掉了——
+        // 而它们同样听牌，只是听的那几张在外面剩得少。
+        val hand = handOf("34445567778889m")
+        assertEquals(14, hand.size)
+
+        val discards = ChengduShanten.bestDiscards(hand)
+        assertEquals(
+            "六种打法都能听牌，一种都不能少",
+            setOf(3, 4, 5, 7, 8, 9).map { ChengduTile(MahjongSuit.WAN, it) }.toSet(),
+            discards.map { it.tile }.toSet(),
+        )
+        assertTrue("全是听牌：${discards.map { it.tile to it.shanten }}", discards.all { it.shanten == 0 })
+        // 进张多的排前面：3 / 5 / 8 都是六张，按牌序取最小的 3
+        assertEquals(ChengduTile(MahjongSuit.WAN, 3), discards.first().tile)
+        // 打 6 万只剩一向听，不该混进这一档
+        assertTrue(
+            "一向听的打法不该出现在「最好」里",
+            discards.none { it.tile == ChengduTile(MahjongSuit.WAN, 6) },
+        )
+    }
+
+    @Test
+    fun bestDiscards_carryTheWaitingTiles() {
+        // 只报「进张 6 张」不够：听的是 6 万与 9 万，各还剩三张
+        val hand = handOf("34445567778889m")
+        val waits = ChengduShanten.bestDiscards(hand)
+            .associate { it.tile.rank to it.waits.map { wait -> wait.tile.rank to wait.remaining } }
+
+        assertEquals(listOf(6 to 3, 9 to 3), waits[3])
+        // 打 7 万是另一个听法：4 万与 8 万都只剩各一张
+        assertEquals(listOf(4 to 1, 8 to 1), waits[7])
+    }
+
+    @Test
     fun discardOptions_includeEveryDistinctTileInHand() {
         val hand = handOf("123456789m55t67t1p")
         val discarded = ChengduShanten.discardOptions(hand).map { it.tile }
